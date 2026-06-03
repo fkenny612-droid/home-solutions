@@ -28,6 +28,7 @@ export default function BookScreen() {
   const [selectedProv, setSelected]    = useState(0)
   const [providers,    setProviders]   = useState<Provider[]>(MOCK_PROVIDERS)
   const [booking,      setBooking]     = useState<Booking | null>(null)
+  const [liveStatus,   setLiveStatus]  = useState<string | null>(null)
   const [txnId,        setTxnId]       = useState<string | null>(null)
   const [loading,      setLoading]     = useState(false)
   const [eta,          setEta]         = useState(12)
@@ -52,6 +53,26 @@ export default function BookScreen() {
     }, 400)
     return () => clearInterval(id)
   }, [step])
+
+  // ── Real-time polling — every 5s during tracking ──
+  useEffect(() => {
+    if (step !== 'tracking' || !booking) return
+    const poll = async () => {
+      try {
+        const updated = await api.bookings.get(booking.id)
+        setLiveStatus(updated.status)
+        setBooking(updated)
+        // Auto-advance when provider marks complete
+        if (updated.status === 'completed') {
+          setTxnId(updated.transactionId ?? txnId)
+          setStep('rating')
+        }
+      } catch {}
+    }
+    poll() // immediate first poll
+    const id = setInterval(poll, 5000)
+    return () => clearInterval(id)
+  }, [step, booking?.id])
 
   const prov = providers[selectedProv]
 
@@ -256,11 +277,11 @@ export default function BookScreen() {
 
             <View style={s.stepsCard}>
               {[
-                { label: 'Booking confirmed & payment held', done: true },
-                { label: `${prov?.name.split(' ')[0]} accepted your request`,  done: true },
-                { label: `En route · ETA ${eta} min`,                         active: true },
-                { label: 'Job in progress',                                    todo: true },
-                { label: 'Complete & payment released',                        todo: true },
+                { label: 'Booking confirmed & payment held',                    done: true },
+                { label: `${prov?.name.split(' ')[0]} accepted your request`,   done: ['accepted','en_route','in_progress','completed'].includes(liveStatus ?? '') },
+                { label: `En route · ETA ${eta} min`,                           done: liveStatus === 'in_progress' || liveStatus === 'completed', active: liveStatus === 'en_route' || liveStatus === 'accepted' },
+                { label: liveStatus === 'in_progress' ? 'Job in progress 🔧' : 'Job in progress', done: liveStatus === 'completed', active: liveStatus === 'in_progress' },
+                { label: 'Complete & payment released',                          todo: liveStatus !== 'completed', done: liveStatus === 'completed' },
               ].map((st, i) => (
                 <View key={i} style={s.stepRow}>
                   <View style={s.stepIndicator}>

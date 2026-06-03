@@ -47,9 +47,11 @@ export interface Booking {
   finalAmount: number | null
   paymentHeld: boolean
   paymentReleased: boolean
+  transactionId: string | null
   warrantyExpiresAt: string | null
   notes: string | null
   createdAt: string
+  updatedAt: string
 }
 
 export const api = {
