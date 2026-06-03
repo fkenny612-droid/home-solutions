@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  phone        String   @unique
+  passwordHash String
+  role         String   @default("client")
+  createdAt    DateTime @default(now())
+}
+
+model Provider {
+  id              String    @id @default(uuid())
+  name            String
+  phone           String    @unique
+  email           String?
+  skills          String[]
+  kycStatus       String    @default("pending")
+  status          String    @default("pending_kyc")
+  rating          Float     @default(0)
+  reviewCount     Int       @default(0)
+  jobCount        Int       @default(0)
+  earningsBalance Float     @default(0)
+  monFri          Boolean   @default(true)
+  saturday        Boolean   @default(false)
+  sunday          Boolean   @default(false)
+  emergency       Boolean   @default(false)
+  lat             Float?
+  lng             Float?
+  createdAt       DateTime  @default(now())
+  bookings        Booking[]
+}
+
+model Booking {
+  id               String    @id @default(uuid())
+  clientId         String
+  providerId       String?
+  provider         Provider? @relation(fields: [providerId], references: [id])
+  serviceType      String
+  status           String    @default("pending")
+  location         String
+  address          String
+  quotedAmount     Float
+  finalAmount      Float?
+  paymentMethod    String    @default("card")
+  paymentHeld      Boolean   @default(false)
+  paymentReleased  Boolean   @default(false)
+  transactionId    String?
+  warrantyExpiresAt DateTime?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
