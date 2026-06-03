@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
+import { NotificationsService } from '../notifications/notifications.service'
 import { BookingStatus, ServiceType } from './booking.types'
 
 @Injectable()
 export class BookingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   findAll(status?: BookingStatus, serviceType?: ServiceType) {
     return this.prisma.booking.findMany({
@@ -22,7 +26,29 @@ export class BookingsService {
     return booking
   }
 
-  create(dto: {
+  async notifyProviders(serviceType: string, bookingId: string) {
+    // Find all active providers with matching skill who have a push token
+    const providers = await this.prisma.provider.findMany({
+      where: { status: 'active', skills: { has: serviceType } },
+    })
+    // Get push tokens from user accounts matching provider phones
+    const phones = providers.map(p => p.phone)
+    const users  = await this.prisma.user.findMany({
+      where: { phone: { in: phones }, pushToken: { not: null } },
+      select: { pushToken: true },
+    })
+    const tokens = users.map(u => u.pushToken!).filter(Boolean)
+    if (tokens.length) {
+      await this.notifications.notifyProviders(
+        tokens,
+        '🔧 New job available',
+        `${serviceType.charAt(0).toUpperCase() + serviceType.slice(1)} job near you — tap to accept`,
+        { bookingId, type: 'new_job' },
+      )
+    }
+  }
+
+  async create(dto: {
     clientId:      string
     serviceType:   ServiceType
     location:      string
@@ -31,18 +57,21 @@ export class BookingsService {
     paymentMethod: string
     notes?:        string
   }) {
-    return this.prisma.booking.create({
+    const booking = await this.prisma.booking.create({
       data: {
-        clientId:     dto.clientId,
-        serviceType:  dto.serviceType,
-        location:     dto.location,
-        address:      dto.address,
-        quotedAmount: dto.quotedAmount,
+        clientId:      dto.clientId,
+        serviceType:   dto.serviceType,
+        location:      dto.location,
+        address:       dto.address,
+        quotedAmount:  dto.quotedAmount,
         paymentMethod: dto.paymentMethod,
-        notes:        dto.notes ?? null,
-        status:       'pending',
+        notes:         dto.notes ?? null,
+        status:        'pending',
       },
     })
+    // Notify matching providers in the background
+    this.notifyProviders(dto.serviceType, booking.id).catch(() => {})
+    return booking
   }
 
   async updateStatus(id: string, status: BookingStatus) {

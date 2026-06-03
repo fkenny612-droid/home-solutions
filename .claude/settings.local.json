@@ -5,7 +5,8 @@
       "Bash(nvm --version)",
       "Bash(brew list *)",
       "Read(//usr/local/bin/**)",
-      "Read(//Users/kenny/.nvm/versions/**)"
+      "Read(//Users/kenny/.nvm/versions/**)",
+      "WebFetch(domain:home-solutions-ds5b.onrender.com)"
     ]
   }
 }

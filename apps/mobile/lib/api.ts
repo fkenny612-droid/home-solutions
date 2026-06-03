@@ -56,10 +56,12 @@ export const api = {
   setToken: (t: string | null) => { _token = t },
 
   auth: {
-    login:    (phone: string, password: string) =>
+    login:         (phone: string, password: string) =>
       req<{ accessToken: string; user: { id: string; phone: string; role: string } }>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
-    register: (phone: string, password: string, role: 'client' | 'provider') =>
+    register:      (phone: string, password: string, role: 'client' | 'provider') =>
       req<{ accessToken: string; user: { id: string; phone: string; role: string } }>('/auth/register', { method: 'POST', body: JSON.stringify({ phone, password, role }) }),
+    savePushToken: (pushToken: string) =>
+      req<void>('/auth/push-token', { method: 'PATCH', body: JSON.stringify({ pushToken }) }),
   },
 
   bookings: {
