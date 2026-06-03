@@ -1,9 +1,10 @@
 /**
- * AuthContext — JWT auth with SecureStore persistence
+ * AuthContext — JWT auth with SecureStore persistence + push token registration
  */
 import { createContext, useContext, useEffect, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
 import { api } from '../lib/api'
+import { registerForPushNotifications } from '../lib/notifications'
 
 const TOKEN_KEY = 'hs_token'
 const USER_KEY  = 'hs_user'
@@ -58,15 +59,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user)
   }
 
+  const registerPushToken = async () => {
+    try {
+      const pushToken = await registerForPushNotifications()
+      if (pushToken) await api.auth.savePushToken(pushToken)
+    } catch {}
+  }
+
   const login = async (phone: string, password: string) => {
     const res = await api.auth.login(phone, password)
     await persist(res.accessToken, res.user as AuthUser)
+    registerPushToken() // fire and forget
     return res.user as AuthUser
   }
 
   const register = async (phone: string, password: string, role: 'client' | 'provider') => {
     const res = await api.auth.register(phone, password, role)
     await persist(res.accessToken, res.user as AuthUser)
+    registerPushToken() // fire and forget
     return res.user as AuthUser
   }
 

@@ -21,6 +21,11 @@ export class AuthService {
     }
   }
 
+  async savePushToken(userId: string, pushToken: string) {
+    await this.prisma.user.update({ where: { id: userId }, data: { pushToken } })
+    return { ok: true }
+  }
+
   async register(phone: string, password: string, role: 'client' | 'provider') {
     const existing = await this.prisma.user.findUnique({ where: { phone } })
     if (existing) throw new UnauthorizedException('Phone already registered')

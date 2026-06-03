@@ -12,6 +12,7 @@ model User {
   phone        String   @unique
   passwordHash String
   role         String   @default("client")
+  pushToken    String?
   createdAt    DateTime @default(now())
 }
 
