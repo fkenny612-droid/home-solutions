@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { STATS, BOOKINGS, PROVIDERS, SUBSCRIPTIONS, REVENUE_BARS } from '@/lib/mock-data'
+import { bookings as bookingsApi, providers as providersApi, subscriptions as subsApi } from '@/lib/api'
+import type { BookingStats, Provider } from '@/lib/api'
 
 type AdminModal = null | 'booking' | 'verify-provider' | 'payout' | 'new-booking' | 'report'
 
@@ -48,6 +50,31 @@ export default function AdminSection() {
   const [activeTab, setActiveTab] = useState('All')
   const [modal, setModal] = useState<AdminModal>(null)
   const [selectedBooking, setSelectedBooking] = useState(BOOKINGS[0])
+
+  // Live API state — falls back to mock data while loading or if API is unreachable
+  const [apiStats, setApiStats] = useState<BookingStats | null>(null)
+  const [apiProviders, setApiProviders] = useState<Provider[] | null>(null)
+  const [mrr, setMrr] = useState<{ total: number; basicHome: { count: number }; premiumHome: { count: number }; estateBiz: { count: number } } | null>(null)
+
+  useEffect(() => {
+    bookingsApi.stats().then(setApiStats).catch(() => {})
+    providersApi.list('active').then(setApiProviders).catch(() => {})
+    subsApi.mrr().then(setMrr).catch(() => {})
+  }, [])
+
+  const liveStats = apiStats
+    ? [
+        { label: 'Active bookings', val: apiStats.active, change: '↑ +12% today', up: true },
+        { label: 'Techs live', val: apiProviders?.length ?? STATS.techsLive, change: '↑ en route', up: true },
+        { label: 'Revenue today', val: apiStats.revenueToday > 0 ? `R${(apiStats.revenueToday / 1000).toFixed(1)}k` : STATS.revenueToday, change: '↑ +8% vs yesterday', up: true },
+        { label: 'Avg rating', val: STATS.avgRating, change: '↓ −0.1 this week', up: false },
+      ]
+    : [
+        { label: 'Active bookings', val: STATS.activeBookings, change: '↑ +12% today', up: true },
+        { label: 'Techs live', val: STATS.techsLive, change: '↑ 18 en route', up: true },
+        { label: 'Revenue today', val: STATS.revenueToday, change: '↑ +8% vs yesterday', up: true },
+        { label: 'Avg rating', val: STATS.avgRating, change: '↓ −0.1 this week', up: false },
+      ]
 
   const filteredBookings = activeTab === 'All'
     ? BOOKINGS
@@ -135,12 +162,7 @@ export default function AdminSection() {
           <div style={{ padding: '16px 20px' }}>
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-              {[
-                { label: 'Active bookings', val: STATS.activeBookings, change: '↑ +12% today', up: true },
-                { label: 'Techs live', val: STATS.techsLive, change: '↑ 18 en route', up: true },
-                { label: 'Revenue today', val: STATS.revenueToday, change: '↑ +8% vs yesterday', up: true },
-                { label: 'Avg rating', val: STATS.avgRating, change: '↓ −0.1 this week', up: false },
-              ].map(s => (
+              {liveStats.map(s => (
                 <div key={s.label} style={{ background: '#fff', borderRadius: 10, padding: '13px 14px', border: '1px solid var(--cream-mid)' }}>
                   <div style={{ fontSize: 9, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>{s.label}</div>
                   <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, fontWeight: 300, color: 'var(--navy)' }}>{s.val}</div>
@@ -258,11 +280,11 @@ export default function AdminSection() {
                   <div style={{ marginTop: 9, paddingTop: 9, borderTop: '1px solid var(--cream-mid)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
                       <span style={{ color: 'var(--text-muted)' }}>Total subscribers</span>
-                      <span style={{ fontWeight: 500 }}>2 642</span>
+                      <span style={{ fontWeight: 500 }}>{mrr ? (mrr.basicHome.count + mrr.premiumHome.count + mrr.estateBiz.count).toLocaleString() : '2 642'}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 3 }}>
                       <span style={{ color: 'var(--text-muted)' }}>Monthly MRR</span>
-                      <span style={{ fontWeight: 500, color: 'var(--accent)' }}>R 398 140</span>
+                      <span style={{ fontWeight: 500, color: 'var(--accent)' }}>{mrr ? `R ${(mrr.total / 1000).toFixed(0)}k` : 'R 398 140'}</span>
                     </div>
                   </div>
                 </div>
