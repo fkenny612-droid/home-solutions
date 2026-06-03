@@ -5,11 +5,15 @@
  */
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'
 
+let _token: string | null = null
+
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    ...options,
-  })
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(_token ? { Authorization: `Bearer ${_token}` } : {}),
+    ...(options?.headers as Record<string, string> ?? {}),
+  }
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
   if (!res.ok) throw new Error(`API ${res.status}`)
   return res.json()
 }
@@ -49,6 +53,8 @@ export interface Booking {
 }
 
 export const api = {
+  setToken: (t: string | null) => { _token = t },
+
   auth: {
     login:    (phone: string, password: string) =>
       req<{ accessToken: string; user: { id: string; phone: string; role: string } }>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
