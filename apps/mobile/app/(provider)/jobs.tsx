@@ -38,8 +38,8 @@ export default function ProviderJobs() {
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false) }
 
-  const markComplete = async (id: string) => {
-    try { await api.bookings.updateStatus(id, 'completed'); await load() } catch {}
+  const updateStatus = async (id: string, status: 'en_route' | 'in_progress' | 'completed') => {
+    try { await api.bookings.updateStatus(id, status); await load() } catch {}
   }
 
   const acceptJob = async (id: string) => {
@@ -65,7 +65,7 @@ export default function ProviderJobs() {
           <>
             <Text style={s.sectionLabel}>Active</Text>
             {activeJobs.map(j => (
-              <JobCard key={j.id} job={j} onComplete={() => markComplete(j.id)} />
+              <JobCard key={j.id} job={j} onUpdateStatus={(s) => updateStatus(j.id, s)} />
             ))}
           </>
         )}
@@ -107,8 +107,15 @@ export default function ProviderJobs() {
   )
 }
 
-function JobCard({ job, onComplete }: { job: Booking; onComplete: () => void }) {
-  const st = STATUS_META[job.status] ?? { label: job.status, color: colors.textMuted }
+const STATUS_NEXT: Record<string, { label: string; next: 'en_route' | 'in_progress' | 'completed' } | null> = {
+  accepted:    { label: '🚗  I\'m on my way',    next: 'en_route'    },
+  en_route:    { label: '🔧  Start job',          next: 'in_progress' },
+  in_progress: { label: '✅  Mark complete',       next: 'completed'   },
+}
+
+function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'en_route' | 'in_progress' | 'completed') => void }) {
+  const st   = STATUS_META[job.status] ?? { label: job.status, color: colors.textMuted }
+  const next = STATUS_NEXT[job.status]
   return (
     <View style={s.card}>
       <View style={s.cardTop}>
@@ -131,9 +138,11 @@ function JobCard({ job, onComplete }: { job: Booking; onComplete: () => void }) 
         <TouchableOpacity style={s.actionBtn} onPress={() => Linking.openURL('tel:+27821234567')}>
           <Text style={s.actionBtnText}>📞 Call client</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.actionBtn, s.actionPrimary]} onPress={onComplete}>
-          <Text style={s.actionPrimaryText}>Mark complete</Text>
-        </TouchableOpacity>
+        {next && (
+          <TouchableOpacity style={[s.actionBtn, s.actionPrimary]} onPress={() => onUpdateStatus(next.next)}>
+            <Text style={s.actionPrimaryText}>{next.label}</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   )
