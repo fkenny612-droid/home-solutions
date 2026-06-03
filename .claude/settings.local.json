@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --version)",
+      "Bash(nvm --version)",
+      "Bash(brew list *)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/kenny/.nvm/versions/**)"
+    ]
+  }
+}
