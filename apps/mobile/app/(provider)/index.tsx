@@ -4,8 +4,10 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { router } from 'expo-router'
 import { colors } from '../../constants/theme'
 import { api } from '../../lib/api'
+import { useAuth } from '../../context/auth'
 
 const RECENT_JOBS = [
   { emoji: '💧', bg: '#DBEAFE', name: 'Geyser repair',  detail: 'Today · Priya G. · ★★★★★',    amt: 'R 1 000' },
@@ -14,6 +16,7 @@ const RECENT_JOBS = [
 ]
 
 export default function ProviderEarnings() {
+  const { user, logout } = useAuth()
   const [online, setOnline] = useState(true)
   const [earnings, setEarnings] = useState({ available: 4840, thisMonth: 28440, total: 892 * 1200 })
 
@@ -92,6 +95,10 @@ export default function ProviderEarnings() {
         </TouchableOpacity>
         <Text style={s.withdrawSub}>Transfers within 1–2 business days</Text>
 
+        <TouchableOpacity style={s.logoutBtn} onPress={async () => { await logout(); router.replace('/login') }}>
+          <Text style={s.logoutText}>Sign out</Text>
+        </TouchableOpacity>
+
         <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
@@ -138,4 +145,6 @@ const s = StyleSheet.create({
   withdrawBtn:  { backgroundColor: colors.gold, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 12 },
   withdrawText: { fontSize: 13, fontWeight: '600', color: colors.navy },
   withdrawSub:  { textAlign: 'center', fontSize: 10, color: colors.textLight, marginTop: 6 },
+  logoutBtn:    { alignItems: 'center', padding: 14, marginTop: 8 },
+  logoutText:   { fontSize: 13, color: colors.textLight },
 })
