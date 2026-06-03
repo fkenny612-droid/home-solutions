@@ -1,0 +1,14 @@
+{
+  "name": "home-solutions",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "web": "cd apps/web && ./node_modules/.bin/next dev",
+    "api": "cd apps/api && pnpm dev",
+    "web:build": "cd apps/web && ./node_modules/.bin/next build",
+    "web:start": "cd apps/web && ./node_modules/.bin/next start"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
