@@ -12,9 +12,10 @@ export default function ProviderLayout() {
         tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
       }}
     >
-      <Tabs.Screen name="index"      options={{ title: 'Earnings',   tabBarIcon: ({ color }) => <TabIcon emoji="💰" color={color} /> }} />
-      <Tabs.Screen name="jobs"       options={{ title: 'Jobs',       tabBarIcon: ({ color }) => <TabIcon emoji="🔧" color={color} /> }} />
-      <Tabs.Screen name="onboarding" options={{ title: 'Profile',    tabBarIcon: ({ color }) => <TabIcon emoji="👤" color={color} /> }} />
+      <Tabs.Screen name="index"      options={{ title: 'Earnings',  tabBarIcon: ({ color }) => <TabIcon emoji="💰" color={color} /> }} />
+      <Tabs.Screen name="jobs"       options={{ title: 'Jobs',      tabBarIcon: ({ color }) => <TabIcon emoji="🔧" color={color} /> }} />
+      <Tabs.Screen name="onboarding" options={{ title: 'Verify',    tabBarIcon: ({ color }) => <TabIcon emoji="🪪" color={color} /> }} />
+      <Tabs.Screen name="profile"    options={{ title: 'Profile',   tabBarIcon: ({ color }) => <TabIcon emoji="👤" color={color} /> }} />
     </Tabs>
   )
 }
