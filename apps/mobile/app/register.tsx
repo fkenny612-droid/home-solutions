@@ -49,7 +49,7 @@ export default function RegisterScreen() {
           <View style={s.roleRow}>
             {([
               { key: 'client',   label: 'I need a service', emoji: '🏠' },
-              { key: 'provider', label: 'I'm a tradesperson', emoji: '🔧' },
+              { key: 'provider', label: "I'm a tradesperson", emoji: '🔧' },
             ] as { key: Role; label: string; emoji: string }[]).map(r => (
               <TouchableOpacity
                 key={r.key}
