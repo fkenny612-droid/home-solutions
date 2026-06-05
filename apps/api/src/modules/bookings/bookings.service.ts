@@ -1,13 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
+import { SmsService } from '../notifications/sms.service'
 import { BookingStatus, ServiceType } from './booking.types'
 
 @Injectable()
 export class BookingsService {
   constructor(
-    private prisma: PrismaService,
-    private notifications: NotificationsService,
+    private prisma:         PrismaService,
+    private notifications:  NotificationsService,
+    private sms:            SmsService,
   ) {}
 
   findAll(status?: BookingStatus, serviceType?: ServiceType) {
@@ -26,25 +28,62 @@ export class BookingsService {
     return booking
   }
 
-  async notifyProviders(serviceType: string, bookingId: string) {
-    // Find all active providers with matching skill who have a push token
+  async notifyProviders(serviceType: string, bookingId: string, address: string) {
     const providers = await this.prisma.provider.findMany({
       where: { status: 'active', skills: { has: serviceType } },
     })
-    // Get push tokens from user accounts matching provider phones
-    const phones = providers.map(p => p.phone)
-    const users  = await this.prisma.user.findMany({
-      where: { phone: { in: phones }, pushToken: { not: null } },
-      select: { pushToken: true },
+    const phones     = providers.map(p => p.phone)
+    const users      = await this.prisma.user.findMany({
+      where:  { phone: { in: phones } },
+      select: { pushToken: true, phone: true },
     })
-    const tokens = users.map(u => u.pushToken!).filter(Boolean)
-    if (tokens.length) {
+
+    const withPush    = users.filter(u => u.pushToken).map(u => u.pushToken!)
+    const withoutPush = users.filter(u => !u.pushToken).map(u => u.phone)
+
+    // Push to providers who have the app
+    if (withPush.length) {
       await this.notifications.notifyProviders(
-        tokens,
+        withPush,
         '🔧 New job available',
-        `${serviceType.charAt(0).toUpperCase() + serviceType.slice(1)} job near you — tap to accept`,
+        `${serviceType.charAt(0).toUpperCase() + serviceType.slice(1)} near you — tap to accept`,
         { bookingId, type: 'new_job' },
       )
+    }
+
+    // SMS fallback for providers without push token
+    if (withoutPush.length) {
+      await this.sms.notifyNewJob(withoutPush, serviceType, address)
+    }
+  }
+
+  async notifyClientOnAssign(clientId: string, providerName: string, serviceType: string, bookingId: string) {
+    const client = await this.prisma.user.findUnique({ where: { id: clientId } })
+    if (!client) return
+    if (client.pushToken) {
+      await this.notifications.notifyOne(
+        client.pushToken,
+        '✅ Provider on the way!',
+        `${providerName} accepted your ${serviceType} request`,
+        { bookingId, type: 'provider_assigned' },
+      )
+    } else {
+      await this.sms.notifyBookingConfirmed(client.phone, providerName, serviceType, bookingId)
+    }
+  }
+
+  async notifyClientOnComplete(clientId: string, serviceType: string, amount: number, bookingId: string) {
+    const client = await this.prisma.user.findUnique({ where: { id: clientId } })
+    if (!client) return
+    if (client.pushToken) {
+      await this.notifications.notifyOne(
+        client.pushToken,
+        '✅ Job complete!',
+        `Your ${serviceType} job is done. Rate your provider.`,
+        { bookingId, type: 'job_complete' },
+      )
+    } else {
+      await this.sms.notifyJobComplete(client.phone, serviceType, amount)
     }
   }
 
@@ -70,7 +109,7 @@ export class BookingsService {
       },
     })
     // Notify matching providers in the background
-    this.notifyProviders(dto.serviceType, booking.id).catch(() => {})
+    this.notifyProviders(dto.serviceType, booking.id, dto.address).catch(() => {})
     return booking
   }
 
@@ -79,20 +118,40 @@ export class BookingsService {
       ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
       : undefined
 
-    return this.prisma.booking.update({
+    const booking = await this.prisma.booking.update({
       where: { id },
       data: {
         status,
         ...(status === 'completed' ? { paymentReleased: true, warrantyExpiresAt } : {}),
       },
     })
+
+    if (status === 'completed') {
+      this.notifyClientOnComplete(
+        booking.clientId,
+        booking.serviceType,
+        booking.finalAmount ?? booking.quotedAmount,
+        booking.id,
+      ).catch(() => {})
+    }
+
+    return booking
   }
 
-  assignProvider(id: string, providerId: string) {
-    return this.prisma.booking.update({
+  async assignProvider(id: string, providerId: string) {
+    const booking = await this.prisma.booking.update({
       where: { id },
       data:  { providerId, status: 'accepted' },
+      include: { provider: true },
     })
+    // Notify client — push or SMS
+    this.notifyClientOnAssign(
+      booking.clientId,
+      booking.provider?.name ?? 'Your provider',
+      booking.serviceType,
+      booking.id,
+    ).catch(() => {})
+    return booking
   }
 
   async stats() {

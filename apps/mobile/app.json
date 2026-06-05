@@ -3,20 +3,48 @@
     "name": "Home Solutions",
     "slug": "home-solutions",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "homesolutions",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F1923"
+    },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "co.za.homesolutions.app"
+      "bundleIdentifier": "co.za.homesolutions.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used for document uploads during KYC verification.",
+        "NSPhotoLibraryUsageDescription": "Used to upload profile and KYC documents.",
+        "UIBackgroundModes": [
+          "remote-notification",
+          "remote-notification",
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "co.za.homesolutions.app",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0F1923",
-        "foregroundImage": "./assets/icon.png"
-      }
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#0F1923"
+      },
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -25,10 +53,28 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0F1923",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3fd45cf5-e0f6-4875-a3be-a68616ddb0da"
+      },
+      "router": {}
+    },
+    "owner": "fkenny612",
+    "updates": {
+      "url": "https://u.expo.dev/3fd45cf5-e0f6-4875-a3be-a68616ddb0da"
     }
   }
 }

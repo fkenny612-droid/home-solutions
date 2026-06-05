@@ -47,7 +47,9 @@ export default function ProviderJobs() {
     try { await api.bookings.assignProvider(id, user.id); await load() } catch {}
   }
 
-  const activeJobs  = jobs.filter(j => !['pending', 'completed', 'cancelled'].includes(j.status))
+  // Active = assigned to this provider, not yet done
+  const activeJobs  = jobs.filter(j => j.providerId === user?.id && !['completed', 'cancelled'].includes(j.status))
+  // Available = pending with no provider yet
   const pendingJobs = jobs.filter(j => j.status === 'pending' && !j.providerId)
 
   return (
