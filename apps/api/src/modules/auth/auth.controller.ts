@@ -15,8 +15,13 @@ export class AuthController {
   }
 
   @Post('register')
-  register(@Body('phone') phone: string, @Body('password') password: string, @Body('role') role: 'client' | 'provider') {
-    return this.svc.register(phone, password, role)
+  register(@Body() body: {
+    phone: string; email: string; password: string
+    firstName: string; lastName: string; role: 'client' | 'provider'
+    companyName?: string; companyRegistration?: string
+    vatNumber?: string; serviceArea?: string
+  }) {
+    return this.svc.register(body)
   }
 
   @Patch('push-token')
