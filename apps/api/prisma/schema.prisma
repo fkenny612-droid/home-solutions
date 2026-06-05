@@ -8,12 +8,20 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  phone        String   @unique
-  passwordHash String
-  role         String   @default("client")
-  pushToken    String?
-  createdAt    DateTime @default(now())
+  id                  String   @id @default(uuid())
+  phone               String   @unique
+  email               String?  @unique
+  passwordHash        String
+  role                String   @default("client")
+  firstName           String?
+  lastName            String?
+  // Provider-only fields
+  companyName         String?
+  companyRegistration String?
+  vatNumber           String?
+  serviceArea         String?
+  pushToken           String?
+  createdAt           DateTime @default(now())
 }
 
 model Provider {

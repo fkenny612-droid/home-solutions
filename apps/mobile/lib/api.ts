@@ -60,8 +60,12 @@ export const api = {
   auth: {
     login:         (phone: string, password: string) =>
       req<{ accessToken: string; user: { id: string; phone: string; role: string } }>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
-    register:      (phone: string, password: string, role: 'client' | 'provider') =>
-      req<{ accessToken: string; user: { id: string; phone: string; role: string } }>('/auth/register', { method: 'POST', body: JSON.stringify({ phone, password, role }) }),
+    register: (data: {
+      phone: string; email: string; password: string
+      firstName: string; lastName: string; role: 'client' | 'provider'
+      companyName?: string; companyRegistration?: string
+      vatNumber?: string; serviceArea?: string
+    }) => req<{ accessToken: string; user: { id: string; phone: string; role: string; firstName: string; lastName: string } }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
     savePushToken: (pushToken: string) =>
       req<void>('/auth/push-token', { method: 'PATCH', body: JSON.stringify({ pushToken }) }),
   },

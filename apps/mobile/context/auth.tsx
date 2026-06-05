@@ -20,7 +20,7 @@ interface AuthCtx {
   token:     string | null
   isLoading: boolean
   login:     (phone: string, password: string) => Promise<AuthUser>
-  register:  (phone: string, password: string, role: 'client' | 'provider') => Promise<AuthUser>
+  register:  (data: Parameters<typeof import('../lib/api').api.auth.register>[0]) => Promise<AuthUser>
   logout:    () => Promise<void>
 }
 
@@ -73,8 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.user as AuthUser
   }
 
-  const register = async (phone: string, password: string, role: 'client' | 'provider') => {
-    const res = await api.auth.register(phone, password, role)
+  const register = async (data: Parameters<typeof api.auth.register>[0]) => {
+    const res = await api.auth.register(data)
     await persist(res.accessToken, res.user as AuthUser)
     registerPushToken() // fire and forget
     return res.user as AuthUser
