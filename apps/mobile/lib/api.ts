@@ -87,6 +87,10 @@ export const api = {
     earnings:       (id: string)             => req<{ available: number; thisMonth: number; total: number }>(`/providers/${id}/earnings`),
     updateLocation: (id: string, lat: number, lng: number) =>
       req<Provider>(`/providers/${id}/location`, { method: 'PATCH', body: JSON.stringify({ lat, lng }) }),
+    getDocuments: (id: string) =>
+      req<{ id: string; type: string; fileName: string; fileUrl: string; status: string }[]>(`/providers/${id}/documents`),
+    saveDocument: (id: string, type: string, fileName: string, fileUrl: string) =>
+      req<void>(`/providers/${id}/documents`, { method: 'POST', body: JSON.stringify({ type, fileName, fileUrl }) }),
   },
 
   payments: {
