@@ -73,6 +73,8 @@ model Booking {
   paymentHeld      Boolean   @default(false)
   paymentReleased  Boolean   @default(false)
   transactionId    String?
+  serviceDetails   Json?
+  images           String[]
   warrantyExpiresAt DateTime?
   notes            String?
   createdAt        DateTime  @default(now())

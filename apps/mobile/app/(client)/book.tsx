@@ -3,15 +3,18 @@
  * Wired to live API: create booking, hold payment, complete, release.
  */
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Alert } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import * as ImagePicker from 'expo-image-picker'
 import { colors } from '../../constants/theme'
 import { api } from '../../lib/api'
 import type { Provider, Booking } from '../../lib/api'
 import { useAuth } from '../../context/auth'
+import { getService, calculateEstimate, SERVICES } from '../../lib/serviceConfig'
+import { uploadToCloudinary } from '../../lib/cloudinary'
 
-type Step = 'providers' | 'quote' | 'tracking' | 'rating' | 'done'
+type Step = 'details' | 'providers' | 'quote' | 'tracking' | 'rating' | 'done'
 
 const MOCK_PROVIDERS: Provider[] = [
   { id: 'prov-raj',   name: 'Raj Pillay',   skills: ['plumbing'], rating: 4.9, reviewCount: 214, jobCount: 892, earningsBalance: 4840, kycStatus: 'approved', status: 'active', location: { lat: -29.8587, lng: 31.0218 }, availability: { monFri: true, saturday: true, sunday: false, emergency: true } },
@@ -24,17 +27,24 @@ export default function BookScreen() {
   const { serviceType } = useLocalSearchParams<{ serviceType: string }>()
   const { user } = useAuth()
 
-  const [step,         setStep]        = useState<Step>('providers')
-  const [selectedProv, setSelected]    = useState(0)
-  const [providers,    setProviders]   = useState<Provider[]>(MOCK_PROVIDERS)
-  const [booking,      setBooking]     = useState<Booking | null>(null)
-  const [liveStatus,   setLiveStatus]  = useState<string | null>(null)
-  const [txnId,        setTxnId]       = useState<string | null>(null)
-  const [loading,      setLoading]     = useState(false)
-  const [eta,          setEta]         = useState(12)
-  const [rating,       setRating]      = useState(5)
-  const [tags,         setTags]        = useState(['Punctual', 'Professional', 'Friendly'])
+  const serviceConfig = getService(serviceType ?? '')
+
+  const [step,           setStep]        = useState<Step>('details')
+  const [answers,        setAnswers]      = useState<Record<string, any>>({})
+  const [photos,         setPhotos]       = useState<string[]>([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [selectedProv,   setSelected]    = useState(0)
+  const [providers,      setProviders]   = useState<Provider[]>(MOCK_PROVIDERS)
+  const [booking,        setBooking]     = useState<Booking | null>(null)
+  const [liveStatus,     setLiveStatus]  = useState<string | null>(null)
+  const [txnId,          setTxnId]       = useState<string | null>(null)
+  const [loading,        setLoading]     = useState(false)
+  const [eta,            setEta]         = useState(12)
+  const [rating,         setRating]      = useState(5)
+  const [tags,           setTags]        = useState(['Punctual', 'Professional', 'Friendly'])
   const etaRef = useRef(eta)
+
+  const estimate = calculateEstimate(serviceType ?? '', answers)
 
   // Fetch real providers
   useEffect(() => {
@@ -76,20 +86,54 @@ export default function BookScreen() {
 
   const prov = providers[selectedProv]
 
+  // ── Pick & upload a photo ──
+  const pickPhoto = async () => {
+    if (photos.length >= 3) { Alert.alert('Max 3 photos', 'Remove a photo to add another.'); return }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) { Alert.alert('Permission needed', 'Allow photo access to attach images.'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
+    if (result.canceled) return
+    const asset = result.assets[0]
+    setUploadingPhoto(true)
+    try {
+      const { url } = await uploadToCloudinary(asset.uri, asset.fileName ?? `photo_${Date.now()}.jpg`, asset.mimeType ?? 'image/jpeg', 'home-solutions/job-photos')
+      setPhotos(prev => [...prev, url])
+    } catch { Alert.alert('Upload failed', 'Please try again.') }
+    finally { setUploadingPhoto(false) }
+  }
+
+  const takePhoto = async () => {
+    if (photos.length >= 3) { Alert.alert('Max 3 photos', 'Remove a photo to add another.'); return }
+    const perm = await ImagePicker.requestCameraPermissionsAsync()
+    if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access to take photos.'); return }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 })
+    if (result.canceled) return
+    const asset = result.assets[0]
+    setUploadingPhoto(true)
+    try {
+      const { url } = await uploadToCloudinary(asset.uri, `photo_${Date.now()}.jpg`, 'image/jpeg', 'home-solutions/job-photos')
+      setPhotos(prev => [...prev, url])
+    } catch { Alert.alert('Upload failed', 'Please try again.') }
+    finally { setUploadingPhoto(false) }
+  }
+
   // ── Approve & pay → create booking + hold payment ──
   const handleApprove = async () => {
     if (!user) return
     setLoading(true)
     try {
       // 1. Create booking
+      const quoteAmount = Math.round((estimate.min + estimate.max) / 2)
       const newBooking = await api.bookings.create({
-        clientId:      user.id,
-        serviceType:   (serviceType ?? 'handyman') as any,
-        location:      '-29.8587,31.0218',
-        address:       '22 Glenwood Road, Durban',
-        quotedAmount:  QUOTE_AMOUNT,
-        paymentMethod: 'card',
-        notes:         `Requested provider: ${prov?.name}`,
+        clientId:       user.id,
+        serviceType:    (serviceType ?? 'handyman') as any,
+        location:       '-29.8587,31.0218',
+        address:        '22 Glenwood Road, Durban',
+        quotedAmount:   quoteAmount,
+        paymentMethod:  'card',
+        notes:          `Requested provider: ${prov?.name}`,
+        serviceDetails: answers,
+        images:         photos,
       })
       setBooking(newBooking)
 
@@ -128,7 +172,7 @@ export default function BookScreen() {
     }
   }
 
-  const prog = { providers: 0.33, quote: 0.66, tracking: 0.88, rating: 1, done: 1 }[step]
+  const prog = { details: 0.2, providers: 0.4, quote: 0.65, tracking: 0.85, rating: 1, done: 1 }[step]
 
   return (
     <SafeAreaView style={s.safe}>
@@ -136,6 +180,118 @@ export default function BookScreen() {
         <View style={s.progressTrack}>
           <View style={[s.progressFill, { width: `${prog * 100}%` }]} />
         </View>
+      )}
+
+      {/* ── DETAILS ── */}
+      {step === 'details' && (
+        <>
+          <View style={s.header}>
+            <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+              <Text style={s.backArrow}>←</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={s.headerTitle}>{serviceConfig?.emoji} {serviceConfig?.label ?? serviceType}</Text>
+              <Text style={s.headerSub}>Tell us about the job</Text>
+            </View>
+          </View>
+
+          <ScrollView style={s.body} showsVerticalScrollIndicator={false}>
+            {serviceConfig?.questions.map(q => (
+              <View key={q.key} style={{ marginBottom: 18 }}>
+                <Text style={s.qLabel}>{q.label}</Text>
+
+                {q.type === 'select' && (
+                  <View style={s.optGrid}>
+                    {q.options?.map(opt => (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[s.optChip, answers[q.key] === opt.value && s.optChipSel]}
+                        onPress={() => setAnswers(prev => ({ ...prev, [q.key]: opt.value }))}
+                      >
+                        <Text style={[s.optChipText, answers[q.key] === opt.value && s.optChipTextSel]}>
+                          {opt.label}
+                        </Text>
+                        {opt.priceMin > 0 && (
+                          <Text style={[s.optPrice, answers[q.key] === opt.value && s.optPriceSel]}>
+                            R{opt.priceMin.toLocaleString()}+
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {q.type === 'counter' && (
+                  <View style={s.counterRow}>
+                    <TouchableOpacity
+                      style={s.counterBtn}
+                      onPress={() => setAnswers(prev => ({ ...prev, [q.key]: Math.max(q.min ?? 0, (prev[q.key] ?? q.default ?? 1) - 1) }))}
+                    >
+                      <Text style={s.counterBtnText}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={s.counterVal}>{answers[q.key] ?? q.default ?? 1} {q.unit}</Text>
+                    <TouchableOpacity
+                      style={s.counterBtn}
+                      onPress={() => setAnswers(prev => ({ ...prev, [q.key]: Math.min(q.max ?? 99, (prev[q.key] ?? q.default ?? 1) + 1) }))}
+                    >
+                      <Text style={s.counterBtnText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))}
+
+            {/* Photo upload */}
+            <Text style={s.qLabel}>Photos of the issue <Text style={s.qOptional}>(optional, up to 3)</Text></Text>
+            <View style={s.photoRow}>
+              {photos.map((url, i) => (
+                <View key={i} style={s.photoThumb}>
+                  <Image source={{ uri: url }} style={s.photoImg} />
+                  <TouchableOpacity style={s.photoRemove} onPress={() => setPhotos(p => p.filter((_, j) => j !== i))}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {photos.length < 3 && (
+                uploadingPhoto ? (
+                  <View style={[s.photoAdd, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator color={colors.gold} />
+                  </View>
+                ) : (
+                  <View style={{ gap: 6 }}>
+                    <TouchableOpacity style={s.photoAdd} onPress={takePhoto}>
+                      <Text style={s.photoAddText}>📷</Text>
+                      <Text style={s.photoAddLabel}>Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.photoAdd} onPress={pickPhoto}>
+                      <Text style={s.photoAddText}>🖼️</Text>
+                      <Text style={s.photoAddLabel}>Gallery</Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+              )}
+            </View>
+
+            {/* Estimate */}
+            {estimate.min > 0 && (
+              <View style={s.estimateBox}>
+                <Text style={s.estimateLabel}>Estimated quote</Text>
+                <Text style={s.estimateRange}>
+                  R {estimate.min.toLocaleString()} – R {estimate.max.toLocaleString()}
+                </Text>
+                <Text style={s.estimateNote}>Final quote confirmed by the provider</Text>
+              </View>
+            )}
+
+            <View style={{ height: 16 }} />
+          </ScrollView>
+
+          <View style={s.ctaBar}>
+            <TouchableOpacity style={s.ctaBtn} onPress={() => setStep('providers')}>
+              <Text style={s.ctaBtnText}>Find providers →</Text>
+            </TouchableOpacity>
+          </View>
+        </>
       )}
 
       {/* ── PROVIDERS ── */}
@@ -205,11 +361,10 @@ export default function BookScreen() {
 
             <View style={s.quoteCard}>
               {[
-                { label: 'Call-out fee',     val: 'R 150',   color: colors.text },
-                { label: 'Labour (est. 2h)', val: 'R 700',   color: colors.text },
-                { label: 'Parts — fittings', val: 'R 280',   color: colors.text },
-                { label: 'Premium discount', val: '−R 130',  color: colors.accent },
-                { label: 'Total',            val: 'R 1 000', color: colors.navy, bold: true },
+                { label: 'Call-out fee',       val: 'R 150',                                                               color: colors.text },
+                { label: 'Labour & materials', val: `R ${Math.max(0, estimate.min - 150).toLocaleString()} – R ${Math.max(0, estimate.max - 150).toLocaleString()}`, color: colors.text },
+                { label: 'Premium discount',   val: '−R 0 (included)',                                                     color: colors.accent },
+                { label: 'Estimated total',    val: `R ${estimate.min.toLocaleString()} – R ${estimate.max.toLocaleString()}`, color: colors.navy, bold: true },
               ].map(r => (
                 <View key={r.label} style={[s.quoteRow, r.bold && s.quoteRowTotal]}>
                   <Text style={s.quoteLabel}>{r.label}</Text>
@@ -236,7 +391,7 @@ export default function BookScreen() {
             <TouchableOpacity style={[s.ctaBtn, loading && { opacity: 0.7 }]} onPress={handleApprove} disabled={loading}>
               {loading
                 ? <ActivityIndicator color={colors.navy} />
-                : <Text style={s.ctaBtnText}>Approve &amp; pay R 1 000</Text>}
+                : <Text style={s.ctaBtnText}>Approve &amp; pay R {Math.round((estimate.min + estimate.max) / 2).toLocaleString()}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.ctaBtnSec} onPress={() => setStep('providers')} disabled={loading}>
               <Text style={s.ctaBtnSecText}>Request different provider</Text>
@@ -367,6 +522,30 @@ export default function BookScreen() {
 }
 
 const s = StyleSheet.create({
+  qLabel:        { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 8 },
+  qOptional:     { fontSize: 11, fontWeight: '400', color: colors.textLight },
+  optGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  optChip:       { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.creamMid, backgroundColor: '#fff' },
+  optChipSel:    { borderColor: colors.gold, backgroundColor: '#FFFBF0' },
+  optChipText:   { fontSize: 12, color: colors.textMuted },
+  optChipTextSel:{ color: colors.gold, fontWeight: '600' },
+  optPrice:      { fontSize: 10, color: colors.textLight, marginTop: 2 },
+  optPriceSel:   { color: colors.gold },
+  counterRow:    { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  counterBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.creamMid, alignItems: 'center', justifyContent: 'center' },
+  counterBtnText:{ fontSize: 20, color: colors.text, lineHeight: 24 },
+  counterVal:    { fontSize: 15, fontWeight: '600', color: colors.text, minWidth: 80, textAlign: 'center' },
+  photoRow:      { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 16 },
+  photoThumb:    { width: 80, height: 80, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  photoImg:      { width: '100%', height: '100%' },
+  photoRemove:   { position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  photoAdd:      { width: 80, height: 80, borderRadius: 10, borderWidth: 1.5, borderColor: colors.creamMid, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', gap: 2 },
+  photoAddText:  { fontSize: 20 },
+  photoAddLabel: { fontSize: 9, color: colors.textLight },
+  estimateBox:   { backgroundColor: colors.navy, borderRadius: 12, padding: 14, marginTop: 4 },
+  estimateLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1 },
+  estimateRange: { fontSize: 22, fontWeight: '300', color: '#fff', marginVertical: 4 },
+  estimateNote:  { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
   safe:              { flex: 1, backgroundColor: colors.cream },
   progressTrack:     { height: 3, backgroundColor: colors.creamMid },
   progressFill:      { height: 3, backgroundColor: colors.gold },
