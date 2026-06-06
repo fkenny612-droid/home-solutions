@@ -11,7 +11,7 @@ import { useAuth } from '../../context/auth'
 import { uploadToCloudinary } from '../../lib/cloudinary'
 import { api } from '../../lib/api'
 
-type DocType = 'id' | 'company_reg' | 'bank_letter'
+type DocType = 'id' | 'company_reg' | 'bank_letter' | 'trade_cert'
 
 interface DocStatus {
   uploaded:  boolean
@@ -20,10 +20,11 @@ interface DocStatus {
   fileUrl:   string | null
 }
 
-const DOCS: { key: DocType; label: string; sub: string; accept: 'image' | 'pdf' }[] = [
-  { key: 'id',          label: 'SA ID / Passport',        sub: 'Photo of your ID document',       accept: 'image' },
-  { key: 'company_reg', label: 'Company registration',     sub: 'CIPC certificate (PDF or photo)', accept: 'pdf'   },
-  { key: 'bank_letter', label: 'Bank confirmation letter', sub: 'Bank letterhead, within 3 months', accept: 'pdf'   },
+const DOCS: { key: DocType; label: string; sub: string; accept: 'image' | 'pdf'; optional?: boolean }[] = [
+  { key: 'id',          label: 'SA ID / Passport',        sub: 'Photo of your ID document',              accept: 'image' },
+  { key: 'company_reg', label: 'Company registration',     sub: 'CIPC certificate (PDF or photo)',        accept: 'pdf'   },
+  { key: 'bank_letter', label: 'Bank confirmation letter', sub: 'Bank letterhead, within 3 months',       accept: 'pdf'   },
+  { key: 'trade_cert',  label: 'Trade certificate',        sub: 'Optional · unlocks all job categories',  accept: 'pdf', optional: true },
 ]
 
 const SKILLS = [
@@ -43,6 +44,7 @@ export default function ProviderOnboarding() {
     id:          { uploaded: false, uploading: false, fileName: null, fileUrl: null },
     company_reg: { uploaded: false, uploading: false, fileName: null, fileUrl: null },
     bank_letter: { uploaded: false, uploading: false, fileName: null, fileUrl: null },
+    trade_cert:  { uploaded: false, uploading: false, fileName: null, fileUrl: null },
   })
 
   // Load existing documents
@@ -114,8 +116,10 @@ export default function ProviderOnboarding() {
     }
   }
 
-  const uploadedCount = Object.values(docs).filter(d => d.uploaded).length
-  const allUploaded   = uploadedCount === 3
+  const requiredDocs  = DOCS.filter(d => !d.optional)
+  const uploadedCount = requiredDocs.filter(d => docs[d.key].uploaded).length
+  const allUploaded   = uploadedCount === requiredDocs.length
+  const hasTradeCert  = docs.trade_cert.uploaded
 
   return (
     <SafeAreaView style={s.safe}>
@@ -133,7 +137,7 @@ export default function ProviderOnboarding() {
       <ScrollView style={s.body} showsVerticalScrollIndicator={false}>
 
         <Text style={s.sectionLabel}>Required documents</Text>
-        {DOCS.map(doc => {
+        {DOCS.filter(d => !d.optional).map(doc => {
           const d = docs[doc.key]
           return (
             <TouchableOpacity
@@ -147,6 +151,42 @@ export default function ProviderOnboarding() {
                 : <Text style={s.uploadEmoji}>{d.uploaded ? '✅' : '📁'}</Text>}
               <View style={{ flex: 1 }}>
                 <Text style={[s.uploadLabel, d.uploaded && s.uploadLabelDone]}>{doc.label}</Text>
+                <Text style={[s.uploadSub, d.uploaded && s.uploadSubDone]}>
+                  {d.uploading ? 'Uploading…' : d.uploaded ? `✓ ${d.fileName}` : doc.sub}
+                </Text>
+              </View>
+              {!d.uploaded && !d.uploading && <Text style={s.uploadArrow}>›</Text>}
+            </TouchableOpacity>
+          )
+        })}
+
+        {/* Trade certificate — optional */}
+        <Text style={[s.sectionLabel, { marginTop: 8 }]}>Optional documents</Text>
+        {!hasTradeCert && (
+          <View style={s.tradeBanner}>
+            <Text style={s.tradeBannerText}>
+              🔧 Without a trade certificate you will only qualify for <Text style={{ fontWeight: '700' }}>Handyman</Text> jobs.
+              Upload your certificate to unlock Plumbing, Electrical, Gas and more.
+            </Text>
+          </View>
+        )}
+        {DOCS.filter(d => d.optional).map(doc => {
+          const d = docs[doc.key]
+          return (
+            <TouchableOpacity
+              key={doc.key}
+              style={[s.uploadBox, s.uploadBoxOptional, d.uploaded && s.uploadDone]}
+              onPress={() => pickAndUpload(doc)}
+              disabled={d.uploading}
+            >
+              {d.uploading
+                ? <ActivityIndicator color={colors.accent} style={{ width: 32 }} />
+                : <Text style={s.uploadEmoji}>{d.uploaded ? '✅' : '📄'}</Text>}
+              <View style={{ flex: 1 }}>
+                <View style={s.optionalRow}>
+                  <Text style={[s.uploadLabel, d.uploaded && s.uploadLabelDone]}>{doc.label}</Text>
+                  <View style={s.optionalBadge}><Text style={s.optionalBadgeText}>Optional</Text></View>
+                </View>
                 <Text style={[s.uploadSub, d.uploaded && s.uploadSubDone]}>
                   {d.uploading ? 'Uploading…' : d.uploaded ? `✓ ${d.fileName}` : doc.sub}
                 </Text>
@@ -239,8 +279,14 @@ const s = StyleSheet.create({
   toggleOff:       { backgroundColor: colors.creamMid },
   toggleThumb:     { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: 'flex-end' },
   toggleThumbOff:  { alignSelf: 'flex-start' },
-  successBanner:   { backgroundColor: '#EAF5EE', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.accent },
-  successText:     { fontSize: 13, color: '#1A5C38', lineHeight: 20 },
-  infoBanner:      { backgroundColor: '#FFF9EC', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.gold + '40' },
-  infoText:        { fontSize: 12, color: colors.textMuted, lineHeight: 18 },
+  successBanner:    { backgroundColor: '#EAF5EE', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.accent },
+  successText:      { fontSize: 13, color: '#1A5C38', lineHeight: 20 },
+  infoBanner:       { backgroundColor: '#FFF9EC', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.gold + '40' },
+  infoText:         { fontSize: 12, color: colors.textMuted, lineHeight: 18 },
+  tradeBanner:      { backgroundColor: '#FFF3E0', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#FFB74D40' },
+  tradeBannerText:  { fontSize: 12, color: '#7C4A00', lineHeight: 18 },
+  uploadBoxOptional:{ borderStyle: 'dashed', borderColor: colors.creamMid },
+  optionalRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  optionalBadge:    { backgroundColor: colors.creamMid, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  optionalBadgeText:{ fontSize: 9, color: colors.textMuted, fontWeight: '600', textTransform: 'uppercase' },
 })
