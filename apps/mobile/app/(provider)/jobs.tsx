@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { router } from 'expo-router'
 import { colors } from '../../constants/theme'
 import { api, Booking } from '../../lib/api'
 import { useAuth } from '../../context/auth'
@@ -115,7 +116,7 @@ const STATUS_NEXT: Record<string, { label: string; next: 'en_route' | 'in_progre
   in_progress: { label: '✅  Mark complete',       next: 'completed'   },
 }
 
-function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'en_route' | 'in_progress' | 'completed') => void }) {
+function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'en_route' | 'in_progress' | 'completed') => void; }) {
   const st   = STATUS_META[job.status] ?? { label: job.status, color: colors.textMuted }
   const next = STATUS_NEXT[job.status]
   return (
@@ -138,7 +139,13 @@ function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'e
       </View>
       <View style={s.cardActions}>
         <TouchableOpacity style={s.actionBtn} onPress={() => Linking.openURL('tel:+27821234567')}>
-          <Text style={s.actionBtnText}>📞 Call client</Text>
+          <Text style={s.actionBtnText}>📞 Call</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={s.actionBtn}
+          onPress={() => router.push({ pathname: '/(provider)/materials', params: { bookingId: job.id, serviceType: job.serviceType } } as any)}
+        >
+          <Text style={s.actionBtnText}>📦 Materials</Text>
         </TouchableOpacity>
         {next && (
           <TouchableOpacity style={[s.actionBtn, s.actionPrimary]} onPress={() => onUpdateStatus(next.next)}>

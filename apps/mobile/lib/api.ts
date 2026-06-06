@@ -93,6 +93,25 @@ export const api = {
       req<void>(`/providers/${id}/documents`, { method: 'POST', body: JSON.stringify({ type, fileName, fileUrl }) }),
   },
 
+  hardware: {
+    stores:       (area?: string) =>
+      req<any[]>(`/hardware/stores${area ? `?area=${area}` : ''}`),
+    products:     (storeId: string, category?: string) =>
+      req<any[]>(`/hardware/stores/${storeId}/products${category ? `?category=${category}` : ''}`),
+    search:       (q: string, category?: string) =>
+      req<any[]>(`/hardware/products/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}`),
+    createOrder:  (dto: { bookingId: string; providerId: string; storeId: string; notes?: string; items: { productId: string; quantity: number }[] }) =>
+      req<any>('/hardware/orders', { method: 'POST', body: JSON.stringify(dto) }),
+    ordersByBooking: (bookingId: string) =>
+      req<any[]>(`/hardware/orders/booking/${bookingId}`),
+    updateOrderStatus: (id: string, status: string) =>
+      req<any>(`/hardware/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    storeOrders:  (storeId: string) =>
+      req<any[]>(`/hardware/stores/${storeId}/orders`),
+    storeStats:   (storeId: string) =>
+      req<any>(`/hardware/stores/${storeId}/stats`),
+  },
+
   payments: {
     hold: (bookingId: string, amount: number) =>
       req<{ success: boolean; transactionId: string }>('/payments/hold', {
