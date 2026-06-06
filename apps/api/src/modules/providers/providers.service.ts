@@ -8,14 +8,27 @@ export type KycStatus      = 'pending' | 'in_review' | 'approved' | 'rejected'
 export class ProvidersService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(status?: string, skill?: string) {
-    return this.prisma.provider.findMany({
+  async findAll(status?: string, skill?: string) {
+    const providers = await this.prisma.provider.findMany({
       where: {
         ...(status ? { status } : {}),
         ...(skill  ? { skills: { has: skill } } : {}),
       },
       orderBy: { rating: 'desc' },
     })
+
+    // For non-handyman skills, filter out providers without a trade certificate
+    if (skill && skill !== 'handyman') {
+      const providerIds = providers.map(p => p.id)
+      const tradeCerts  = await this.prisma.kycDocument.findMany({
+        where: { providerId: { in: providerIds }, type: 'trade_cert' },
+        select: { providerId: true },
+      })
+      const certifiedIds = new Set(tradeCerts.map(c => c.providerId))
+      return providers.filter(p => certifiedIds.has(p.id))
+    }
+
+    return providers
   }
 
   async findOne(id: string) {
