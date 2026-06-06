@@ -165,8 +165,8 @@ export default function ProviderOnboarding() {
         {!hasTradeCert && (
           <View style={s.tradeBanner}>
             <Text style={s.tradeBannerText}>
-              🔧 Without a trade certificate you will only qualify for <Text style={{ fontWeight: '700' }}>Handyman</Text> jobs.
-              Upload your certificate to unlock Plumbing, Electrical, Gas and more.
+              🔧 Without a trade certificate you will only qualify for <Text style={{ fontWeight: '700' }}>Handyman</Text> and <Text style={{ fontWeight: '700' }}>Cleaning</Text> jobs.
+              Upload your certificate to unlock Plumbing, Electrical, Gas, HVAC and more.
             </Text>
           </View>
         )}
