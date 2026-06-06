@@ -88,24 +88,28 @@ export class BookingsService {
   }
 
   async create(dto: {
-    clientId:      string
-    serviceType:   ServiceType
-    location:      string
-    address:       string
-    quotedAmount:  number
-    paymentMethod: string
-    notes?:        string
+    clientId:       string
+    serviceType:    ServiceType
+    location:       string
+    address:        string
+    quotedAmount:   number
+    paymentMethod:  string
+    notes?:         string
+    serviceDetails?: Record<string, any>
+    images?:         string[]
   }) {
     const booking = await this.prisma.booking.create({
       data: {
-        clientId:      dto.clientId,
-        serviceType:   dto.serviceType,
-        location:      dto.location,
-        address:       dto.address,
-        quotedAmount:  dto.quotedAmount,
-        paymentMethod: dto.paymentMethod,
-        notes:         dto.notes ?? null,
-        status:        'pending',
+        clientId:       dto.clientId,
+        serviceType:    dto.serviceType,
+        location:       dto.location,
+        address:        dto.address,
+        quotedAmount:   dto.quotedAmount,
+        paymentMethod:  dto.paymentMethod,
+        notes:          dto.notes ?? null,
+        serviceDetails: dto.serviceDetails ?? undefined,
+        images:         dto.images ?? [],
+        status:         'pending',
       },
     })
     // Notify matching providers in the background

@@ -6,15 +6,7 @@ import { router } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
-
-const SERVICES = [
-  { id: 'plumbing',   label: 'Plumbing',   price: 'From R350', emoji: '💧', bg: '#DBEAFE' },
-  { id: 'electrical', label: 'Electrical', price: 'From R400', emoji: '⚡', bg: '#FEF3C7' },
-  { id: 'cleaning',   label: 'Cleaning',   price: 'From R250', emoji: '🧹', bg: '#D1FAE5' },
-  { id: 'hvac',       label: 'AC & HVAC',  price: 'From R500', emoji: '❄️', bg: '#EDE9FE' },
-  { id: 'gas',        label: 'Gas',        price: 'From R450', emoji: '🔥', bg: '#FEE2E2' },
-  { id: 'handyman',   label: 'Handyman',   price: 'From R300', emoji: '🔧', bg: '#FEF3C7' },
-]
+import { SERVICES as ALL_SERVICES } from '../../lib/serviceConfig'
 
 const RECENT = [
   { icon: '⚡', bg: '#FEF3C7', name: 'Electrical — DB board', date: '15 May · Kevin M. · ★★★★★', amt: 'R 850' },
@@ -45,7 +37,7 @@ export default function ClientHome() {
       <ScrollView style={s.body} showsVerticalScrollIndicator={false}>
         <Text style={s.sectionLabel}>Book a service</Text>
         <View style={s.serviceGrid}>
-          {SERVICES.map(svc => (
+          {ALL_SERVICES.map(svc => (
             <TouchableOpacity
               key={svc.id}
               style={s.svcCard}
@@ -55,7 +47,7 @@ export default function ClientHome() {
                 <Text style={s.svcEmoji}>{svc.emoji}</Text>
               </View>
               <Text style={s.svcName}>{svc.label}</Text>
-              <Text style={s.svcPrice}>{svc.price}</Text>
+              <Text style={s.svcPrice}>{svc.priceLabel}</Text>
             </TouchableOpacity>
           ))}
         </View>
