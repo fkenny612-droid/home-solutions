@@ -17,8 +17,10 @@ export class ProvidersService {
       orderBy: { rating: 'desc' },
     })
 
-    // For non-handyman skills, filter out providers without a trade certificate
-    if (skill && skill !== 'handyman') {
+    // Plumbing, electrical, HVAC, gas require a trade certificate
+    // Handyman and cleaning do not
+    const NO_CERT_REQUIRED = ['handyman', 'cleaning']
+    if (skill && !NO_CERT_REQUIRED.includes(skill)) {
       const providerIds = providers.map(p => p.id)
       const tradeCerts  = await this.prisma.kycDocument.findMany({
         where: { providerId: { in: providerIds }, type: 'trade_cert' },
