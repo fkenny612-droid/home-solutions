@@ -6,7 +6,8 @@
       "Bash(brew list *)",
       "Read(//usr/local/bin/**)",
       "Read(//Users/kenny/.nvm/versions/**)",
-      "WebFetch(domain:home-solutions-ds5b.onrender.com)"
+      "WebFetch(domain:home-solutions-ds5b.onrender.com)",
+      "WebFetch(domain:web-three-black-11.vercel.app)"
     ]
   }
 }

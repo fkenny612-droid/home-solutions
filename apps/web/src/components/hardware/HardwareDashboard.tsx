@@ -21,7 +21,7 @@ export default function HardwareDashboard() {
   const [showAdd,  setShowAdd]  = useState(false)
   const [newProd,  setNewProd]  = useState({ name: '', category: 'general', unit: 'each', price: '', sku: '', description: '' })
 
-  const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'
+  const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://home-solutions-ds5b.onrender.com/api/v1'
 
   useEffect(() => {
     fetch(`${BASE}/hardware/stores/${DEMO_STORE.id}/stats`).then(r => r.json()).then(setStats).catch(() => {})
