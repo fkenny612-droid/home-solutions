@@ -46,6 +46,59 @@ model Provider {
   bookings        Booking[]
 }
 
+model HardwareStore {
+  id        String          @id @default(uuid())
+  name      String
+  email     String          @unique
+  phone     String
+  address   String
+  areas     String[]
+  isActive  Boolean         @default(true)
+  products  Product[]
+  orders    MaterialOrder[]
+  createdAt DateTime        @default(now())
+}
+
+model Product {
+  id          String              @id @default(uuid())
+  storeId     String
+  store       HardwareStore       @relation(fields: [storeId], references: [id])
+  name        String
+  category    String
+  description String?
+  unit        String              @default("each")
+  price       Float
+  inStock     Boolean             @default(true)
+  sku         String?
+  createdAt   DateTime            @default(now())
+  orderItems  MaterialOrderItem[]
+}
+
+model MaterialOrder {
+  id          String              @id @default(uuid())
+  bookingId   String
+  providerId  String
+  storeId     String
+  store       HardwareStore       @relation(fields: [storeId], references: [id])
+  status      String              @default("pending")
+  totalAmount Float               @default(0)
+  notes       String?
+  items       MaterialOrderItem[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model MaterialOrderItem {
+  id        String        @id @default(uuid())
+  orderId   String
+  order     MaterialOrder @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product       @relation(fields: [productId], references: [id])
+  quantity  Float
+  unitPrice Float
+  total     Float
+}
+
 model KycDocument {
   id         String   @id @default(uuid())
   providerId String
