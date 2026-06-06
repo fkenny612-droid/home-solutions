@@ -46,6 +46,18 @@ model Provider {
   bookings        Booking[]
 }
 
+model KycDocument {
+  id         String   @id @default(uuid())
+  providerId String
+  type       String   // 'id' | 'company_reg' | 'bank_letter'
+  fileName   String
+  fileUrl    String
+  status     String   @default("pending") // pending | approved | rejected
+  createdAt  DateTime @default(now())
+
+  @@unique([providerId, type])
+}
+
 model Booking {
   id               String    @id @default(uuid())
   clientId         String

@@ -46,4 +46,19 @@ export class ProvidersService {
       total:      p.jobCount * 1200,
     }
   }
+
+  getDocuments(providerId: string) {
+    return this.prisma.kycDocument.findMany({
+      where:   { providerId },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  saveDocument(providerId: string, type: string, fileName: string, fileUrl: string) {
+    return this.prisma.kycDocument.upsert({
+      where:  { providerId_type: { providerId, type } },
+      update: { fileName, fileUrl, status: 'pending' },
+      create: { providerId, type, fileName, fileUrl, status: 'pending' },
+    })
+  }
 }

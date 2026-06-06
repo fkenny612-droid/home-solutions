@@ -1,44 +1,162 @@
 /**
- * Provider profile / KYC onboarding screen
+ * Provider KYC Onboarding — real document uploads to Cloudinary
  */
-import { useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
+import { useState, useEffect } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import * as ImagePicker from 'expo-image-picker'
+import * as DocumentPicker from 'expo-document-picker'
 import { colors } from '../../constants/theme'
+import { useAuth } from '../../context/auth'
+import { uploadToCloudinary } from '../../lib/cloudinary'
+import { api } from '../../lib/api'
+
+type DocType = 'id' | 'company_reg' | 'bank_letter'
+
+interface DocStatus {
+  uploaded:  boolean
+  uploading: boolean
+  fileName:  string | null
+  fileUrl:   string | null
+}
+
+const DOCS: { key: DocType; label: string; sub: string; accept: 'image' | 'pdf' }[] = [
+  { key: 'id',          label: 'SA ID / Passport',        sub: 'Photo of your ID document',       accept: 'image' },
+  { key: 'company_reg', label: 'Company registration',     sub: 'CIPC certificate (PDF or photo)', accept: 'pdf'   },
+  { key: 'bank_letter', label: 'Bank confirmation letter', sub: 'Bank letterhead, within 3 months', accept: 'pdf'   },
+]
 
 const SKILLS = [
   { id: 'plumbing',   label: 'Plumbing',   emoji: '💧' },
   { id: 'electrical', label: 'Electrical', emoji: '⚡' },
   { id: 'cleaning',   label: 'Cleaning',   emoji: '🧹' },
+  { id: 'hvac',       label: 'AC & HVAC',  emoji: '❄️' },
+  { id: 'gas',        label: 'Gas',        emoji: '🔥' },
   { id: 'handyman',   label: 'Handyman',   emoji: '🔧' },
 ]
 
 export default function ProviderOnboarding() {
-  const [skills, setSkills]     = useState<string[]>(['plumbing', 'cleaning'])
-  const [uploads, setUploads]   = useState({ id: true, cert: false, bank: false })
-  const [avail, setAvail]       = useState({ monFri: true, sat: true, sun: false, emergency: true })
+  const { user } = useAuth()
+  const [skills, setSkills] = useState<string[]>([])
+  const [avail,  setAvail]  = useState({ monFri: true, sat: true, sun: false, emergency: true })
+  const [docs,   setDocs]   = useState<Record<DocType, DocStatus>>({
+    id:          { uploaded: false, uploading: false, fileName: null, fileUrl: null },
+    company_reg: { uploaded: false, uploading: false, fileName: null, fileUrl: null },
+    bank_letter: { uploaded: false, uploading: false, fileName: null, fileUrl: null },
+  })
+
+  // Load existing documents
+  useEffect(() => {
+    if (!user) return
+    api.providers.getDocuments(user.id).then((existing: any[]) => {
+      existing.forEach(doc => {
+        setDocs(prev => ({
+          ...prev,
+          [doc.type]: { uploaded: true, uploading: false, fileName: doc.fileName, fileUrl: doc.fileUrl },
+        }))
+      })
+    }).catch(() => {})
+  }, [user])
 
   const toggleSkill = (id: string) =>
     setSkills(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id])
 
+  const setUploading = (key: DocType, uploading: boolean) =>
+    setDocs(prev => ({ ...prev, [key]: { ...prev[key], uploading } }))
+
+  const pickAndUpload = async (docDef: typeof DOCS[0]) => {
+    if (!user) return
+    const { key, accept } = docDef
+
+    try {
+      setUploading(key, true)
+      let uri: string, fileName: string, mimeType: string
+
+      if (accept === 'image') {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+        if (!perm.granted) {
+          Alert.alert('Permission needed', 'Allow photo access to upload your ID.')
+          setUploading(key, false)
+          return
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsEditing: true,
+        })
+        if (result.canceled) { setUploading(key, false); return }
+        const asset = result.assets[0]
+        uri = asset.uri
+        fileName = asset.fileName ?? `${key}_${Date.now()}.jpg`
+        mimeType = asset.mimeType ?? 'image/jpeg'
+      } else {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['application/pdf', 'image/*'],
+          copyToCacheDirectory: true,
+        })
+        if (result.canceled) { setUploading(key, false); return }
+        const asset = result.assets[0]
+        uri = asset.uri
+        fileName = asset.name
+        mimeType = asset.mimeType ?? 'application/pdf'
+      }
+
+      const { url } = await uploadToCloudinary(uri, fileName, mimeType)
+      await api.providers.saveDocument(user.id, key, fileName, url)
+
+      setDocs(prev => ({
+        ...prev,
+        [key]: { uploaded: true, uploading: false, fileName, fileUrl: url },
+      }))
+    } catch {
+      Alert.alert('Upload failed', 'Please check your connection and try again.')
+      setUploading(key, false)
+    }
+  }
+
+  const uploadedCount = Object.values(docs).filter(d => d.uploaded).length
+  const allUploaded   = uploadedCount === 3
+
   return (
     <SafeAreaView style={s.safe}>
-      {/* KYC header */}
       <View style={s.header}>
-        <Text style={s.step}>Step 2 of 4</Text>
-        <Text style={s.title}>Verify your identity</Text>
-        <Text style={s.sub}>Upload docs to start earning</Text>
         <View style={s.progressDots}>
-          {[0,1,2,3].map(i => (
-            <View key={i} style={[s.dot, i === 0 && s.dotDone, i === 1 && s.dotActive]} />
+          {[0, 1, 2].map(i => (
+            <View key={i} style={[s.dot, i < uploadedCount && s.dotDone, i === uploadedCount && s.dotActive]} />
           ))}
         </View>
+        <Text style={s.step}>KYC Verification · {uploadedCount}/3 documents</Text>
+        <Text style={s.title}>Verify your identity</Text>
+        <Text style={s.sub}>Upload documents to start earning</Text>
       </View>
 
       <ScrollView style={s.body} showsVerticalScrollIndicator={false}>
-        {/* Skills */}
-        <Text style={s.sectionLabel}>Your skills</Text>
+
+        <Text style={s.sectionLabel}>Required documents</Text>
+        {DOCS.map(doc => {
+          const d = docs[doc.key]
+          return (
+            <TouchableOpacity
+              key={doc.key}
+              style={[s.uploadBox, d.uploaded && s.uploadDone]}
+              onPress={() => pickAndUpload(doc)}
+              disabled={d.uploading}
+            >
+              {d.uploading
+                ? <ActivityIndicator color={colors.accent} style={{ width: 32 }} />
+                : <Text style={s.uploadEmoji}>{d.uploaded ? '✅' : '📁'}</Text>}
+              <View style={{ flex: 1 }}>
+                <Text style={[s.uploadLabel, d.uploaded && s.uploadLabelDone]}>{doc.label}</Text>
+                <Text style={[s.uploadSub, d.uploaded && s.uploadSubDone]}>
+                  {d.uploading ? 'Uploading…' : d.uploaded ? `✓ ${d.fileName}` : doc.sub}
+                </Text>
+              </View>
+              {!d.uploaded && !d.uploading && <Text style={s.uploadArrow}>›</Text>}
+            </TouchableOpacity>
+          )
+        })}
+
+        <Text style={[s.sectionLabel, { marginTop: 8 }]}>Your skills</Text>
         <View style={s.skillGrid}>
           {SKILLS.map(sk => (
             <TouchableOpacity
@@ -52,36 +170,12 @@ export default function ProviderOnboarding() {
           ))}
         </View>
 
-        {/* KYC uploads */}
-        <Text style={s.sectionLabel}>KYC documents</Text>
-        {[
-          { key: 'id',   label: 'SA ID / Passport',          sub: 'ID_front.jpg uploaded ✓', tapSub: 'Tap to upload' },
-          { key: 'cert', label: 'Trade certificate',          sub: 'pirb_cert.pdf ✓',         tapSub: 'Tap to upload PDF' },
-          { key: 'bank', label: 'Bank confirmation letter',   sub: 'bank_letter.pdf ✓',       tapSub: 'For payout processing' },
-        ].map(doc => {
-          const done = uploads[doc.key as keyof typeof uploads]
-          return (
-            <TouchableOpacity
-              key={doc.key}
-              style={[s.uploadBox, done && s.uploadDone]}
-              onPress={() => !done && setUploads(p => ({ ...p, [doc.key]: true }))}
-            >
-              <Text style={[s.uploadEmoji]}>{done ? '✅' : '📁'}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.uploadLabel, done && s.uploadLabelDone]}>{doc.label}</Text>
-                <Text style={[s.uploadSub, done && s.uploadSubDone]}>{done ? doc.sub : doc.tapSub}</Text>
-              </View>
-            </TouchableOpacity>
-          )
-        })}
-
-        {/* Availability */}
-        <Text style={[s.sectionLabel, { marginTop: 4 }]}>Availability</Text>
+        <Text style={s.sectionLabel}>Availability</Text>
         <View style={s.availCard}>
           {([
-            { key: 'monFri', label: 'Mon – Fri' },
-            { key: 'sat',    label: 'Saturday' },
-            { key: 'sun',    label: 'Sunday' },
+            { key: 'monFri',    label: 'Mon – Fri' },
+            { key: 'sat',       label: 'Saturday' },
+            { key: 'sun',       label: 'Sunday' },
             { key: 'emergency', label: 'Emergency callouts' },
           ] as { key: keyof typeof avail; label: string }[]).map((a, i) => (
             <View key={a.key} style={[s.availRow, i < 3 && s.availRowBorder]}>
@@ -96,17 +190,18 @@ export default function ProviderOnboarding() {
           ))}
         </View>
 
-        <View style={{ height: 24 }} />
-      </ScrollView>
+        {allUploaded ? (
+          <View style={s.successBanner}>
+            <Text style={s.successText}>✅ All documents submitted — under review within 24hrs</Text>
+          </View>
+        ) : (
+          <View style={s.infoBanner}>
+            <Text style={s.infoText}>📋 Upload all 3 documents to complete verification and start accepting jobs.</Text>
+          </View>
+        )}
 
-      <View style={s.ctaBar}>
-        <TouchableOpacity style={s.ctaBtn}>
-          <Text style={s.ctaBtnText}>Continue to step 3</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.signout} onPress={() => router.replace('/')}>
-          <Text style={s.signoutText}>Sign out</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={{ height: 32 }} />
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -114,28 +209,29 @@ export default function ProviderOnboarding() {
 const s = StyleSheet.create({
   safe:            { flex: 1, backgroundColor: colors.cream },
   header:          { backgroundColor: colors.navy, padding: 18, paddingBottom: 22 },
-  step:            { fontSize: 9, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  step:            { fontSize: 9, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, marginTop: 10 },
   title:           { fontSize: 20, fontWeight: '300', color: '#fff', marginBottom: 2 },
-  sub:             { fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 10 },
+  sub:             { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
   progressDots:    { flexDirection: 'row', gap: 5 },
   dot:             { flex: 1, height: 3, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.18)' },
-  dotDone:         { backgroundColor: colors.gold },
-  dotActive:       { backgroundColor: 'rgba(200,146,42,0.55)' },
-  body:            { padding: 13 },
-  sectionLabel:    { fontSize: 11, fontWeight: '600', color: colors.text, marginBottom: 8 },
+  dotDone:         { backgroundColor: colors.accent },
+  dotActive:       { backgroundColor: colors.gold },
+  body:            { padding: 14 },
+  sectionLabel:    { fontSize: 10, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, fontWeight: '500' },
+  uploadBox:       { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: colors.creamMid, borderStyle: 'dashed', borderRadius: 12, padding: 14, marginBottom: 10, backgroundColor: '#fff' },
+  uploadDone:      { borderColor: colors.accent, borderStyle: 'solid', backgroundColor: '#EAF5EE' },
+  uploadEmoji:     { fontSize: 24, width: 32, textAlign: 'center' },
+  uploadLabel:     { fontSize: 13, fontWeight: '600', color: colors.text },
+  uploadLabelDone: { color: '#1A5C38' },
+  uploadSub:       { fontSize: 11, color: colors.textLight, marginTop: 2 },
+  uploadSubDone:   { color: colors.accent },
+  uploadArrow:     { fontSize: 18, color: colors.textLight },
   skillGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   skillChip:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: colors.creamMid, backgroundColor: '#fff', width: '47%' },
   skillChipSel:    { borderColor: colors.gold, backgroundColor: '#FFFBF0' },
   skillLabel:      { fontSize: 12, color: colors.textMuted },
   skillLabelSel:   { color: colors.gold, fontWeight: '600' },
-  uploadBox:       { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: colors.creamMid, borderStyle: 'dashed', borderRadius: 10, padding: 12, marginBottom: 8, backgroundColor: '#fff' },
-  uploadDone:      { borderColor: colors.accent, borderStyle: 'solid', backgroundColor: '#EAF5EE' },
-  uploadEmoji:     { fontSize: 22 },
-  uploadLabel:     { fontSize: 12, fontWeight: '600', color: colors.text },
-  uploadLabelDone: { color: colors.accent },
-  uploadSub:       { fontSize: 10, color: colors.textLight, marginTop: 2 },
-  uploadSubDone:   { color: colors.accent },
-  availCard:       { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.creamMid, marginBottom: 8 },
+  availCard:       { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.creamMid, marginBottom: 14 },
   availRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
   availRowBorder:  { borderBottomWidth: 1, borderBottomColor: colors.creamMid },
   availLabel:      { fontSize: 13, color: colors.text },
@@ -143,9 +239,8 @@ const s = StyleSheet.create({
   toggleOff:       { backgroundColor: colors.creamMid },
   toggleThumb:     { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: 'flex-end' },
   toggleThumbOff:  { alignSelf: 'flex-start' },
-  ctaBar:          { padding: 13, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: colors.creamMid, gap: 8 },
-  ctaBtn:          { backgroundColor: colors.gold, borderRadius: 12, padding: 14, alignItems: 'center' },
-  ctaBtnText:      { fontSize: 14, fontWeight: '600', color: colors.navy },
-  signout:         { alignItems: 'center', padding: 8 },
-  signoutText:     { fontSize: 13, color: colors.textLight },
+  successBanner:   { backgroundColor: '#EAF5EE', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.accent },
+  successText:     { fontSize: 13, color: '#1A5C38', lineHeight: 20 },
+  infoBanner:      { backgroundColor: '#FFF9EC', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.gold + '40' },
+  infoText:        { fontSize: 12, color: colors.textMuted, lineHeight: 18 },
 })

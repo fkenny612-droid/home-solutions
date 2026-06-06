@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, Query } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common'
 import { ProvidersService, ProviderStatus, KycStatus } from './providers.service'
 
 @Controller('providers')
@@ -10,11 +10,6 @@ export class ProvidersController {
     return this.svc.findAll(status, skill)
   }
 
-  @Get('nearby')
-  findNearby(@Query('serviceType') serviceType: string, @Query('lat') lat: string, @Query('lng') lng: string) {
-    return this.svc.findNearby(serviceType, parseFloat(lat), parseFloat(lng))
-  }
-
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.svc.findOne(id)
@@ -23,6 +18,19 @@ export class ProvidersController {
   @Get(':id/earnings')
   earnings(@Param('id') id: string) {
     return this.svc.earnings(id)
+  }
+
+  @Get(':id/documents')
+  getDocuments(@Param('id') id: string) {
+    return this.svc.getDocuments(id)
+  }
+
+  @Post(':id/documents')
+  uploadDocument(
+    @Param('id') id: string,
+    @Body() body: { type: string; fileName: string; fileUrl: string },
+  ) {
+    return this.svc.saveDocument(id, body.type, body.fileName, body.fileUrl)
   }
 
   @Patch(':id/kyc')
