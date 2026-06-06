@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://home-solutions-ds5b.onrender.com/api/v1'
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('hs_admin_token') : null }
