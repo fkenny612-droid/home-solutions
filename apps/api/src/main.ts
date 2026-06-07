@@ -6,7 +6,19 @@ import { AppModule } from './app.module'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
-  app.enableCors({ origin: process.env.WEB_URL ? [process.env.WEB_URL, 'http://localhost:3000'] : '*' })
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true)
+      const allowed = [
+        'http://localhost:3000',
+        ...(process.env.WEB_URL ? [process.env.WEB_URL] : []),
+      ]
+      const isVercel = /\.vercel\.app$/.test(origin)
+      if (isVercel || allowed.includes(origin)) return callback(null, true)
+      callback(new Error(`CORS: ${origin} not allowed`))
+    },
+    credentials: true,
+  })
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
   app.setGlobalPrefix('api/v1')
 
