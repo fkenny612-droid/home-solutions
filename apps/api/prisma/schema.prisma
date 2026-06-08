@@ -42,6 +42,7 @@ model Provider {
   emergency       Boolean   @default(false)
   lat             Float?
   lng             Float?
+  hireInventory   Json?
   createdAt       DateTime  @default(now())
   bookings        Booking[]
 }

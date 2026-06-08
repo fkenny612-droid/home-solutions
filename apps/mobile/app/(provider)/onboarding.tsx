@@ -2,9 +2,9 @@
  * Provider KYC Onboarding
  * - Required docs: ID, company reg, bank letter
  * - Optional: trade certificate (unlocks plumbing, electrical, gas, etc.)
- * - Hire inventory photos: required when provider selects any hire service
+ * - Hire inventory: item picker (which variants + quantities) + photos (min 3)
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Image,
@@ -16,8 +16,9 @@ import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
 import { uploadToCloudinary } from '../../lib/cloudinary'
 import { api } from '../../lib/api'
+import { SERVICES } from '../../lib/serviceConfig'
 
-// ─── Document types ───────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 type DocType = 'id' | 'company_reg' | 'bank_letter' | 'trade_cert'
 
 interface DocStatus {
@@ -34,7 +35,10 @@ interface HirePhoto {
   localUri?: string
 }
 
-// ─── Hire services — no trade cert needed, but inventory photos required ──────
+// inventory[serviceId][optionValue] = quantity
+type HireInventory = Record<string, Record<string, number>>
+
+// ─── Hire service IDs ─────────────────────────────────────────────────────────
 const HIRE_SERVICE_IDS = new Set([
   'tent_hire', 'chair_table_hire', 'decor_hire', 'sound_pa_hire',
   'jumping_castle_hire', 'catering_equipment_hire', 'cold_room_hire', 'mobile_toilet_hire',
@@ -45,12 +49,20 @@ const HIRE_SERVICE_IDS = new Set([
 
 const MIN_HIRE_PHOTOS = 3
 
+// For each hire service, pull the first select question's options as item variants
+function getHireItemOptions(serviceId: string): { label: string; value: string }[] {
+  const svc = SERVICES.find(s => s.id === serviceId)
+  if (!svc) return []
+  const firstSelect = svc.questions.find(q => q.type === 'select' && q.key !== 'urgency')
+  return firstSelect?.options?.map(o => ({ label: o.label, value: o.value })) ?? []
+}
+
 // ─── Required documents ───────────────────────────────────────────────────────
 const DOCS: { key: DocType; label: string; sub: string; accept: 'image' | 'pdf'; optional?: boolean }[] = [
-  { key: 'id',          label: 'SA ID / Passport',        sub: 'Photo of your ID document',              accept: 'image' },
-  { key: 'company_reg', label: 'Company registration',     sub: 'CIPC certificate (PDF or photo)',        accept: 'pdf'   },
-  { key: 'bank_letter', label: 'Bank confirmation letter', sub: 'Bank letterhead, within 3 months',       accept: 'pdf'   },
-  { key: 'trade_cert',  label: 'Trade certificate',        sub: 'Optional · unlocks trade job categories',accept: 'pdf', optional: true },
+  { key: 'id',          label: 'SA ID / Passport',        sub: 'Photo of your ID document',               accept: 'image' },
+  { key: 'company_reg', label: 'Company registration',     sub: 'CIPC certificate (PDF or photo)',         accept: 'pdf'   },
+  { key: 'bank_letter', label: 'Bank confirmation letter', sub: 'Bank letterhead, within 3 months',        accept: 'pdf'   },
+  { key: 'trade_cert',  label: 'Trade certificate',        sub: 'Optional · unlocks trade job categories', accept: 'pdf', optional: true },
 ]
 
 // ─── Skills catalogue ─────────────────────────────────────────────────────────
@@ -60,29 +72,29 @@ const SKILL_CATEGORIES: SkillCategory[] = [
   {
     label: 'Home Services',
     skills: [
-      { id: 'plumbing',       label: 'Plumbing',       emoji: '💧' },
-      { id: 'electrical',     label: 'Electrical',     emoji: '⚡' },
-      { id: 'cleaning',       label: 'Cleaning',       emoji: '🧹' },
-      { id: 'hvac',           label: 'AC & HVAC',      emoji: '❄️' },
-      { id: 'gas',            label: 'Gas',            emoji: '🔥' },
-      { id: 'handyman',       label: 'Handyman',       emoji: '🔧' },
-      { id: 'tiling',         label: 'Tiling',         emoji: '🪟' },
-      { id: 'painting',       label: 'Painting',       emoji: '🎨' },
-      { id: 'landscaping',    label: 'Landscaping',    emoji: '🌿' },
-      { id: 'pool',           label: 'Pool',           emoji: '🏊' },
-      { id: 'pest_control',   label: 'Pest Control',   emoji: '🐜' },
-      { id: 'locksmith',      label: 'Locksmith',      emoji: '🔑' },
-      { id: 'carpentry',      label: 'Carpentry',      emoji: '🪚' },
-      { id: 'solar',          label: 'Solar',          emoji: '☀️' },
+      { id: 'plumbing',       label: 'Plumbing',         emoji: '💧' },
+      { id: 'electrical',     label: 'Electrical',       emoji: '⚡' },
+      { id: 'cleaning',       label: 'Cleaning',         emoji: '🧹' },
+      { id: 'hvac',           label: 'AC & HVAC',        emoji: '❄️' },
+      { id: 'gas',            label: 'Gas',              emoji: '🔥' },
+      { id: 'handyman',       label: 'Handyman',         emoji: '🔧' },
+      { id: 'tiling',         label: 'Tiling',           emoji: '🪟' },
+      { id: 'painting',       label: 'Painting',         emoji: '🎨' },
+      { id: 'landscaping',    label: 'Landscaping',      emoji: '🌿' },
+      { id: 'pool',           label: 'Pool',             emoji: '🏊' },
+      { id: 'pest_control',   label: 'Pest Control',     emoji: '🐜' },
+      { id: 'locksmith',      label: 'Locksmith',        emoji: '🔑' },
+      { id: 'carpentry',      label: 'Carpentry',        emoji: '🪚' },
+      { id: 'solar',          label: 'Solar',            emoji: '☀️' },
       { id: 'security',       label: 'Security Systems', emoji: '📷' },
-      { id: 'paving',         label: 'Paving',         emoji: '🛤️' },
-      { id: 'waterproofing',  label: 'Waterproofing',  emoji: '💦' },
-      { id: 'roofing',        label: 'Roofing',        emoji: '🏠' },
-      { id: 'gate_motor',     label: 'Gate & Garage',  emoji: '🚪' },
-      { id: 'moving',         label: 'Moving',         emoji: '📦' },
-      { id: 'bricklaying',    label: 'Bricklaying',    emoji: '🧱' },
-      { id: 'borehole',       label: 'Borehole',       emoji: '🌊' },
-      { id: 'septic_tank',    label: 'Septic Tank',    emoji: '🚽' },
+      { id: 'paving',         label: 'Paving',           emoji: '🛤️' },
+      { id: 'waterproofing',  label: 'Waterproofing',    emoji: '💦' },
+      { id: 'roofing',        label: 'Roofing',          emoji: '🏠' },
+      { id: 'gate_motor',     label: 'Gate & Garage',    emoji: '🚪' },
+      { id: 'moving',         label: 'Moving',           emoji: '📦' },
+      { id: 'bricklaying',    label: 'Bricklaying',      emoji: '🧱' },
+      { id: 'borehole',       label: 'Borehole',         emoji: '🌊' },
+      { id: 'septic_tank',    label: 'Septic Tank',      emoji: '🚽' },
       { id: 'dstv',           label: 'DSTV / Satellite', emoji: '📡' },
     ],
   },
@@ -124,7 +136,81 @@ const SKILL_CATEGORIES: SkillCategory[] = [
   },
 ]
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Sub-component: inventory picker for one hire service ─────────────────────
+function HireServiceInventory({
+  serviceId,
+  label,
+  emoji,
+  inventory,
+  onChange,
+}: {
+  serviceId: string
+  label: string
+  emoji: string
+  inventory: Record<string, number>
+  onChange: (serviceId: string, optionValue: string, qty: number) => void
+}) {
+  const options = getHireItemOptions(serviceId)
+  if (options.length === 0) return null
+
+  const totalUnits = Object.values(inventory).reduce((s, n) => s + n, 0)
+
+  return (
+    <View style={inv.card}>
+      <View style={inv.cardHeader}>
+        <Text style={inv.cardEmoji}>{emoji}</Text>
+        <Text style={inv.cardTitle}>{label}</Text>
+        {totalUnits > 0 && (
+          <View style={inv.totalBadge}>
+            <Text style={inv.totalBadgeText}>{totalUnits} unit{totalUnits !== 1 ? 's' : ''}</Text>
+          </View>
+        )}
+      </View>
+
+      {options.map((opt, i) => {
+        const qty = inventory[opt.value] ?? 0
+        const checked = qty > 0
+        return (
+          <View key={opt.value} style={[inv.row, i < options.length - 1 && inv.rowBorder]}>
+            {/* Checkbox */}
+            <TouchableOpacity
+              style={[inv.checkbox, checked && inv.checkboxChecked]}
+              onPress={() => onChange(serviceId, opt.value, checked ? 0 : 1)}
+            >
+              {checked && <Text style={inv.checkmark}>✓</Text>}
+            </TouchableOpacity>
+
+            <Text style={[inv.optLabel, checked && inv.optLabelChecked]} numberOfLines={1}>
+              {opt.label}
+            </Text>
+
+            {/* Quantity stepper — only visible when checked */}
+            {checked && (
+              <View style={inv.stepper}>
+                <TouchableOpacity
+                  style={[inv.stepBtn, qty <= 1 && inv.stepBtnDisabled]}
+                  onPress={() => onChange(serviceId, opt.value, Math.max(1, qty - 1))}
+                  disabled={qty <= 1}
+                >
+                  <Text style={inv.stepBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={inv.stepQty}>{qty}</Text>
+                <TouchableOpacity
+                  style={inv.stepBtn}
+                  onPress={() => onChange(serviceId, opt.value, qty + 1)}
+                >
+                  <Text style={inv.stepBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function ProviderOnboarding() {
   const { user } = useAuth()
   const [skills, setSkills] = useState<string[]>([])
@@ -135,9 +221,14 @@ export default function ProviderOnboarding() {
     bank_letter: { uploaded: false, uploading: false, fileName: null, fileUrl: null },
     trade_cert:  { uploaded: false, uploading: false, fileName: null, fileUrl: null },
   })
-  const [hirePhotos, setHirePhotos] = useState<HirePhoto[]>([])
+  const [hireInventory, setHireInventory] = useState<HireInventory>({})
+  const [hirePhotos,    setHirePhotos]    = useState<HirePhoto[]>([])
+  const [savingInventory, setSavingInventory] = useState(false)
 
-  // Load existing documents
+  // Debounce inventory save
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Load existing data
   useEffect(() => {
     if (!user) return
     api.providers.getDocuments(user.id).then((existing: any[]) => {
@@ -154,6 +245,10 @@ export default function ProviderOnboarding() {
       })
       if (photoEntries.length > 0) setHirePhotos(photoEntries)
     }).catch(() => {})
+
+    api.providers.getHireInventory(user.id)
+      .then(inv => { if (inv && Object.keys(inv).length > 0) setHireInventory(inv) })
+      .catch(() => {})
   }, [user])
 
   const toggleSkill = (id: string) =>
@@ -162,6 +257,29 @@ export default function ProviderOnboarding() {
   const setUploading = (key: DocType, uploading: boolean) =>
     setDocs(prev => ({ ...prev, [key]: { ...prev[key], uploading } }))
 
+  // ─── Inventory change handler with debounced auto-save ──────────────────────
+  const handleInventoryChange = useCallback((serviceId: string, optionValue: string, qty: number) => {
+    setHireInventory(prev => {
+      const updated = { ...prev, [serviceId]: { ...(prev[serviceId] ?? {}), [optionValue]: qty } }
+      // Remove zero-qty entries to keep it clean
+      if (qty === 0) delete updated[serviceId][optionValue]
+      if (Object.keys(updated[serviceId]).length === 0) delete updated[serviceId]
+
+      // Debounced save to API
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      if (user) {
+        saveTimer.current = setTimeout(async () => {
+          setSavingInventory(true)
+          try { await api.providers.updateHireInventory(user.id, updated) }
+          catch {}
+          finally { setSavingInventory(false) }
+        }, 800)
+      }
+      return updated
+    })
+  }, [user])
+
+  // ─── Document upload ────────────────────────────────────────────────────────
   const pickAndUpload = async (docDef: typeof DOCS[0]) => {
     if (!user) return
     const { key, accept } = docDef
@@ -200,6 +318,7 @@ export default function ProviderOnboarding() {
     }
   }
 
+  // ─── Hire photo upload ──────────────────────────────────────────────────────
   const addHirePhoto = async () => {
     if (!user) return
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -215,10 +334,7 @@ export default function ProviderOnboarding() {
 
     const asset = result.assets[0]
     const idx = hirePhotos.length
-    const newPhoto: HirePhoto = {
-      uploading: true, fileName: null, fileUrl: null, localUri: asset.uri,
-    }
-    setHirePhotos(prev => [...prev, newPhoto])
+    setHirePhotos(prev => [...prev, { uploading: true, fileName: null, fileUrl: null, localUri: asset.uri }])
 
     try {
       const fileName = asset.fileName ?? `hire_photo_${Date.now()}.jpg`
@@ -243,7 +359,11 @@ export default function ProviderOnboarding() {
 
   // ─── Derived state ────────────────────────────────────────────────────────
   const isHireProvider   = skills.some(s => HIRE_SERVICE_IDS.has(s))
+  const selectedHireSvcs = skills.filter(s => HIRE_SERVICE_IDS.has(s))
   const uploadedPhotos   = hirePhotos.filter(p => !p.uploading && p.fileUrl)
+  const totalInventoryUnits = Object.values(hireInventory).reduce(
+    (sum, items) => sum + Object.values(items).reduce((s, n) => s + n, 0), 0
+  )
   const requiredDocs     = DOCS.filter(d => !d.optional)
   const uploadedDocCount = requiredDocs.filter(d => docs[d.key].uploaded).length
   const allDocsUploaded  = uploadedDocCount === requiredDocs.length
@@ -341,8 +461,8 @@ export default function ProviderOnboarding() {
             </View>
             <View style={s.skillGrid}>
               {cat.skills.map(sk => {
-                const sel     = skills.includes(sk.id)
-                const isHire  = HIRE_SERVICE_IDS.has(sk.id)
+                const sel    = skills.includes(sk.id)
+                const isHire = HIRE_SERVICE_IDS.has(sk.id)
                 return (
                   <TouchableOpacity
                     key={sk.id}
@@ -358,19 +478,49 @@ export default function ProviderOnboarding() {
           </View>
         ))}
 
-        {/* ── Hire inventory photos (shown when hire skill selected) ─── */}
+        {/* ── Hire inventory — item picker ────────────────────────────── */}
         {isHireProvider && (
           <>
-            <View style={s.hirePhotoHeader}>
-              <Text style={s.sectionLabel}>Hire inventory photos</Text>
+            <View style={s.inventoryHeaderRow}>
+              <View>
+                <Text style={s.sectionLabel}>Hire inventory</Text>
+                <Text style={s.inventoryHint}>Tick each item type you own and set how many units you have</Text>
+              </View>
+              {savingInventory
+                ? <ActivityIndicator size="small" color={colors.gold} />
+                : totalInventoryUnits > 0
+                  ? <Text style={s.inventorySaved}>✓ saved</Text>
+                  : null}
+            </View>
+
+            {selectedHireSvcs.map(svcId => {
+              const meta = SKILL_CATEGORIES
+                .flatMap(c => c.skills)
+                .find(sk => sk.id === svcId)
+              if (!meta) return null
+              return (
+                <HireServiceInventory
+                  key={svcId}
+                  serviceId={svcId}
+                  label={meta.label}
+                  emoji={meta.emoji}
+                  inventory={hireInventory[svcId] ?? {}}
+                  onChange={handleInventoryChange}
+                />
+              )
+            })}
+
+            {/* ── Hire inventory photos ──────────────────────────────── */}
+            <View style={s.photoHeaderRow}>
+              <Text style={s.sectionLabel}>Inventory photos</Text>
               <View style={[s.hireBadge, { marginBottom: 10 }]}>
-                <Text style={s.hireBadgeText}>Required</Text>
+                <Text style={s.hireBadgeText}>Min {MIN_HIRE_PHOTOS} required</Text>
               </View>
             </View>
             <View style={s.hirePhotoBanner}>
               <Text style={s.hirePhotoBannerText}>
-                📸 Upload at least <Text style={{ fontWeight: '700' }}>{MIN_HIRE_PHOTOS} clear photos</Text> of the items you have available for hire.
-                Clients will see these when browsing providers — good photos mean more bookings.
+                📸 Upload at least <Text style={{ fontWeight: '700' }}>{MIN_HIRE_PHOTOS} clear photos</Text> of the items you have for hire.
+                Clients see these when choosing a provider — good photos win more bookings.
               </Text>
             </View>
 
@@ -389,20 +539,12 @@ export default function ProviderOnboarding() {
                     </View>
                   ) : (
                     <>
-                      <Image
-                        source={{ uri: p.fileUrl ?? p.localUri ?? '' }}
-                        style={s.photoThumbImage}
-                        resizeMode="cover"
-                      />
-                      <View style={s.photoThumbBadge}>
-                        <Text style={s.photoThumbBadgeText}>✓</Text>
-                      </View>
+                      <Image source={{ uri: p.fileUrl ?? p.localUri ?? '' }} style={s.photoThumbImage} resizeMode="cover" />
+                      <View style={s.photoThumbBadge}><Text style={s.photoThumbBadgeText}>✓</Text></View>
                     </>
                   )}
                 </TouchableOpacity>
               ))}
-
-              {/* Add photo button */}
               <TouchableOpacity style={s.photoAddBtn} onPress={addHirePhoto}>
                 <Text style={s.photoAddIcon}>+</Text>
                 <Text style={s.photoAddLabel}>Add photo</Text>
@@ -411,8 +553,8 @@ export default function ProviderOnboarding() {
 
             <Text style={s.photoHint}>
               {uploadedPhotos.length >= MIN_HIRE_PHOTOS
-                ? `✅ ${uploadedPhotos.length} photo${uploadedPhotos.length !== 1 ? 's' : ''} uploaded — long-press any photo to remove`
-                : `${uploadedPhotos.length}/${MIN_HIRE_PHOTOS} photos uploaded — add ${MIN_HIRE_PHOTOS - uploadedPhotos.length} more to continue`}
+                ? `✅ ${uploadedPhotos.length} photo${uploadedPhotos.length !== 1 ? 's' : ''} uploaded — long-press to remove`
+                : `${uploadedPhotos.length}/${MIN_HIRE_PHOTOS} photos — add ${MIN_HIRE_PHOTOS - uploadedPhotos.length} more to continue`}
             </Text>
           </>
         )}
@@ -471,7 +613,7 @@ const s = StyleSheet.create({
   dotDone:            { backgroundColor: colors.accent },
   dotActive:          { backgroundColor: colors.gold },
   body:               { padding: 14 },
-  sectionLabel:       { fontSize: 10, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, fontWeight: '500' },
+  sectionLabel:       { fontSize: 10, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, fontWeight: '500' },
 
   uploadBox:          { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: colors.creamMid, borderStyle: 'dashed', borderRadius: 12, padding: 14, marginBottom: 10, backgroundColor: '#fff' },
   uploadDone:         { borderColor: colors.accent, borderStyle: 'solid', backgroundColor: '#EAF5EE' },
@@ -489,7 +631,7 @@ const s = StyleSheet.create({
   tradeBanner:        { backgroundColor: '#FFF3E0', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#FFB74D40' },
   tradeBannerText:    { fontSize: 12, color: '#7C4A00', lineHeight: 18 },
 
-  skillsHint:         { fontSize: 11, color: colors.textMuted, marginBottom: 12, marginTop: -6, lineHeight: 16 },
+  skillsHint:         { fontSize: 11, color: colors.textMuted, marginBottom: 12, marginTop: -2, lineHeight: 16 },
   catRow:             { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   catLabel:           { fontSize: 11, color: colors.textLight, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8 },
   hireBadge:          { backgroundColor: '#FFF3CD', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#F0C060' },
@@ -501,7 +643,11 @@ const s = StyleSheet.create({
   skillLabel:         { fontSize: 11, color: colors.textMuted, flex: 1 },
   skillLabelSel:      { color: colors.gold, fontWeight: '600' },
 
-  hirePhotoHeader:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  inventoryHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
+  inventoryHint:      { fontSize: 11, color: colors.textMuted, marginBottom: 10, lineHeight: 16, marginTop: 2 },
+  inventorySaved:     { fontSize: 11, color: colors.accent, fontWeight: '600', marginTop: 2 },
+
+  photoHeaderRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   hirePhotoBanner:    { backgroundColor: '#FFF8EC', borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#F0C060' },
   hirePhotoBannerText:{ fontSize: 12, color: '#7C4A00', lineHeight: 18 },
 
@@ -530,4 +676,26 @@ const s = StyleSheet.create({
   successText:        { fontSize: 13, color: '#1A5C38', lineHeight: 20 },
   infoBanner:         { backgroundColor: '#FFF9EC', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.gold + '40' },
   infoText:           { fontSize: 12, color: colors.textMuted, lineHeight: 18 },
+})
+
+// ─── Inventory card styles ────────────────────────────────────────────────────
+const inv = StyleSheet.create({
+  card:           { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: colors.creamMid, marginBottom: 10, overflow: 'hidden' },
+  cardHeader:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#FAFAFA', borderBottomWidth: 1, borderBottomColor: colors.creamMid },
+  cardEmoji:      { fontSize: 18 },
+  cardTitle:      { fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 },
+  totalBadge:     { backgroundColor: colors.gold + '22', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  totalBadgeText: { fontSize: 11, color: colors.gold, fontWeight: '700' },
+  row:            { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  rowBorder:      { borderBottomWidth: 1, borderBottomColor: colors.creamMid },
+  checkbox:       { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.creamMid, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  checkboxChecked:{ borderColor: colors.gold, backgroundColor: colors.gold },
+  checkmark:      { fontSize: 13, color: '#fff', fontWeight: '700', lineHeight: 16 },
+  optLabel:       { flex: 1, fontSize: 13, color: colors.textMuted },
+  optLabelChecked:{ color: colors.text, fontWeight: '500' },
+  stepper:        { flexDirection: 'row', alignItems: 'center', gap: 0, borderRadius: 8, borderWidth: 1, borderColor: colors.creamMid, overflow: 'hidden' },
+  stepBtn:        { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA' },
+  stepBtnDisabled:{ opacity: 0.35 },
+  stepBtnText:    { fontSize: 18, color: colors.text, fontWeight: '300', lineHeight: 22 },
+  stepQty:        { width: 32, textAlign: 'center', fontSize: 14, fontWeight: '600', color: colors.text },
 })

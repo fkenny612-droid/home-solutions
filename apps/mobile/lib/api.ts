@@ -106,6 +106,10 @@ export const api = {
       req<{ id: string; type: string; fileName: string; fileUrl: string; status: string }[]>(`/providers/${id}/documents`),
     saveDocument: (id: string, type: string, fileName: string, fileUrl: string) =>
       req<void>(`/providers/${id}/documents`, { method: 'POST', body: JSON.stringify({ type, fileName, fileUrl }) }),
+    getHireInventory: (id: string) =>
+      req<Record<string, Record<string, number>>>(`/providers/${id}/hire-inventory`),
+    updateHireInventory: (id: string, inventory: Record<string, Record<string, number>>) =>
+      req<void>(`/providers/${id}/hire-inventory`, { method: 'PATCH', body: JSON.stringify(inventory) }),
   },
 
   hardware: {

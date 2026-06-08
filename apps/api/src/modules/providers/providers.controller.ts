@@ -33,6 +33,19 @@ export class ProvidersController {
     return this.svc.saveDocument(id, body.type, body.fileName, body.fileUrl)
   }
 
+  @Get(':id/hire-inventory')
+  getHireInventory(@Param('id') id: string) {
+    return this.svc.getHireInventory(id)
+  }
+
+  @Patch(':id/hire-inventory')
+  updateHireInventory(
+    @Param('id') id: string,
+    @Body() inventory: Record<string, Record<string, number>>,
+  ) {
+    return this.svc.updateHireInventory(id, inventory)
+  }
+
   @Patch(':id/kyc')
   updateKyc(@Param('id') id: string, @Body('status') status: KycStatus) {
     return this.svc.updateKyc(id, status)
