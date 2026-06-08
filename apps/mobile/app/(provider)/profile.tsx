@@ -5,12 +5,13 @@ import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
 
 const MENU = [
-  { emoji: '🏦', label: 'Bank account',      sub: 'For Peach Payments payouts' },
-  { emoji: '🛡️', label: 'KYC documents',     sub: 'ID, trade cert, bank letter' },
-  { emoji: '📍', label: 'Service area',       sub: 'Durban, Umhlanga, Ballito' },
-  { emoji: '⭐', label: 'Reviews',            sub: '214 reviews · 4.9 avg' },
-  { emoji: '🔔', label: 'Notifications',      sub: 'New jobs, payments, alerts' },
-  { emoji: '❓', label: 'Help & support',     sub: 'Chat, call, email' },
+  { emoji: '🏦', label: 'Bank account',       sub: 'For Peach Payments payouts' },
+  { emoji: '🛡️', label: 'KYC documents',      sub: 'ID, trade cert, bank letter', route: '/(provider)/onboarding' },
+  { emoji: '📸', label: 'Hire inventory',      sub: 'Add / manage your hire item photos', route: '/(provider)/onboarding' },
+  { emoji: '📍', label: 'Service area',        sub: 'Durban, Umhlanga, Ballito' },
+  { emoji: '⭐', label: 'Reviews',             sub: '214 reviews · 4.9 avg' },
+  { emoji: '🔔', label: 'Notifications',       sub: 'New jobs, payments, alerts' },
+  { emoji: '❓', label: 'Help & support',      sub: 'Chat, call, email' },
 ]
 
 export default function ProviderProfile() {
@@ -64,7 +65,11 @@ export default function ProviderProfile() {
         </View>
 
         {MENU.map((item, i) => (
-          <TouchableOpacity key={i} style={s.menuItem}>
+          <TouchableOpacity
+            key={i}
+            style={s.menuItem}
+            onPress={() => (item as any).route && router.push((item as any).route)}
+          >
             <Text style={s.menuEmoji}>{item.emoji}</Text>
             <View style={{ flex: 1 }}>
               <Text style={s.menuLabel}>{item.label}</Text>

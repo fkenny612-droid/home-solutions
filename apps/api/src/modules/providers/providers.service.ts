@@ -62,14 +62,26 @@ export class ProvidersService {
     }
   }
 
-  getDocuments(providerId: string) {
-    return this.prisma.kycDocument.findMany({
+  async getDocuments(providerId: string) {
+    const docs = await this.prisma.kycDocument.findMany({
       where:   { providerId },
       orderBy: { createdAt: 'desc' },
     })
+    // Normalise hire_photo_<timestamp> → hire_photo so the client can group them
+    return docs.map(d => ({
+      ...d,
+      type: d.type.startsWith('hire_photo') ? 'hire_photo' : d.type,
+    }))
   }
 
   saveDocument(providerId: string, type: string, fileName: string, fileUrl: string) {
+    // Hire photos can be multiple — always create a new row with a unique type key
+    if (type === 'hire_photo') {
+      const uniqueType = `hire_photo_${Date.now()}`
+      return this.prisma.kycDocument.create({
+        data: { providerId, type: uniqueType, fileName, fileUrl, status: 'pending' },
+      })
+    }
     return this.prisma.kycDocument.upsert({
       where:  { providerId_type: { providerId, type } },
       update: { fileName, fileUrl, status: 'pending' },
