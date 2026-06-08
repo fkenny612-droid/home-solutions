@@ -113,14 +113,15 @@ model KycDocument {
 }
 
 model Message {
-  id         String   @id @default(uuid())
-  bookingId  String
-  booking    Booking  @relation(fields: [bookingId], references: [id])
-  senderId   String
-  senderRole String   // 'client' | 'provider' | 'admin'
-  senderName String
-  text       String
-  createdAt  DateTime @default(now())
+  id          String   @id @default(uuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  senderId    String
+  senderRole  String   // 'client' | 'provider' | 'admin'
+  senderName  String
+  text        String   @default("")
+  attachments Json?    // [{ url, type: 'image'|'file', fileName }]
+  createdAt   DateTime @default(now())
 }
 
 model Booking {

@@ -1,11 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 
+export interface ChatAttachment {
+  url:      string
+  type:     'image' | 'file'
+  fileName: string
+}
+
 export interface SendMessageDto {
-  senderId:   string
-  senderRole: 'client' | 'provider' | 'admin'
-  senderName: string
-  text:       string
+  senderId:    string
+  senderRole:  'client' | 'provider' | 'admin'
+  senderName:  string
+  text?:       string
+  attachments?: ChatAttachment[]
 }
 
 @Injectable()
@@ -30,10 +37,11 @@ export class ChatService {
     return this.prisma.message.create({
       data: {
         bookingId,
-        senderId:   dto.senderId,
-        senderRole: dto.senderRole,
-        senderName: dto.senderName,
-        text:       dto.text.trim(),
+        senderId:    dto.senderId,
+        senderRole:  dto.senderRole,
+        senderName:  dto.senderName,
+        text:        dto.text?.trim() ?? '',
+        attachments: dto.attachments ?? [],
       },
     })
   }

@@ -144,17 +144,24 @@ export const api = {
   chat: {
     list: (bookingId: string) =>
       req<Message[]>(`/bookings/${bookingId}/messages`),
-    send: (bookingId: string, msg: { senderId: string; senderRole: string; senderName: string; text: string }) =>
+    send: (bookingId: string, msg: { senderId: string; senderRole: string; senderName: string; text?: string; attachments?: ChatAttachment[] }) =>
       req<Message>(`/bookings/${bookingId}/messages`, { method: 'POST', body: JSON.stringify(msg) }),
   },
 }
 
+export interface ChatAttachment {
+  url:      string
+  type:     'image' | 'file'
+  fileName: string
+}
+
 export interface Message {
-  id:         string
-  bookingId:  string
-  senderId:   string
-  senderRole: string
-  senderName: string
-  text:       string
-  createdAt:  string
+  id:          string
+  bookingId:   string
+  senderId:    string
+  senderRole:  string
+  senderName:  string
+  text:        string
+  attachments: ChatAttachment[]
+  createdAt:   string
 }
