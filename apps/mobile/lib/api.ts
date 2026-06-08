@@ -121,4 +121,21 @@ export const api = {
     release: (transactionId: string, amount: number) =>
       req<{ success: boolean }>(`/payments/release/${transactionId}`, { method: 'POST', body: JSON.stringify({ amount }) }),
   },
+
+  chat: {
+    list: (bookingId: string) =>
+      req<Message[]>(`/bookings/${bookingId}/messages`),
+    send: (bookingId: string, msg: { senderId: string; senderRole: string; senderName: string; text: string }) =>
+      req<Message>(`/bookings/${bookingId}/messages`, { method: 'POST', body: JSON.stringify(msg) }),
+  },
+}
+
+export interface Message {
+  id:         string
+  bookingId:  string
+  senderId:   string
+  senderRole: string
+  senderName: string
+  text:       string
+  createdAt:  string
 }

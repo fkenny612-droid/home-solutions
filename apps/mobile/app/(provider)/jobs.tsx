@@ -143,6 +143,12 @@ function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'e
         </TouchableOpacity>
         <TouchableOpacity
           style={s.actionBtn}
+          onPress={() => router.push({ pathname: '/(client)/chat', params: { bookingId: job.id, providerName: 'Client' } } as any)}
+        >
+          <Text style={s.actionBtnText}>💬 Chat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={s.actionBtn}
           onPress={() => router.push({ pathname: '/(provider)/materials', params: { bookingId: job.id, serviceType: job.serviceType } } as any)}
         >
           <Text style={s.actionBtnText}>📦 Materials</Text>

@@ -143,6 +143,24 @@ export const subscriptions = {
   mrr:   () => req<MrrData>('/subscriptions/mrr'),
 }
 
+// ── Chat ─────────────────────────────────────────────────────────────────────
+export interface Message {
+  id:         string
+  bookingId:  string
+  senderId:   string
+  senderRole: 'client' | 'provider' | 'admin'
+  senderName: string
+  text:       string
+  createdAt:  string
+}
+
+export const chat = {
+  list: (bookingId: string) =>
+    req<Message[]>(`/bookings/${bookingId}/messages`),
+  send: (bookingId: string, msg: { senderId: string; senderRole: string; senderName: string; text: string }) =>
+    req<Message>(`/bookings/${bookingId}/messages`, { method: 'POST', body: JSON.stringify(msg) }),
+}
+
 // ── Payments ─────────────────────────────────────────────────────────────────
 export const payments = {
   hold: (bookingId: string, amount: number, paymentBrand: string, descriptor: string) =>

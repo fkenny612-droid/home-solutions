@@ -89,6 +89,14 @@ export default function BookingsTab() {
                 <Text style={s.metaText}>#{b.id.slice(-6).toUpperCase()}</Text>
                 <Text style={s.metaText}>🕐 {new Date(b.createdAt).toLocaleDateString('en-ZA')}</Text>
               </View>
+              {['accepted','en_route','in_progress'].includes(b.status) && (
+                <TouchableOpacity
+                  style={s.chatBtn}
+                  onPress={() => router.push({ pathname: '/(client)/chat', params: { bookingId: b.id, providerName: b.providerId ?? 'Provider' } })}
+                >
+                  <Text style={s.chatBtnText}>💬 Message provider</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )
         })}
@@ -122,4 +130,6 @@ const s = StyleSheet.create({
   statusText:  { fontSize: 11, fontWeight: '600' },
   meta:        { flexDirection: 'row', gap: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.creamMid },
   metaText:    { fontSize: 11, color: colors.textMuted },
+  chatBtn:     { marginTop: 10, backgroundColor: '#FFF8EC', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#F0C060' },
+  chatBtnText: { fontSize: 12, fontWeight: '600', color: colors.gold },
 })
