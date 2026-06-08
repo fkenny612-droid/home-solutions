@@ -712,6 +712,46 @@ export const SERVICES: ServiceConfig[] = [
   },
 ]
 
+// ─── Category groupings ───────────────────────────────────────────────────────
+
+export interface ServiceCategory {
+  label:    string
+  services: ServiceConfig[]
+}
+
+export const SERVICE_CATEGORIES: ServiceCategory[] = [
+  {
+    label: 'Home Services',
+    services: SERVICES.filter(s => [
+      'plumbing','electrical','cleaning','hvac','gas','handyman','tiling','painting',
+      'landscaping','pool','pest_control','locksmith','carpentry','solar','security',
+      'paving','waterproofing','roofing','gate_motor','moving','bricklaying','borehole',
+      'septic_tank','dstv',
+    ].includes(s.id)),
+  },
+  {
+    label: 'Event Hire',
+    services: SERVICES.filter(s => [
+      'tent_hire','chair_table_hire','decor_hire','sound_pa_hire',
+      'jumping_castle_hire','catering_equipment_hire','cold_room_hire','mobile_toilet_hire',
+    ].includes(s.id)),
+  },
+  {
+    label: 'Plant & Equipment',
+    services: SERVICES.filter(s => ['generator_hire','water_bowser_hire'].includes(s.id)),
+  },
+  {
+    label: 'Transport & Logistics',
+    services: SERVICES.filter(s => [
+      'van_hire','bakkie_hire','furniture_removal','last_mile_delivery','livestock_transport',
+    ].includes(s.id)),
+  },
+  {
+    label: 'Security',
+    services: SERVICES.filter(s => ['security_guard_hire'].includes(s.id)),
+  },
+]
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getService(id: string): ServiceConfig | undefined {
