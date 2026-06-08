@@ -689,39 +689,66 @@ function SettingsSection() {
 }
 
 // ─── Booking Chat ─────────────────────────────────────────────────────────────
-interface ChatMessage { id: string; senderId: string; senderRole: string; senderName: string; text: string; createdAt: string }
+interface ChatAttachment { url: string; type: 'image' | 'file'; fileName: string }
+interface ChatMessage { id: string; senderId: string; senderRole: string; senderName: string; text: string; attachments?: ChatAttachment[]; createdAt: string }
 
 function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; myId: string; myName: string; myRole: string }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const [messages,  setMessages]  = useState<ChatMessage[]>([])
+  const [text,      setText]      = useState('')
+  const [sending,   setSending]   = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [pendingAtts, setPendingAtts] = useState<ChatAttachment[]>([])
+  const bottomRef  = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = () =>
     apiFetch(`/bookings/${bookingId}/messages`).then(setMessages).catch(() => {})
 
   useEffect(() => { load() }, [bookingId])
+  useEffect(() => { const id = setInterval(load, 3000); return () => clearInterval(id) }, [bookingId])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
 
-  // Poll every 3 seconds
-  useEffect(() => {
-    const id = setInterval(load, 3000)
-    return () => clearInterval(id)
-  }, [bookingId])
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setUploading(true)
+    try {
+      const uploaded: ChatAttachment[] = []
+      for (const file of files) {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('upload_preset', 'home_solutions')
+        const res = await fetch('https://api.cloudinary.com/v1_1/home-solutions/auto/upload', { method: 'POST', body: formData })
+        const data = await res.json()
+        if (data.secure_url) {
+          uploaded.push({
+            url: data.secure_url,
+            type: file.type.startsWith('image/') ? 'image' : 'file',
+            fileName: file.name,
+          })
+        }
+      }
+      setPendingAtts(prev => [...prev, ...uploaded])
+    } catch {
+      alert('Upload failed — please try again.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
-  // Scroll to bottom when new messages arrive
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+  const canSend = (text.trim().length > 0 || pendingAtts.length > 0) && !sending && !uploading
 
   const send = async () => {
-    if (!text.trim() || sending) return
+    if (!canSend) return
     setSending(true)
     try {
       await apiFetch(`/bookings/${bookingId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ senderId: myId, senderRole: myRole, senderName: myName, text }),
+        body: JSON.stringify({ senderId: myId, senderRole: myRole, senderName: myName, text, attachments: pendingAtts }),
       })
       setText('')
+      setPendingAtts([])
       await load()
     } finally { setSending(false) }
   }
@@ -743,18 +770,39 @@ function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; m
         )}
         {messages.map(m => {
           const isMe = m.senderId === myId
+          const atts = m.attachments ?? []
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
               <div style={{ fontSize: 10, color: '#9C9CA0', marginBottom: 3 }}>
                 <span style={{ fontWeight: 600, color: ROLE_COLOR[m.senderRole] ?? '#6B7280' }}>{m.senderName}</span>
                 {' · '}{m.senderRole}{' · '}{new Date(m.createdAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
               </div>
-              <div style={{
-                maxWidth: '75%', padding: '8px 12px', borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                background: isMe ? '#C8922A' : '#F7F3EE',
-                color: isMe ? '#fff' : '#1C1C1E', fontSize: 13, lineHeight: 1.5,
-              }}>
-                {m.text}
+              <div style={{ maxWidth: '75%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {/* Attachments */}
+                {atts.map((att, i) => att.type === 'image' ? (
+                  <a key={i} href={att.url} target="_blank" rel="noreferrer">
+                    <img src={att.url} alt={att.fileName} style={{ maxWidth: 220, maxHeight: 165, borderRadius: 10, display: 'block', cursor: 'pointer' }} />
+                  </a>
+                ) : (
+                  <a key={i} href={att.url} target="_blank" rel="noreferrer" style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                    background: isMe ? 'rgba(255,255,255,0.2)' : '#F7F3EE',
+                    borderRadius: 10, border: '1px solid #EDE8E0', textDecoration: 'none',
+                  }}>
+                    <span style={{ fontSize: 18 }}>📄</span>
+                    <span style={{ fontSize: 12, color: isMe ? '#fff' : '#1C1C1E', fontWeight: 500 }}>{att.fileName}</span>
+                  </a>
+                ))}
+                {/* Text */}
+                {m.text && (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                    background: isMe ? '#C8922A' : '#F7F3EE',
+                    color: isMe ? '#fff' : '#1C1C1E', fontSize: 13, lineHeight: 1.5,
+                  }}>
+                    {m.text}
+                  </div>
+                )}
               </div>
             </div>
           )
@@ -762,8 +810,34 @@ function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; m
         <div ref={bottomRef} />
       </div>
 
+      {/* Pending attachments preview */}
+      {pendingAtts.length > 0 && (
+        <div style={{ padding: '8px 14px', borderTop: '1px solid #EDE8E0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {pendingAtts.map((att, i) => (
+            <div key={i} style={{ position: 'relative' }}>
+              {att.type === 'image'
+                ? <img src={att.url} style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover' }} />
+                : <div style={{ width: 56, height: 56, borderRadius: 8, background: '#F7F3EE', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 10, gap: 2, padding: 4 }}>
+                    <span style={{ fontSize: 20 }}>📄</span>
+                    <span style={{ color: '#6B7280', textAlign: 'center', overflow: 'hidden', maxWidth: 50 }}>{att.fileName}</span>
+                  </div>}
+              <button onClick={() => setPendingAtts(prev => prev.filter((_, j) => j !== i))}
+                style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: 8, background: '#6B7280', border: 'none', color: '#fff', fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
-      <div style={{ padding: '10px 14px', borderTop: '1px solid #EDE8E0', display: 'flex', gap: 8 }}>
+      <div style={{ padding: '10px 14px', borderTop: '1px solid #EDE8E0', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+        {/* Hidden file input */}
+        <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: 'none' }} onChange={handleFileChange} />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          style={{ width: 36, height: 36, borderRadius: 18, background: '#F7F3EE', border: '1px solid #EDE8E0', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: uploading ? 0.5 : 1 }}
+          title="Attach photo or file"
+        >{uploading ? '⏳' : '＋'}</button>
         <input
           style={{ ...styles.input, flex: 1, margin: 0 }}
           placeholder="Type a message…"
@@ -772,9 +846,9 @@ function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; m
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
         />
         <button
-          style={{ ...styles.primaryBtn, padding: '8px 16px', opacity: sending || !text.trim() ? 0.5 : 1 }}
+          style={{ ...styles.primaryBtn, padding: '8px 16px', opacity: canSend ? 1 : 0.5 }}
           onClick={send}
-          disabled={sending || !text.trim()}
+          disabled={!canSend}
         >
           Send
         </button>
