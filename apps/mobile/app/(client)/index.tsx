@@ -3,16 +3,17 @@
  * Designed with vendor ad slots — banner carousel, featured provider card,
  * mid-page promo strip and bottom spotlight are all sellable ad spaces.
  */
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Dimensions, FlatList, Image, NativeSyntheticEvent, NativeScrollEvent,
+  Dimensions, FlatList, NativeSyntheticEvent, NativeScrollEvent,
+  TextInput, Keyboard, Platform,
 } from 'react-native'
 import { router } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
-import { SERVICES } from '../../lib/serviceConfig'
+import { SERVICES, SERVICE_CATEGORIES } from '../../lib/serviceConfig'
 
 const { width: SW } = Dimensions.get('window')
 
@@ -99,27 +100,63 @@ function greeting() {
   return 'Good evening,'
 }
 
+// Build a flat search index: each service knows its category label
+const SEARCH_INDEX = SERVICE_CATEGORIES.flatMap(cat =>
+  cat.services.map(svc => ({ ...svc, category: cat.label }))
+)
+
+function searchServices(query: string) {
+  const q = query.toLowerCase().trim()
+  if (!q) return []
+  return SEARCH_INDEX.filter(svc =>
+    svc.label.toLowerCase().includes(q) ||
+    svc.category.toLowerCase().includes(q) ||
+    svc.id.toLowerCase().replace(/_/g, ' ').includes(q)
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ClientHome() {
   const { user } = useAuth()
   const [bannerIdx,    setBannerIdx]    = useState(0)
   const [showAllSvcs,  setShowAllSvcs]  = useState(false)
-  const bannerRef = useRef<FlatList>(null)
+  const [searchQuery,  setSearchQuery]  = useState('')
+  const [searchActive, setSearchActive] = useState(false)
+  const bannerRef  = useRef<FlatList>(null)
+  const searchRef  = useRef<TextInput>(null)
 
-  const displayName = user?.firstName ?? user?.phone ?? 'there'
-  const topSvcs     = SERVICES.filter(s => TOP_SERVICES.includes(s.id))
-  const visibleSvcs = showAllSvcs ? SERVICES : SERVICES.slice(0, 6)
+  const displayName  = user?.firstName ?? user?.phone ?? 'there'
+  const topSvcs      = SERVICES.filter(s => TOP_SERVICES.includes(s.id))
+  const visibleSvcs  = showAllSvcs ? SERVICES : SERVICES.slice(0, 6)
+  const searchResults = searchServices(searchQuery)
+
+  const openSearch = useCallback(() => {
+    setSearchActive(true)
+    setTimeout(() => searchRef.current?.focus(), 50)
+  }, [])
+
+  const closeSearch = useCallback(() => {
+    setSearchQuery('')
+    setSearchActive(false)
+    Keyboard.dismiss()
+  }, [])
+
+  const pickResult = useCallback((serviceId: string) => {
+    closeSearch()
+    router.push({ pathname: '/(client)/book', params: { serviceType: serviceId } })
+  }, [closeSearch])
 
   // Auto-scroll banner every 4s
   useEffect(() => {
+    if (searchActive) return
     const id = setInterval(() => {
       const next = (bannerIdx + 1) % HERO_BANNERS.length
       bannerRef.current?.scrollToIndex({ index: next, animated: true })
       setBannerIdx(next)
     }, 4000)
     return () => clearInterval(id)
-  }, [bannerIdx])
+  }, [bannerIdx, searchActive])
 
   const onBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / (SW - 28))
@@ -131,21 +168,116 @@ export default function ClientHome() {
       {/* ── Header ── */}
       <View style={s.header}>
         <View style={s.headerTop}>
-          <View>
-            <Text style={s.greeting}>{greeting()}</Text>
-            <Text style={s.name}>{displayName}</Text>
-          </View>
-          <View style={s.badge}>
-            <Text style={s.badgeText}>👑 Premium</Text>
-          </View>
+          {searchActive ? (
+            // ── Active search bar ──
+            <View style={s.searchActiveRow}>
+              <View style={s.searchActiveBar}>
+                <Text style={s.searchIcon}>🔍</Text>
+                <TextInput
+                  ref={searchRef}
+                  style={s.searchInput}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search services…"
+                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  returnKeyType="search"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')} style={s.searchClear}>
+                    <Text style={s.searchClearText}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <TouchableOpacity onPress={closeSearch} style={s.searchCancel}>
+                <Text style={s.searchCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // ── Collapsed header ──
+            <>
+              <View>
+                <Text style={s.greeting}>{greeting()}</Text>
+                <Text style={s.name}>{displayName}</Text>
+              </View>
+              <View style={s.badge}>
+                <Text style={s.badgeText}>👑 Premium</Text>
+              </View>
+            </>
+          )}
         </View>
 
-        {/* Search bar */}
-        <TouchableOpacity style={s.search} onPress={() => {}}>
-          <Text style={s.searchIcon}>🔍</Text>
-          <Text style={s.searchText}>What do you need today?</Text>
-        </TouchableOpacity>
+        {/* Search bar — tap to open, hidden when active (replaced by row above) */}
+        {!searchActive && (
+          <TouchableOpacity style={s.search} onPress={openSearch} activeOpacity={0.8}>
+            <Text style={s.searchIcon}>🔍</Text>
+            <Text style={s.searchText}>What do you need today?</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* ── Search results overlay ── */}
+      {searchActive && (
+        <View style={s.resultsPane}>
+          {searchQuery.length === 0 ? (
+            // Suggestions when nothing typed yet
+            <View style={s.suggestionsWrap}>
+              <Text style={s.suggestionsLabel}>Popular searches</Text>
+              <View style={s.suggestionsRow}>
+                {['Plumbing', 'Tent Hire', 'Generator', 'Electrical', 'Cleaning', 'Bakkie'].map(tag => (
+                  <TouchableOpacity
+                    key={tag}
+                    style={s.suggestionChip}
+                    onPress={() => setSearchQuery(tag)}
+                  >
+                    <Text style={s.suggestionText}>{tag}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={[s.suggestionsLabel, { marginTop: 16 }]}>Browse by category</Text>
+              {SERVICE_CATEGORIES.map(cat => (
+                <TouchableOpacity
+                  key={cat.label}
+                  style={s.catRow}
+                  onPress={() => setSearchQuery(cat.label)}
+                >
+                  <Text style={s.catRowText}>{cat.label}</Text>
+                  <Text style={s.catRowCount}>{cat.services.length} services</Text>
+                  <Text style={s.catRowArrow}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : searchResults.length === 0 ? (
+            // No results
+            <View style={s.noResults}>
+              <Text style={s.noResultsEmoji}>🔍</Text>
+              <Text style={s.noResultsTitle}>No services found</Text>
+              <Text style={s.noResultsSub}>Try "plumbing", "tent hire" or "generator"</Text>
+            </View>
+          ) : (
+            // Results list
+            <FlatList
+              data={searchResults}
+              keyExtractor={item => item.id}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingVertical: 8 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={s.resultRow} onPress={() => pickResult(item.id)}>
+                  <View style={[s.resultIcon, { backgroundColor: item.bg }]}>
+                    <Text style={{ fontSize: 20 }}>{item.emoji}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.resultLabel}>{item.label}</Text>
+                    <Text style={s.resultMeta}>{(item as any).category} · {item.priceLabel}</Text>
+                  </View>
+                  <Text style={s.resultArrow}>›</Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
+        </View>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false}>
 
@@ -357,9 +489,38 @@ const s = StyleSheet.create({
   name:              { fontSize: 20, fontWeight: '300', color: '#fff' },
   badge:             { backgroundColor: 'rgba(200,146,42,0.2)', borderColor: 'rgba(200,146,42,0.4)', borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText:         { fontSize: 11, color: colors.goldLight },
+  // Search — collapsed
   search:            { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 8 },
   searchIcon:        { fontSize: 14 },
   searchText:        { fontSize: 14, color: 'rgba(255,255,255,0.4)' },
+  // Search — active
+  searchActiveRow:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  searchActiveBar:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  searchInput:       { flex: 1, fontSize: 14, color: '#fff', paddingVertical: Platform.OS === 'ios' ? 2 : 0 },
+  searchClear:       { padding: 2 },
+  searchClearText:   { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
+  searchCancel:      { paddingVertical: 6 },
+  searchCancelText:  { fontSize: 14, color: colors.gold, fontWeight: '500' },
+  // Results pane
+  resultsPane:       { flex: 1, backgroundColor: colors.cream },
+  suggestionsWrap:   { padding: 16 },
+  suggestionsLabel:  { fontSize: 10, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '600', marginBottom: 10 },
+  suggestionsRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  suggestionChip:    { backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: colors.creamMid },
+  suggestionText:    { fontSize: 13, color: colors.text },
+  catRow:            { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 6, borderWidth: 1, borderColor: colors.creamMid },
+  catRowText:        { flex: 1, fontSize: 13, fontWeight: '500', color: colors.text },
+  catRowCount:       { fontSize: 11, color: colors.textLight, marginRight: 8 },
+  catRowArrow:       { fontSize: 18, color: colors.textLight },
+  noResults:         { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 8 },
+  noResultsEmoji:    { fontSize: 40 },
+  noResultsTitle:    { fontSize: 16, fontWeight: '600', color: colors.text },
+  noResultsSub:      { fontSize: 13, color: colors.textLight, textAlign: 'center' },
+  resultRow:         { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.creamMid, backgroundColor: '#fff' },
+  resultIcon:        { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  resultLabel:       { fontSize: 14, fontWeight: '600', color: colors.text },
+  resultMeta:        { fontSize: 11, color: colors.textLight, marginTop: 2 },
+  resultArrow:       { fontSize: 20, color: colors.textLight },
 
   // Hero banner
   bannerWrap:        { marginHorizontal: 14, marginTop: 14, borderRadius: 14, overflow: 'hidden' },
