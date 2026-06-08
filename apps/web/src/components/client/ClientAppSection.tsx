@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import PhoneFrame from '@/components/ui/PhoneFrame'
 import { SERVICES } from '@/lib/mock-data'
 
-type View = 'home' | 'providers' | 'quote' | 'tracking' | 'rating' | 'done'
+type View = 'home' | 'providers' | 'quote' | 'tracking' | 'chat' | 'rating' | 'done'
 
 const PROVIDER_TITLE: Record<string, string> = {
   // Home trades
@@ -98,9 +98,11 @@ export default function ClientAppSection() {
               techPos={techPos}
               eta={Math.round(eta)}
               onBack={() => goto('providers')}
+              onChat={() => goto('chat')}
               onComplete={() => goto('rating')}
             />
           )}
+          {view === 'chat' && <ChatView onBack={() => goto('tracking')} />}
           {view === 'rating' && (
             <RatingView
               rating={rating}
@@ -326,7 +328,7 @@ function QuoteView({ onBack, onApprove }: { onBack: () => void; onApprove: () =>
   )
 }
 
-function TrackingView({ techPos, eta, onComplete }: { techPos: { x: number; y: number }; eta: number; onBack: () => void; onComplete: () => void }) {
+function TrackingView({ techPos, eta, onChat, onComplete }: { techPos: { x: number; y: number }; eta: number; onBack: () => void; onChat: () => void; onComplete: () => void }) {
   const steps = [
     { label: 'Booking confirmed & payment held', state: 'done' },
     { label: 'Raj accepted your request', state: 'done' },
@@ -381,11 +383,12 @@ function TrackingView({ techPos, eta, onComplete }: { techPos: { x: number; y: n
             <div style={{ fontSize: 11, color: 'var(--text-light)' }}>Master Plumber · 1.4km</div>
           </div>
           <div style={{ display: 'flex', gap: 7 }}>
-            {['ti-phone', 'ti-message'].map(ic => (
-              <div key={ic} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--cream-mid)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                <i className={`ti ${ic}`} style={{ fontSize: 14 }} />
-              </div>
-            ))}
+            <div style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--cream-mid)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <i className="ti ti-phone" style={{ fontSize: 14 }} />
+            </div>
+            <div onClick={onChat} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--gold)', background: '#FFF8EC', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--gold)' }}>
+              <i className="ti ti-message" style={{ fontSize: 14 }} />
+            </div>
           </div>
         </div>
 
@@ -414,6 +417,90 @@ function TrackingView({ techPos, eta, onComplete }: { techPos: { x: number; y: n
       <div style={{ padding: '12px 14px', background: '#fff', borderTop: '1px solid var(--cream-mid)' }}>
         <button onClick={onComplete} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
           Mark job complete
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Mock messages for the demo (no real booking ID in the demo flow)
+const DEMO_MSGS = [
+  { id: '1', senderName: 'Raj Pillay', senderRole: 'provider', text: 'Hi Priya, I\'m on my way. About 12 minutes out.', createdAt: new Date(Date.now() - 600000).toISOString() },
+  { id: '2', senderName: 'Priya', senderRole: 'client', text: 'Thanks Raj! Gate code is 1234.', createdAt: new Date(Date.now() - 480000).toISOString() },
+  { id: '3', senderName: 'Raj Pillay', senderRole: 'provider', text: 'Got it, see you soon 👍', createdAt: new Date(Date.now() - 420000).toISOString() },
+]
+
+function ChatView({ onBack }: { onBack: () => void }) {
+  const [msgs, setMsgs] = useState(DEMO_MSGS)
+  const [text, setText] = useState('')
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs.length])
+
+  const send = () => {
+    if (!text.trim()) return
+    setMsgs(prev => [...prev, { id: String(Date.now()), senderName: 'Priya', senderRole: 'client', text, createdAt: new Date().toISOString() }])
+    setText('')
+    // Simulate provider reply after 1.5s
+    setTimeout(() => setMsgs(prev => [...prev, { id: String(Date.now()+1), senderName: 'Raj Pillay', senderRole: 'provider', text: 'Understood, I\'ll sort that out when I arrive.', createdAt: new Date().toISOString() }]), 1500)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <div style={{ background: 'var(--navy)', padding: '14px 14px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: 4 }}>
+          <i className="ti ti-arrow-left" style={{ fontSize: 18 }} />
+        </button>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#DCF0E8', color: '#1A6842', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12 }}>RP</div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Raj Pillay</div>
+          <div style={{ fontSize: 10, color: 'var(--accent-light)' }}>● En route · 12 min</div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--cream)' }}>
+        <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Booking #B-1039 · Today</div>
+        {msgs.map(m => {
+          const isMe = m.senderRole === 'client'
+          return (
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+              <div style={{
+                maxWidth: '78%', padding: '8px 11px',
+                borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                background: isMe ? 'var(--gold)' : '#fff',
+                color: isMe ? '#fff' : 'var(--text)',
+                fontSize: 12, lineHeight: 1.5,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                border: isMe ? 'none' : '1px solid var(--cream-mid)',
+              }}>
+                {m.text}
+              </div>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>
+                {new Date(m.createdAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          )
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{ padding: '10px 12px', background: '#fff', borderTop: '1px solid var(--cream-mid)', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && send()}
+          placeholder="Message Raj…"
+          style={{ flex: 1, padding: '9px 12px', borderRadius: 20, border: '1px solid var(--cream-mid)', fontSize: 12, fontFamily: "'DM Sans', sans-serif", outline: 'none', background: 'var(--cream)' }}
+        />
+        <button
+          onClick={send}
+          disabled={!text.trim()}
+          style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: text.trim() ? 'var(--gold)' : 'var(--cream-mid)', color: text.trim() ? '#fff' : 'var(--text-muted)', cursor: text.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+        >
+          <i className="ti ti-send" style={{ fontSize: 14 }} />
         </button>
       </div>
     </div>

@@ -330,6 +330,7 @@ function BookingsSection() {
               ))}
             </div>
           </Card>
+          <BookingChat bookingId={selected.id} myId="admin-1" myName="Admin" myRole="admin" />
         </div>
       )}
     </div>
@@ -683,6 +684,101 @@ function SettingsSection() {
           </div>
         ))}
       </Card>
+    </div>
+  )
+}
+
+// ─── Booking Chat ─────────────────────────────────────────────────────────────
+interface ChatMessage { id: string; senderId: string; senderRole: string; senderName: string; text: string; createdAt: string }
+
+function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; myId: string; myName: string; myRole: string }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [text, setText] = useState('')
+  const [sending, setSending] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  const load = () =>
+    apiFetch(`/bookings/${bookingId}/messages`).then(setMessages).catch(() => {})
+
+  useEffect(() => { load() }, [bookingId])
+
+  // Poll every 3 seconds
+  useEffect(() => {
+    const id = setInterval(load, 3000)
+    return () => clearInterval(id)
+  }, [bookingId])
+
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages.length])
+
+  const send = async () => {
+    if (!text.trim() || sending) return
+    setSending(true)
+    try {
+      await apiFetch(`/bookings/${bookingId}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ senderId: myId, senderRole: myRole, senderName: myName, text }),
+      })
+      setText('')
+      await load()
+    } finally { setSending(false) }
+  }
+
+  const ROLE_COLOR: Record<string, string> = { admin: '#C8922A', provider: '#2D8A6E', client: '#1D4ED8' }
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #EDE8E0', overflow: 'hidden', marginTop: 0 }}>
+      <div style={{ padding: '12px 18px', borderBottom: '1px solid #EDE8E0', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 16 }}>💬</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>Booking Chat</span>
+        <span style={{ fontSize: 10, color: '#9C9CA0', marginLeft: 'auto' }}>Polls every 3s</span>
+      </div>
+
+      {/* Messages */}
+      <div style={{ height: 260, overflowY: 'auto', padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {messages.length === 0 && (
+          <div style={{ textAlign: 'center', color: '#9C9CA0', fontSize: 12, marginTop: 80 }}>No messages yet — start the conversation</div>
+        )}
+        {messages.map(m => {
+          const isMe = m.senderId === myId
+          return (
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+              <div style={{ fontSize: 10, color: '#9C9CA0', marginBottom: 3 }}>
+                <span style={{ fontWeight: 600, color: ROLE_COLOR[m.senderRole] ?? '#6B7280' }}>{m.senderName}</span>
+                {' · '}{m.senderRole}{' · '}{new Date(m.createdAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+              <div style={{
+                maxWidth: '75%', padding: '8px 12px', borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                background: isMe ? '#C8922A' : '#F7F3EE',
+                color: isMe ? '#fff' : '#1C1C1E', fontSize: 13, lineHeight: 1.5,
+              }}>
+                {m.text}
+              </div>
+            </div>
+          )
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{ padding: '10px 14px', borderTop: '1px solid #EDE8E0', display: 'flex', gap: 8 }}>
+        <input
+          style={{ ...styles.input, flex: 1, margin: 0 }}
+          placeholder="Type a message…"
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+        />
+        <button
+          style={{ ...styles.primaryBtn, padding: '8px 16px', opacity: sending || !text.trim() ? 0.5 : 1 }}
+          onClick={send}
+          disabled={sending || !text.trim()}
+        >
+          Send
+        </button>
+      </div>
     </div>
   )
 }
