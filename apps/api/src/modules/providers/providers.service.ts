@@ -17,10 +17,17 @@ export class ProvidersService {
       orderBy: { rating: 'desc' },
     })
 
-    // Plumbing, electrical, HVAC, gas require a trade certificate
-    // Handyman and cleaning do not
-    const NO_CERT_REQUIRED = ['handyman', 'cleaning']
-    if (skill && !NO_CERT_REQUIRED.includes(skill)) {
+    // Hire services and non-trade skills don't require a trade certificate
+    const HIRE_SERVICES = new Set([
+      'handyman', 'cleaning', 'landscaping', 'pool', 'pest_control', 'locksmith',
+      'moving', 'gate_motor', 'paving', 'security', 'dstv', 'septic_tank',
+      'tent_hire', 'chair_table_hire', 'decor_hire', 'sound_pa_hire',
+      'jumping_castle_hire', 'catering_equipment_hire', 'cold_room_hire', 'mobile_toilet_hire',
+      'generator_hire', 'water_bowser_hire',
+      'van_hire', 'bakkie_hire', 'furniture_removal', 'last_mile_delivery', 'livestock_transport',
+      'security_guard_hire',
+    ])
+    if (skill && !HIRE_SERVICES.has(skill)) {
       const providerIds = providers.map(p => p.id)
       const tradeCerts  = await this.prisma.kycDocument.findMany({
         where: { providerId: { in: providerIds }, type: 'trade_cert' },
@@ -72,6 +79,18 @@ export class ProvidersService {
       ...d,
       type: d.type.startsWith('hire_photo') ? 'hire_photo' : d.type,
     }))
+  }
+
+  async getHireInventory(id: string) {
+    const p = await this.findOne(id)
+    return (p.hireInventory ?? {}) as Record<string, Record<string, number>>
+  }
+
+  updateHireInventory(id: string, inventory: Record<string, Record<string, number>>) {
+    return this.prisma.provider.update({
+      where: { id },
+      data:  { hireInventory: inventory },
+    })
   }
 
   saveDocument(providerId: string, type: string, fileName: string, fileUrl: string) {
