@@ -3,6 +3,30 @@ import { useState, useEffect, useRef } from 'react'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://home-solutions-ds5b.onrender.com/api/v1'
 
+// Human-readable labels for every service type
+const SERVICE_LABELS: Record<string, string> = {
+  plumbing: 'Plumbing', electrical: 'Electrical', cleaning: 'Cleaning',
+  hvac: 'AC & HVAC', gas: 'Gas', handyman: 'Handyman', painting: 'Painting',
+  tiling: 'Tiling', carpentry: 'Carpentry', roofing: 'Roofing',
+  bricklaying: 'Bricklaying', solar: 'Solar Install', borehole: 'Borehole',
+  septic_tank: 'Septic Tank', dstv: 'DSTV & Satellite', pest_control: 'Pest Control',
+  locksmith: 'Locksmith', waterproofing: 'Waterproofing', landscaping: 'Landscaping',
+  pool: 'Pool', paving: 'Paving', gate_motor: 'Gate Motor', moving: 'Moving',
+  // Event hire
+  tent_hire: 'Tent Hire', chair_table_hire: 'Chairs & Tables', decor_hire: 'Décor Hire',
+  sound_pa_hire: 'PA & Sound', jumping_castle_hire: 'Jumping Castle',
+  catering_equipment_hire: 'Catering Equipment', cold_room_hire: 'Cold Room Hire',
+  mobile_toilet_hire: 'Mobile Toilets',
+  // Plant & equipment
+  generator_hire: 'Generator Hire', water_bowser_hire: 'Water Bowser',
+  // Transport
+  bakkie_hire: 'Bakkie Hire', van_hire: 'Van Hire', furniture_removal: 'Furniture Removal',
+  last_mile_delivery: 'Last-Mile Delivery', livestock_transport: 'Livestock Transport',
+  // Security
+  security_guard_hire: 'Security Guards', security: 'Alarm & CCTV',
+}
+const svcLabel = (id: string) => SERVICE_LABELS[id] ?? id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('hs_admin_token') : null }
 function setToken(t: string) { localStorage.setItem('hs_admin_token', t) }
@@ -206,7 +230,7 @@ function DashboardSection() {
           {bookings.slice(0, 8).map((b: any) => (
             <div key={b.id} style={styles.tableRow}>
               <div style={{ flex: 1 }}>
-                <div style={styles.rowTitle}>{b.serviceType} · {b.address}</div>
+                <div style={styles.rowTitle}>{svcLabel(b.serviceType)} · {b.address}</div>
                 <div style={styles.rowSub}>#{b.id.slice(-6).toUpperCase()} · {new Date(b.createdAt).toLocaleDateString('en-ZA')}</div>
               </div>
               <StatusBadge status={b.status} />
@@ -264,7 +288,7 @@ function BookingsSection() {
           {filtered.map((b: any) => (
             <div key={b.id} style={{ ...styles.tableRow, cursor: 'pointer', background: selected?.id === b.id ? '#FFFBF0' : 'transparent' }} onClick={() => setSelected(b)}>
               <div style={{ flex: 1 }}>
-                <div style={styles.rowTitle}>{b.serviceType?.charAt(0).toUpperCase() + b.serviceType?.slice(1)} — {b.address}</div>
+                <div style={styles.rowTitle}>{svcLabel(b.serviceType)} — {b.address}</div>
                 <div style={styles.rowSub}>#{b.id.slice(-6).toUpperCase()} · Client: {b.clientId?.slice(0,8)} · {new Date(b.createdAt).toLocaleDateString('en-ZA')}</div>
               </div>
               <StatusBadge status={b.status} />
@@ -278,7 +302,7 @@ function BookingsSection() {
       {selected && (
         <div style={{ flex: 1 }}>
           <Card title={`Booking #${selected.id.slice(-6).toUpperCase()}`} action={<CloseBtn onClick={() => setSelected(null)} />}>
-            <Detail label="Service"  value={selected.serviceType} />
+            <Detail label="Service"  value={svcLabel(selected.serviceType)} />
             <Detail label="Address"  value={selected.address} />
             <Detail label="Client"   value={selected.clientId} />
             <Detail label="Provider" value={selected.providerId ?? 'Unassigned'} />
@@ -728,7 +752,7 @@ function TrackingSection() {
                 onClick={() => setSelected(b)}
               >
                 <div style={{ flex: 1 }}>
-                  <div style={styles.rowTitle}>{b.serviceType} — {b.address?.split(',')[0]}</div>
+                  <div style={styles.rowTitle}>{svcLabel(b.serviceType)} — {b.address?.split(',')[0]}</div>
                   <div style={styles.rowSub}>#{b.id.slice(-6).toUpperCase()}</div>
                 </div>
                 <StatusBadge status={b.status} />
@@ -763,7 +787,7 @@ function TrackingSection() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
               {selected.serviceType
                 ? <>
-                    <Detail label="Service"  value={selected.serviceType} />
+                    <Detail label="Service"  value={svcLabel(selected.serviceType)} />
                     <Detail label="Status"   value={<StatusBadge status={selected.status} />} />
                     <Detail label="Address"  value={selected.address} />
                     <Detail label="Provider" value={selected.providerId ?? 'Unassigned'} />
@@ -854,7 +878,7 @@ function LeafletMap({ providers, bookings, onSelect }: {
         })
         const m = L.marker([loc.lat, loc.lng], { icon })
           .addTo(map)
-          .bindPopup(`<strong>${b.serviceType}</strong><br/>${b.address}<br/><span style="color:${isEmergency ? '#E63946' : '#1D4ED8'}">● ${b.status.replace(/_/g,' ')}</span>`)
+          .bindPopup(`<strong>${svcLabel(b.serviceType)}</strong><br/>${b.address}<br/><span style="color:${isEmergency ? '#E63946' : '#1D4ED8'}">● ${b.status.replace(/_/g,' ')}</span>`)
         m.on('click', () => onSelect(b))
         markersRef.current.push(m)
       })
