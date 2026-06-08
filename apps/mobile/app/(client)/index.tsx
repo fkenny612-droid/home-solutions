@@ -126,7 +126,7 @@ export default function ClientHome() {
   const bannerRef  = useRef<FlatList>(null)
   const searchRef  = useRef<TextInput>(null)
 
-  const displayName  = user?.firstName ?? user?.phone ?? 'there'
+  const displayName  = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.phone || 'there'
   const topSvcs      = SERVICES.filter(s => TOP_SERVICES.includes(s.id))
   const visibleSvcs  = showAllSvcs ? SERVICES : SERVICES.slice(0, 6)
   const searchResults = searchServices(searchQuery)
