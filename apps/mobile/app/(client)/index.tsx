@@ -279,7 +279,7 @@ export default function ClientHome() {
         </View>
       )}
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} style={searchActive && { display: 'none' }}>
 
         {/* ── Hero banner carousel (AD SPACE) ── */}
         <View style={s.bannerWrap}>
