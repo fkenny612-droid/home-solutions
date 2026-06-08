@@ -10,9 +10,11 @@ const TOKEN_KEY = 'hs_token'
 const USER_KEY  = 'hs_user'
 
 export interface AuthUser {
-  id:    string
-  phone: string
-  role:  'client' | 'provider' | 'admin'
+  id:        string
+  phone:     string
+  role:      'client' | 'provider' | 'admin'
+  firstName?: string
+  lastName?:  string
 }
 
 interface AuthCtx {
