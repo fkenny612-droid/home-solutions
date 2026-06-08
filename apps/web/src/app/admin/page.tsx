@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://home-solutions-ds5b.onrender.com/api/v1'
 
@@ -23,12 +23,13 @@ async function apiFetch(path: string, opts?: RequestInit) {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = 'dashboard' | 'bookings' | 'providers' | 'clients' | 'hardware' | 'materials' | 'finance' | 'settings'
+type Section = 'dashboard' | 'bookings' | 'providers' | 'clients' | 'tracking' | 'hardware' | 'materials' | 'finance' | 'settings'
 
 const NAV: { section: string; items: { id: Section; label: string; icon: string }[] }[] = [
   { section: 'Operations', items: [
     { id: 'dashboard',  label: 'Dashboard',  icon: '📊' },
     { id: 'bookings',   label: 'Bookings',   icon: '📋' },
+    { id: 'tracking',   label: 'Live Map',   icon: '📍' },
   ]},
   { section: 'People', items: [
     { id: 'providers', label: 'Providers',  icon: '🔧' },
@@ -156,6 +157,7 @@ export default function AdminPortal() {
         <div style={styles.content}>
           {section === 'dashboard'  && <DashboardSection />}
           {section === 'bookings'   && <BookingsSection />}
+          {section === 'tracking'   && <TrackingSection />}
           {section === 'providers'  && <ProvidersSection />}
           {section === 'clients'    && <ClientsSection />}
           {section === 'hardware'   && <HardwareSection />}
@@ -659,6 +661,225 @@ function SettingsSection() {
       </Card>
     </div>
   )
+}
+
+// ─── Live Tracking ────────────────────────────────────────────────────────────
+function TrackingSection() {
+  const [providers, setProviders] = useState<any[]>([])
+  const [bookings,  setBookings]  = useState<any[]>([])
+  const [selected,  setSelected]  = useState<any>(null)
+  const [lastRefresh, setLastRefresh] = useState(new Date())
+
+  const load = () => {
+    apiFetch('/providers').then(setProviders).catch(() => {})
+    apiFetch('/bookings').then(setBookings).catch(() => {})
+    setLastRefresh(new Date())
+  }
+
+  useEffect(() => {
+    load()
+    const id = setInterval(load, 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const activeBookings = bookings.filter(b => ['accepted','en_route','in_progress','emergency'].includes(b.status))
+  const onlineProviders = providers.filter(p => p.location?.lat)
+
+  return (
+    <div>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ ...styles.statCard, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 0 }}>
+            <span style={{ fontSize: 20 }}>🔧</span>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 300, color: '#0F1923' }}>{onlineProviders.length}</div>
+              <div style={{ fontSize: 10, color: '#9C9CA0' }}>Providers on map</div>
+            </div>
+          </div>
+          <div style={{ ...styles.statCard, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 0 }}>
+            <span style={{ fontSize: 20 }}>📋</span>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 300, color: '#0F1923' }}>{activeBookings.length}</div>
+              <div style={{ fontSize: 10, color: '#9C9CA0' }}>Active jobs</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, color: '#9C9CA0' }}>Updated {lastRefresh.toLocaleTimeString('en-ZA')}</span>
+          <button style={styles.primaryBtn} onClick={load}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {/* Map + sidebar */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, background: '#fff', borderRadius: 12, border: '1px solid #EDE8E0', overflow: 'hidden' }}>
+          <LeafletMap providers={onlineProviders} bookings={activeBookings} onSelect={setSelected} />
+        </div>
+
+        {/* Sidebar list */}
+        <div style={{ width: 280, flexShrink: 0 }}>
+          <Card title={`Active jobs (${activeBookings.length})`}>
+            {activeBookings.length === 0 && <Empty text="No active jobs" />}
+            {activeBookings.map(b => (
+              <div
+                key={b.id}
+                style={{ ...styles.tableRow, cursor: 'pointer', background: selected?.id === b.id ? '#FFFBF0' : 'transparent' }}
+                onClick={() => setSelected(b)}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={styles.rowTitle}>{b.serviceType} — {b.address?.split(',')[0]}</div>
+                  <div style={styles.rowSub}>#{b.id.slice(-6).toUpperCase()}</div>
+                </div>
+                <StatusBadge status={b.status} />
+              </div>
+            ))}
+          </Card>
+
+          <Card title={`Providers (${onlineProviders.length})`}>
+            {onlineProviders.length === 0 && <Empty text="No providers with location" />}
+            {onlineProviders.map(p => (
+              <div
+                key={p.id}
+                style={{ ...styles.tableRow, cursor: 'pointer', background: selected?.id === p.id ? '#FFFBF0' : 'transparent' }}
+                onClick={() => setSelected(p)}
+              >
+                <Avatar name={p.name} />
+                <div style={{ flex: 1 }}>
+                  <div style={styles.rowTitle}>{p.name}</div>
+                  <div style={styles.rowSub}>{p.skills?.join(', ')}</div>
+                </div>
+                <StatusBadge status={p.status} />
+              </div>
+            ))}
+          </Card>
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      {selected && (
+        <div style={{ marginTop: 16 }}>
+          <Card title={selected.name ?? `Booking #${selected.id?.slice(-6).toUpperCase()}`} action={<CloseBtn onClick={() => setSelected(null)} />}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+              {selected.serviceType
+                ? <>
+                    <Detail label="Service"  value={selected.serviceType} />
+                    <Detail label="Status"   value={<StatusBadge status={selected.status} />} />
+                    <Detail label="Address"  value={selected.address} />
+                    <Detail label="Provider" value={selected.providerId ?? 'Unassigned'} />
+                    <Detail label="Quoted"   value={`R ${selected.quotedAmount?.toLocaleString()}`} />
+                  </>
+                : <>
+                    <Detail label="Phone"   value={selected.phone} />
+                    <Detail label="Status"  value={<StatusBadge status={selected.status} />} />
+                    <Detail label="Skills"  value={selected.skills?.join(', ')} />
+                    <Detail label="Rating"  value={`★ ${selected.rating}`} />
+                    <Detail label="Lat/Lng" value={`${selected.location?.lat?.toFixed(4)}, ${selected.location?.lng?.toFixed(4)}`} />
+                  </>
+              }
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Leaflet Map (dynamic — no SSR) ──────────────────────────────────────────
+function LeafletMap({ providers, bookings, onSelect }: {
+  providers: any[]
+  bookings: any[]
+  onSelect: (item: any) => void
+}) {
+  const mapRef    = useRef<any>(null)
+  const mapElRef  = useRef<HTMLDivElement>(null)
+  const markersRef = useRef<any[]>([])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    import('leaflet').then(L => {
+      // Fix default icon paths broken by webpack
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (L.Icon.Default.prototype as any)._getIconUrl
+      L.Icon.Default.mergeOptions({
+        iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      })
+
+      if (!mapRef.current && mapElRef.current) {
+        mapRef.current = L.map(mapElRef.current, {
+          center: [-29.8587, 31.0218], // Durban
+          zoom: 12,
+        })
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }).addTo(mapRef.current)
+      }
+
+      const map = mapRef.current
+      if (!map) return
+
+      // Clear old markers
+      markersRef.current.forEach(m => m.remove())
+      markersRef.current = []
+
+      // Provider markers — orange wrench
+      providers.forEach(p => {
+        if (!p.location?.lat) return
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="width:32px;height:32px;background:#C8922A;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3)">🔧</div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        })
+        const m = L.marker([p.location.lat, p.location.lng], { icon })
+          .addTo(map)
+          .bindPopup(`<strong>${p.name}</strong><br/>${p.skills?.join(', ')}<br/><span style="color:#2D8A6E">● ${p.status}</span>`)
+        m.on('click', () => onSelect(p))
+        markersRef.current.push(m)
+      })
+
+      // Booking markers — red pin for emergency, blue for others
+      bookings.forEach(b => {
+        const loc = parseLocation(b.location)
+        if (!loc) return
+        const isEmergency = b.status === 'emergency'
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="width:28px;height:28px;background:${isEmergency ? '#E63946' : '#1D4ED8'};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+        })
+        const m = L.marker([loc.lat, loc.lng], { icon })
+          .addTo(map)
+          .bindPopup(`<strong>${b.serviceType}</strong><br/>${b.address}<br/><span style="color:${isEmergency ? '#E63946' : '#1D4ED8'}">● ${b.status.replace(/_/g,' ')}</span>`)
+        m.on('click', () => onSelect(b))
+        markersRef.current.push(m)
+      })
+    })
+
+    // Inject Leaflet CSS once
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link')
+      link.id   = 'leaflet-css'
+      link.rel  = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      document.head.appendChild(link)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providers, bookings])
+
+  return <div ref={mapElRef} style={{ height: 520, width: '100%' }} />
+}
+
+/** Parse "lat,lng" string or return null */
+function parseLocation(raw: string | null): { lat: number; lng: number } | null {
+  if (!raw) return null
+  const parts = raw.split(',').map(Number)
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return { lat: parts[0], lng: parts[1] }
+  return null
 }
 
 // ─── Shared components ────────────────────────────────────────────────────────
