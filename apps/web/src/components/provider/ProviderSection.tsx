@@ -4,10 +4,46 @@ import { useState } from 'react'
 import PhoneFrame from '@/components/ui/PhoneFrame'
 
 const SKILLS = [
-  { id: 'plumbing', icon: 'ti-droplet', label: 'Plumbing' },
-  { id: 'electrical', icon: 'ti-bolt', label: 'Electrical' },
-  { id: 'cleaning', icon: 'ti-wash', label: 'Cleaning' },
-  { id: 'handyman', icon: 'ti-tools', label: 'Handyman' },
+  // Home trades
+  { id: 'plumbing',              icon: 'ti-droplet',            label: 'Plumbing' },
+  { id: 'electrical',            icon: 'ti-bolt',               label: 'Electrical' },
+  { id: 'cleaning',              icon: 'ti-wash',               label: 'Cleaning' },
+  { id: 'hvac',                  icon: 'ti-air-conditioning',   label: 'AC & HVAC' },
+  { id: 'gas',                   icon: 'ti-flame',              label: 'Gas' },
+  { id: 'handyman',              icon: 'ti-tools',              label: 'Handyman' },
+  { id: 'painting',              icon: 'ti-paint',              label: 'Painting' },
+  { id: 'tiling',                icon: 'ti-grid-pattern',       label: 'Tiling' },
+  { id: 'carpentry',             icon: 'ti-axe',                label: 'Carpentry' },
+  { id: 'roofing',               icon: 'ti-home',               label: 'Roofing' },
+  { id: 'bricklaying',           icon: 'ti-building',           label: 'Bricklaying' },
+  { id: 'solar',                 icon: 'ti-sun',                label: 'Solar Install' },
+  { id: 'borehole',              icon: 'ti-ripple',             label: 'Borehole' },
+  { id: 'septic_tank',           icon: 'ti-cylinder',           label: 'Septic Tank' },
+  { id: 'dstv',                  icon: 'ti-device-tv',          label: 'DSTV & Satellite' },
+  { id: 'pest_control',          icon: 'ti-bug',                label: 'Pest Control' },
+  { id: 'locksmith',             icon: 'ti-lock',               label: 'Locksmith' },
+  { id: 'waterproofing',         icon: 'ti-umbrella',           label: 'Waterproofing' },
+  // Event hire
+  { id: 'tent_hire',             icon: 'ti-tent',               label: 'Tent Hire' },
+  { id: 'chair_table_hire',      icon: 'ti-armchair',           label: 'Chairs & Tables' },
+  { id: 'decor_hire',            icon: 'ti-sparkles',           label: 'Décor Hire' },
+  { id: 'sound_pa_hire',         icon: 'ti-speakerphone',       label: 'PA & Sound' },
+  { id: 'jumping_castle_hire',   icon: 'ti-building-castle',    label: 'Jumping Castle' },
+  { id: 'catering_equipment_hire',icon: 'ti-bowl-chopsticks',   label: 'Catering Equipment' },
+  { id: 'cold_room_hire',        icon: 'ti-snowflake',          label: 'Cold Room Hire' },
+  { id: 'mobile_toilet_hire',    icon: 'ti-toilet-paper',       label: 'Mobile Toilets' },
+  // Plant & equipment
+  { id: 'generator_hire',        icon: 'ti-bolt',               label: 'Generator Hire' },
+  { id: 'water_bowser_hire',     icon: 'ti-droplet',            label: 'Water Bowser' },
+  // Transport & logistics
+  { id: 'bakkie_hire',           icon: 'ti-truck',              label: 'Bakkie Hire' },
+  { id: 'van_hire',              icon: 'ti-truck',              label: 'Van Hire' },
+  { id: 'furniture_removal',     icon: 'ti-box',                label: 'Furniture Removal' },
+  { id: 'last_mile_delivery',    icon: 'ti-package',            label: 'Last-Mile Delivery' },
+  { id: 'livestock_transport',   icon: 'ti-paw',                label: 'Livestock Transport' },
+  // Security
+  { id: 'security_guard_hire',   icon: 'ti-shield',             label: 'Security Guards' },
+  { id: 'security',              icon: 'ti-camera',             label: 'Alarm & CCTV' },
 ]
 
 const AVAIL = [

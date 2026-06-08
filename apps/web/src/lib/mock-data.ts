@@ -36,11 +36,68 @@ export const REVENUE_BARS = [
   { day: 'Today', amount: 'R14.2k', pct: 75, highlight: true },
 ]
 
-export const SERVICES = [
-  { id: 'plumbing', label: 'Plumbing', price: 'From R350', iconClass: 'ti ti-droplet', color: '#1D4ED8', bg: '#DBEAFE' },
-  { id: 'electrical', label: 'Electrical', price: 'From R400', iconClass: 'ti ti-bolt', color: '#D97706', bg: '#FEF3C7' },
-  { id: 'cleaning', label: 'Cleaning', price: 'From R250', iconClass: 'ti ti-wash', color: '#2D8A6E', bg: '#D1FAE5' },
-  { id: 'hvac', label: 'AC & HVAC', price: 'From R500', iconClass: 'ti ti-air-conditioning', color: '#7C3AED', bg: '#EDE9FE' },
-  { id: 'gas', label: 'Gas', price: 'From R450', iconClass: 'ti ti-flame', color: '#DC2626', bg: '#FEE2E2' },
-  { id: 'handyman', label: 'Handyman', price: 'From R300', iconClass: 'ti ti-tools', color: '#92400E', bg: '#FEF3C7' },
+export const SERVICE_CATEGORIES = [
+  {
+    category: 'Home Trades',
+    services: [
+      { id: 'plumbing',       label: 'Plumbing',         price: 'From R350',   iconClass: 'ti ti-droplet',           color: '#1D4ED8', bg: '#DBEAFE' },
+      { id: 'electrical',     label: 'Electrical',       price: 'From R400',   iconClass: 'ti ti-bolt',              color: '#D97706', bg: '#FEF3C7' },
+      { id: 'cleaning',       label: 'Cleaning',         price: 'From R250',   iconClass: 'ti ti-wash',              color: '#2D8A6E', bg: '#D1FAE5' },
+      { id: 'hvac',           label: 'AC & HVAC',        price: 'From R500',   iconClass: 'ti ti-air-conditioning',  color: '#7C3AED', bg: '#EDE9FE' },
+      { id: 'gas',            label: 'Gas',              price: 'From R450',   iconClass: 'ti ti-flame',             color: '#DC2626', bg: '#FEE2E2' },
+      { id: 'handyman',       label: 'Handyman',         price: 'From R300',   iconClass: 'ti ti-tools',             color: '#92400E', bg: '#FEF3C7' },
+      { id: 'painting',       label: 'Painting',         price: 'From R280',   iconClass: 'ti ti-paint',             color: '#0891B2', bg: '#CFFAFE' },
+      { id: 'tiling',         label: 'Tiling',           price: 'From R320',   iconClass: 'ti ti-grid-pattern',      color: '#6D28D9', bg: '#EDE9FE' },
+      { id: 'carpentry',      label: 'Carpentry',        price: 'From R350',   iconClass: 'ti ti-axe',               color: '#78350F', bg: '#FEF3C7' },
+      { id: 'roofing',        label: 'Roofing',          price: 'From R600',   iconClass: 'ti ti-home',              color: '#374151', bg: '#F3F4F6' },
+      { id: 'bricklaying',    label: 'Bricklaying',      price: 'From R400',   iconClass: 'ti ti-building',          color: '#9D4E15', bg: '#FEF3C7' },
+      { id: 'solar',          label: 'Solar Install',    price: 'From R1 500', iconClass: 'ti ti-sun',               color: '#D97706', bg: '#FEF3C7' },
+      { id: 'borehole',       label: 'Borehole',         price: 'From R2 500', iconClass: 'ti ti-ripple',            color: '#0369A1', bg: '#E0F2FE' },
+      { id: 'septic_tank',    label: 'Septic Tank',      price: 'From R800',   iconClass: 'ti ti-cylinder',          color: '#4B5563', bg: '#F3F4F6' },
+      { id: 'dstv',           label: 'DSTV & Satellite', price: 'From R250',   iconClass: 'ti ti-device-tv',         color: '#1E40AF', bg: '#DBEAFE' },
+      { id: 'pest_control',   label: 'Pest Control',     price: 'From R450',   iconClass: 'ti ti-bug',               color: '#065F46', bg: '#D1FAE5' },
+      { id: 'locksmith',      label: 'Locksmith',        price: 'From R350',   iconClass: 'ti ti-lock',              color: '#374151', bg: '#F3F4F6' },
+      { id: 'waterproofing',  label: 'Waterproofing',    price: 'From R700',   iconClass: 'ti ti-umbrella',          color: '#0284C7', bg: '#E0F2FE' },
+    ],
+  },
+  {
+    category: 'Event Hire',
+    services: [
+      { id: 'tent_hire',              label: 'Tent Hire',            price: 'From R800',   iconClass: 'ti ti-tent',         color: '#7C3AED', bg: '#EDE9FE' },
+      { id: 'chair_table_hire',       label: 'Chairs & Tables',      price: 'From R15/pc', iconClass: 'ti ti-armchair',     color: '#0891B2', bg: '#CFFAFE' },
+      { id: 'decor_hire',             label: 'Décor Hire',           price: 'From R500',   iconClass: 'ti ti-sparkles',     color: '#DB2777', bg: '#FCE7F3' },
+      { id: 'sound_pa_hire',          label: 'PA & Sound',           price: 'From R600',   iconClass: 'ti ti-speakerphone', color: '#1D4ED8', bg: '#DBEAFE' },
+      { id: 'jumping_castle_hire',    label: 'Jumping Castle',       price: 'From R700',   iconClass: 'ti ti-building-castle', color: '#D97706', bg: '#FEF3C7' },
+      { id: 'catering_equipment_hire',label: 'Catering Equipment',   price: 'From R400',   iconClass: 'ti ti-bowl-chopsticks', color: '#065F46', bg: '#D1FAE5' },
+      { id: 'cold_room_hire',         label: 'Cold Room Hire',       price: 'From R1 200', iconClass: 'ti ti-snowflake',    color: '#0284C7', bg: '#E0F2FE' },
+      { id: 'mobile_toilet_hire',     label: 'Mobile Toilets',       price: 'From R350',   iconClass: 'ti ti-toilet-paper', color: '#374151', bg: '#F3F4F6' },
+    ],
+  },
+  {
+    category: 'Plant & Equipment',
+    services: [
+      { id: 'generator_hire',   label: 'Generator Hire',    price: 'From R600',   iconClass: 'ti ti-bolt',     color: '#D97706', bg: '#FEF3C7' },
+      { id: 'water_bowser_hire',label: 'Water Bowser',      price: 'From R500',   iconClass: 'ti ti-droplet',  color: '#0284C7', bg: '#E0F2FE' },
+    ],
+  },
+  {
+    category: 'Transport & Logistics',
+    services: [
+      { id: 'bakkie_hire',        label: 'Bakkie Hire',        price: 'From R400',   iconClass: 'ti ti-truck',          color: '#374151', bg: '#F3F4F6' },
+      { id: 'van_hire',           label: 'Van Hire',           price: 'From R600',   iconClass: 'ti ti-truck',          color: '#1D4ED8', bg: '#DBEAFE' },
+      { id: 'furniture_removal',  label: 'Furniture Removal',  price: 'From R800',   iconClass: 'ti ti-box',            color: '#78350F', bg: '#FEF3C7' },
+      { id: 'last_mile_delivery', label: 'Last-Mile Delivery', price: 'From R80',    iconClass: 'ti ti-package',        color: '#2D8A6E', bg: '#D1FAE5' },
+      { id: 'livestock_transport',label: 'Livestock Transport',price: 'From R600',   iconClass: 'ti ti-paw',            color: '#78350F', bg: '#FEF3C7' },
+    ],
+  },
+  {
+    category: 'Security',
+    services: [
+      { id: 'security_guard_hire',label: 'Security Guards',   price: 'From R350',   iconClass: 'ti ti-shield',         color: '#374151', bg: '#F3F4F6' },
+      { id: 'security',           label: 'Alarm & CCTV',      price: 'From R500',   iconClass: 'ti ti-camera',         color: '#DC2626', bg: '#FEE2E2' },
+    ],
+  },
 ]
+
+// Flat list for backwards-compat
+export const SERVICES = SERVICE_CATEGORIES.flatMap(c => c.services)

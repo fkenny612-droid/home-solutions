@@ -7,12 +7,29 @@ import { SERVICES } from '@/lib/mock-data'
 type View = 'home' | 'providers' | 'quote' | 'tracking' | 'rating' | 'done'
 
 const PROVIDER_TITLE: Record<string, string> = {
-  plumbing: 'Plumbers near you',
-  electrical: 'Electricians near you',
-  cleaning: 'Cleaners near you',
-  hvac: 'HVAC techs near you',
-  gas: 'Gas techs near you',
-  handyman: 'Handymen near you',
+  // Home trades
+  plumbing: 'Plumbers near you', electrical: 'Electricians near you',
+  cleaning: 'Cleaners near you', hvac: 'HVAC techs near you',
+  gas: 'Gas techs near you', handyman: 'Handymen near you',
+  painting: 'Painters near you', tiling: 'Tilers near you',
+  carpentry: 'Carpenters near you', roofing: 'Roofers near you',
+  bricklaying: 'Bricklayers near you', solar: 'Solar installers near you',
+  borehole: 'Borehole specialists near you', septic_tank: 'Septic tank services near you',
+  dstv: 'DSTV installers near you', pest_control: 'Pest control near you',
+  locksmith: 'Locksmiths near you', waterproofing: 'Waterproofers near you',
+  // Event hire
+  tent_hire: 'Tent hire near you', chair_table_hire: 'Chair & table hire near you',
+  decor_hire: 'Décor hire near you', sound_pa_hire: 'PA & sound hire near you',
+  jumping_castle_hire: 'Jumping castles near you', catering_equipment_hire: 'Catering equipment near you',
+  cold_room_hire: 'Cold room hire near you', mobile_toilet_hire: 'Mobile toilet hire near you',
+  // Plant & equipment
+  generator_hire: 'Generator hire near you', water_bowser_hire: 'Water bowsers near you',
+  // Transport
+  bakkie_hire: 'Bakkie hire near you', van_hire: 'Van hire near you',
+  furniture_removal: 'Removal services near you', last_mile_delivery: 'Delivery services near you',
+  livestock_transport: 'Livestock transport near you',
+  // Security
+  security_guard_hire: 'Security companies near you', security: 'Alarm & CCTV installers near you',
   emergency: 'Emergency dispatch',
 }
 
