@@ -35,8 +35,15 @@ interface HirePhoto {
   localUri?: string
 }
 
-// inventory[serviceId][optionValue] = quantity
-type HireInventory = Record<string, Record<string, number>>
+// inventory[serviceId][optionValue] = { qty, available }
+interface HireItem { qty: number; available: boolean }
+type HireInventory = Record<string, Record<string, HireItem>>
+
+// Parse either old number format or new object format
+function parseItem(val: any): HireItem {
+  if (typeof val === 'number') return { qty: val, available: true }
+  return { qty: val?.qty ?? 1, available: val?.available !== false }
+}
 
 // ─── Hire service IDs ─────────────────────────────────────────────────────────
 const HIRE_SERVICE_IDS = new Set([
@@ -142,54 +149,75 @@ function HireServiceInventory({
   label,
   emoji,
   inventory,
-  onChange,
+  onQtyChange,
+  onAvailChange,
 }: {
-  serviceId: string
-  label: string
-  emoji: string
-  inventory: Record<string, number>
-  onChange: (serviceId: string, optionValue: string, qty: number) => void
+  serviceId:     string
+  label:         string
+  emoji:         string
+  inventory:     Record<string, HireItem>
+  onQtyChange:   (serviceId: string, optionValue: string, qty: number) => void
+  onAvailChange: (serviceId: string, optionValue: string, available: boolean) => void
 }) {
   const options = getHireItemOptions(serviceId)
   if (options.length === 0) return null
 
-  const totalUnits = Object.values(inventory).reduce((s, n) => s + n, 0)
+  const totalQty       = Object.values(inventory).reduce((s, item) => s + item.qty, 0)
+  const availableQty   = Object.values(inventory).filter(item => item.available).reduce((s, item) => s + item.qty, 0)
+  const unavailableQty = totalQty - availableQty
 
   return (
     <View style={inv.card}>
+      {/* Card header */}
       <View style={inv.cardHeader}>
         <Text style={inv.cardEmoji}>{emoji}</Text>
         <Text style={inv.cardTitle}>{label}</Text>
-        {totalUnits > 0 && (
-          <View style={inv.totalBadge}>
-            <Text style={inv.totalBadgeText}>{totalUnits} unit{totalUnits !== 1 ? 's' : ''}</Text>
-          </View>
-        )}
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {availableQty > 0 && (
+            <View style={inv.availBadge}>
+              <Text style={inv.availBadgeText}>{availableQty} available</Text>
+            </View>
+          )}
+          {unavailableQty > 0 && (
+            <View style={inv.unavailBadge}>
+              <Text style={inv.unavailBadgeText}>{unavailableQty} off</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {options.map((opt, i) => {
-        const qty = inventory[opt.value] ?? 0
-        const checked = qty > 0
+        const item    = inventory[opt.value]
+        const checked = !!item && item.qty > 0
+        const qty     = item?.qty ?? 0
+        const avail   = item?.available ?? true
+
         return (
-          <View key={opt.value} style={[inv.row, i < options.length - 1 && inv.rowBorder]}>
-            {/* Checkbox */}
+          <View key={opt.value} style={[inv.row, i < options.length - 1 && inv.rowBorder, !avail && checked && inv.rowUnavail]}>
+            {/* Checkbox — add / remove item */}
             <TouchableOpacity
-              style={[inv.checkbox, checked && inv.checkboxChecked]}
-              onPress={() => onChange(serviceId, opt.value, checked ? 0 : 1)}
+              style={[inv.checkbox, checked && (avail ? inv.checkboxChecked : inv.checkboxUnavail)]}
+              onPress={() => onQtyChange(serviceId, opt.value, checked ? 0 : 1)}
             >
               {checked && <Text style={inv.checkmark}>✓</Text>}
             </TouchableOpacity>
 
-            <Text style={[inv.optLabel, checked && inv.optLabelChecked]} numberOfLines={1}>
-              {opt.label}
-            </Text>
+            {/* Label */}
+            <View style={{ flex: 1 }}>
+              <Text style={[inv.optLabel, checked && inv.optLabelChecked, checked && !avail && inv.optLabelUnavail]} numberOfLines={1}>
+                {opt.label}
+              </Text>
+              {checked && !avail && (
+                <Text style={inv.unavailHint}>Not available for bookings</Text>
+              )}
+            </View>
 
-            {/* Quantity stepper — only visible when checked */}
+            {/* Quantity stepper — visible when checked */}
             {checked && (
-              <View style={inv.stepper}>
+              <View style={[inv.stepper, !avail && inv.stepperUnavail]}>
                 <TouchableOpacity
                   style={[inv.stepBtn, qty <= 1 && inv.stepBtnDisabled]}
-                  onPress={() => onChange(serviceId, opt.value, Math.max(1, qty - 1))}
+                  onPress={() => onQtyChange(serviceId, opt.value, Math.max(1, qty - 1))}
                   disabled={qty <= 1}
                 >
                   <Text style={inv.stepBtnText}>−</Text>
@@ -197,11 +225,22 @@ function HireServiceInventory({
                 <Text style={inv.stepQty}>{qty}</Text>
                 <TouchableOpacity
                   style={inv.stepBtn}
-                  onPress={() => onChange(serviceId, opt.value, qty + 1)}
+                  onPress={() => onQtyChange(serviceId, opt.value, qty + 1)}
                 >
                   <Text style={inv.stepBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
+            )}
+
+            {/* Availability toggle — visible when checked */}
+            {checked && (
+              <TouchableOpacity
+                style={[inv.toggle, !avail && inv.toggleOff]}
+                onPress={() => onAvailChange(serviceId, opt.value, !avail)}
+                activeOpacity={0.8}
+              >
+                <View style={[inv.toggleThumb, !avail && inv.toggleThumbOff]} />
+              </TouchableOpacity>
             )}
           </View>
         )
@@ -247,7 +286,18 @@ export default function ProviderOnboarding() {
     }).catch(() => {})
 
     api.providers.getHireInventory(user.id)
-      .then(inv => { if (inv && Object.keys(inv).length > 0) setHireInventory(inv) })
+      .then((raw: any) => {
+        if (!raw || Object.keys(raw).length === 0) return
+        // Normalise: values may be plain numbers (old format) or {qty,available} objects
+        const normalised: HireInventory = {}
+        for (const svcId of Object.keys(raw)) {
+          normalised[svcId] = {}
+          for (const optVal of Object.keys(raw[svcId])) {
+            normalised[svcId][optVal] = parseItem(raw[svcId][optVal])
+          }
+        }
+        setHireInventory(normalised)
+      })
       .catch(() => {})
   }, [user])
 
@@ -257,27 +307,54 @@ export default function ProviderOnboarding() {
   const setUploading = (key: DocType, uploading: boolean) =>
     setDocs(prev => ({ ...prev, [key]: { ...prev[key], uploading } }))
 
-  // ─── Inventory change handler with debounced auto-save ──────────────────────
+  // ─── Debounced save helper ───────────────────────────────────────────────────
+  const scheduleSave = useCallback((updated: HireInventory) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    if (!user) return
+    saveTimer.current = setTimeout(async () => {
+      setSavingInventory(true)
+      try { await api.providers.updateHireInventory(user.id, updated as any) }
+      catch {}
+      finally { setSavingInventory(false) }
+    }, 800)
+  }, [user])
+
+  // ─── Qty change ──────────────────────────────────────────────────────────────
   const handleInventoryChange = useCallback((serviceId: string, optionValue: string, qty: number) => {
     setHireInventory(prev => {
-      const updated = { ...prev, [serviceId]: { ...(prev[serviceId] ?? {}), [optionValue]: qty } }
-      // Remove zero-qty entries to keep it clean
-      if (qty === 0) delete updated[serviceId][optionValue]
-      if (Object.keys(updated[serviceId]).length === 0) delete updated[serviceId]
-
-      // Debounced save to API
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      if (user) {
-        saveTimer.current = setTimeout(async () => {
-          setSavingInventory(true)
-          try { await api.providers.updateHireInventory(user.id, updated) }
-          catch {}
-          finally { setSavingInventory(false) }
-        }, 800)
+      const existing = prev[serviceId]?.[optionValue]
+      const updated: HireInventory = {
+        ...prev,
+        [serviceId]: {
+          ...(prev[serviceId] ?? {}),
+          [optionValue]: { qty, available: existing?.available ?? true },
+        },
       }
+      if (qty === 0) {
+        delete updated[serviceId][optionValue]
+        if (Object.keys(updated[serviceId]).length === 0) delete updated[serviceId]
+      }
+      scheduleSave(updated)
       return updated
     })
-  }, [user])
+  }, [scheduleSave])
+
+  // ─── Availability toggle ─────────────────────────────────────────────────────
+  const handleAvailabilityChange = useCallback((serviceId: string, optionValue: string, available: boolean) => {
+    setHireInventory(prev => {
+      const existing = prev[serviceId]?.[optionValue]
+      if (!existing) return prev
+      const updated: HireInventory = {
+        ...prev,
+        [serviceId]: {
+          ...(prev[serviceId] ?? {}),
+          [optionValue]: { ...existing, available },
+        },
+      }
+      scheduleSave(updated)
+      return updated
+    })
+  }, [scheduleSave])
 
   // ─── Document upload ────────────────────────────────────────────────────────
   const pickAndUpload = async (docDef: typeof DOCS[0]) => {
@@ -362,7 +439,7 @@ export default function ProviderOnboarding() {
   const selectedHireSvcs = skills.filter(s => HIRE_SERVICE_IDS.has(s))
   const uploadedPhotos   = hirePhotos.filter(p => !p.uploading && p.fileUrl)
   const totalInventoryUnits = Object.values(hireInventory).reduce(
-    (sum, items) => sum + Object.values(items).reduce((s, n) => s + n, 0), 0
+    (sum, items) => sum + Object.values(items).reduce((s, item) => s + item.qty, 0), 0
   )
   const requiredDocs     = DOCS.filter(d => !d.optional)
   const uploadedDocCount = requiredDocs.filter(d => docs[d.key].uploaded).length
@@ -505,7 +582,8 @@ export default function ProviderOnboarding() {
                   label={meta.label}
                   emoji={meta.emoji}
                   inventory={hireInventory[svcId] ?? {}}
-                  onChange={handleInventoryChange}
+                  onQtyChange={handleInventoryChange}
+                  onAvailChange={handleAvailabilityChange}
                 />
               )
             })}
@@ -680,22 +758,34 @@ const s = StyleSheet.create({
 
 // ─── Inventory card styles ────────────────────────────────────────────────────
 const inv = StyleSheet.create({
-  card:           { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: colors.creamMid, marginBottom: 10, overflow: 'hidden' },
-  cardHeader:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#FAFAFA', borderBottomWidth: 1, borderBottomColor: colors.creamMid },
-  cardEmoji:      { fontSize: 18 },
-  cardTitle:      { fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 },
-  totalBadge:     { backgroundColor: colors.gold + '22', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  totalBadgeText: { fontSize: 11, color: colors.gold, fontWeight: '700' },
-  row:            { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  rowBorder:      { borderBottomWidth: 1, borderBottomColor: colors.creamMid },
-  checkbox:       { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.creamMid, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  checkboxChecked:{ borderColor: colors.gold, backgroundColor: colors.gold },
-  checkmark:      { fontSize: 13, color: '#fff', fontWeight: '700', lineHeight: 16 },
-  optLabel:       { flex: 1, fontSize: 13, color: colors.textMuted },
-  optLabelChecked:{ color: colors.text, fontWeight: '500' },
-  stepper:        { flexDirection: 'row', alignItems: 'center', gap: 0, borderRadius: 8, borderWidth: 1, borderColor: colors.creamMid, overflow: 'hidden' },
-  stepBtn:        { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA' },
-  stepBtnDisabled:{ opacity: 0.35 },
-  stepBtnText:    { fontSize: 18, color: colors.text, fontWeight: '300', lineHeight: 22 },
-  stepQty:        { width: 32, textAlign: 'center', fontSize: 14, fontWeight: '600', color: colors.text },
+  card:              { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: colors.creamMid, marginBottom: 10, overflow: 'hidden' },
+  cardHeader:        { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#FAFAFA', borderBottomWidth: 1, borderBottomColor: colors.creamMid },
+  cardEmoji:         { fontSize: 18 },
+  cardTitle:         { fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 },
+  availBadge:        { backgroundColor: '#D1FAE5', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  availBadgeText:    { fontSize: 11, color: '#065F46', fontWeight: '700' },
+  unavailBadge:      { backgroundColor: '#FEE2E2', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  unavailBadgeText:  { fontSize: 11, color: '#991B1B', fontWeight: '700' },
+  row:               { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11 },
+  rowBorder:         { borderBottomWidth: 1, borderBottomColor: colors.creamMid },
+  rowUnavail:        { backgroundColor: '#FAFAFA' },
+  checkbox:          { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.creamMid, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  checkboxChecked:   { borderColor: colors.gold, backgroundColor: colors.gold },
+  checkboxUnavail:   { borderColor: '#D1D5DB', backgroundColor: '#D1D5DB' },
+  checkmark:         { fontSize: 13, color: '#fff', fontWeight: '700', lineHeight: 16 },
+  optLabel:          { fontSize: 13, color: colors.textMuted },
+  optLabelChecked:   { color: colors.text, fontWeight: '500' },
+  optLabelUnavail:   { color: colors.textLight },
+  unavailHint:       { fontSize: 10, color: '#EF4444', marginTop: 1 },
+  stepper:           { flexDirection: 'row', alignItems: 'center', borderRadius: 8, borderWidth: 1, borderColor: colors.creamMid, overflow: 'hidden' },
+  stepperUnavail:    { borderColor: '#E5E7EB', opacity: 0.55 },
+  stepBtn:           { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA' },
+  stepBtnDisabled:   { opacity: 0.35 },
+  stepBtnText:       { fontSize: 18, color: colors.text, fontWeight: '300', lineHeight: 22 },
+  stepQty:           { width: 28, textAlign: 'center', fontSize: 13, fontWeight: '600', color: colors.text },
+  // Availability toggle
+  toggle:            { width: 40, height: 24, borderRadius: 12, backgroundColor: colors.accent, padding: 2, justifyContent: 'center', marginLeft: 4 },
+  toggleOff:         { backgroundColor: '#D1D5DB' },
+  toggleThumb:       { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: 'flex-end' },
+  toggleThumbOff:    { alignSelf: 'flex-start' },
 })
