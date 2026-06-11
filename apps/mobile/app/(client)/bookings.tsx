@@ -5,43 +5,37 @@ import { router } from 'expo-router'
 import { colors } from '../../constants/theme'
 import { api, Booking } from '../../lib/api'
 
-const STATUS_LABEL: Record<string, { label: string; color: string; emoji: string }> = {
-  pending:     { label: 'Pending',     color: colors.amber,  emoji: '⏳' },
-  accepted:    { label: 'Accepted',    color: colors.accent, emoji: '✅' },
-  en_route:    { label: 'En route',    color: colors.accent, emoji: '🚗' },
-  in_progress: { label: 'In progress', color: colors.gold,   emoji: '🔧' },
-  completed:   { label: 'Completed',   color: colors.accent, emoji: '✔️' },
-  cancelled:   { label: 'Cancelled',   color: colors.red,    emoji: '✕'  },
-  emergency:   { label: 'Emergency',   color: colors.red,    emoji: '🚨' },
+const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
+  pending:     { label: 'Pending',     bg: colors.amberBg,  fg: colors.amber  },
+  accepted:    { label: 'Accepted',    bg: colors.greenBg,  fg: colors.green  },
+  en_route:    { label: 'En route',    bg: colors.greenBg,  fg: colors.green  },
+  in_progress: { label: 'In progress', bg: '#FFF8EC',       fg: colors.gold   },
+  completed:   { label: 'Completed',   bg: colors.greenBg,  fg: colors.green  },
+  cancelled:   { label: 'Cancelled',   bg: colors.redBg,    fg: colors.red    },
+  emergency:   { label: 'Emergency',   bg: colors.redBg,    fg: colors.red    },
 }
 
 const SERVICE_EMOJI: Record<string, string> = {
-  // Original
   plumbing: '💧', electrical: '⚡', cleaning: '🧹',
   hvac: '❄️', gas: '🔥', handyman: '🔧',
-  // Home trades
   tiling: '🪟', painting: '🎨', landscaping: '🌿', pool: '🏊',
   pest_control: '🐜', locksmith: '🔑', carpentry: '🪚', solar: '☀️',
   security: '📷', paving: '🛤️', waterproofing: '💦', roofing: '🏠',
   gate_motor: '🚪', moving: '📦', bricklaying: '🧱', borehole: '🌊',
   septic_tank: '🚽', dstv: '📡',
-  // Event hire
   tent_hire: '⛺', chair_table_hire: '🪑', decor_hire: '🌸',
   sound_pa_hire: '🔊', jumping_castle_hire: '🏰',
   catering_equipment_hire: '🍳', cold_room_hire: '🧊', mobile_toilet_hire: '🚻',
-  // Plant & equipment
   generator_hire: '⚡', water_bowser_hire: '🚰',
-  // Transport
   van_hire: '🚐', bakkie_hire: '🛻', furniture_removal: '🛋️',
   last_mile_delivery: '📬', livestock_transport: '🐄',
-  // Security
   security_guard_hire: '💂',
 }
 
 export default function BookingsTab() {
-  const [bookings,    setBookings]    = useState<Booking[]>([])
-  const [refreshing,  setRefreshing]  = useState(false)
-  const [error,       setError]       = useState(false)
+  const [bookings,   setBookings]   = useState<Booking[]>([])
+  const [refreshing, setRefreshing] = useState(false)
+  const [error,      setError]      = useState(false)
 
   const load = async () => {
     try {
@@ -60,7 +54,7 @@ export default function BookingsTab() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <Text style={s.title}>My Bookings</Text>
+        <Text style={s.title}>Bookings</Text>
         <Text style={s.sub}>{bookings.length} active</Text>
       </View>
 
@@ -70,13 +64,12 @@ export default function BookingsTab() {
       >
         {error && (
           <View style={s.errorBox}>
-            <Text style={s.errorText}>⚠️ Could not load bookings — pull to retry</Text>
+            <Text style={s.errorText}>Could not load bookings — pull to retry</Text>
           </View>
         )}
 
         {!error && bookings.length === 0 && (
           <View style={s.empty}>
-            <Text style={s.emptyEmoji}>📋</Text>
             <Text style={s.emptyTitle}>No active bookings</Text>
             <Text style={s.emptySub}>Book a service from the Home tab</Text>
             <TouchableOpacity style={s.bookBtn} onPress={() => router.push('/(client)')}>
@@ -86,36 +79,41 @@ export default function BookingsTab() {
         )}
 
         {bookings.map(b => {
-          const st = STATUS_LABEL[b.status] ?? { label: b.status, color: colors.textMuted, emoji: '•' }
+          const st = STATUS_META[b.status] ?? { label: b.status, bg: colors.gray50, fg: colors.gray600 }
           return (
-            <View key={b.id} style={s.card}>
+            <TouchableOpacity
+              key={b.id}
+              style={s.card}
+              onPress={() => router.push({ pathname: '/(client)/booking-detail', params: { id: b.id } })}
+              activeOpacity={0.85}
+            >
               <View style={s.cardTop}>
-                <View style={[s.icon, { backgroundColor: '#F0F9FF' }]}>
+                <View style={s.icon}>
                   <Text style={{ fontSize: 20 }}>{SERVICE_EMOJI[b.serviceType] ?? '🔧'}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.service}>{b.serviceType.charAt(0).toUpperCase() + b.serviceType.slice(1)}</Text>
+                  <Text style={s.service}>{b.serviceType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Text>
                   <Text style={s.address} numberOfLines={1}>{b.address}</Text>
                 </View>
-                <View style={[s.statusBadge, { backgroundColor: st.color + '18' }]}>
-                  <Text style={[s.statusText, { color: st.color }]}>{st.emoji} {st.label}</Text>
+                <View style={[s.statusBadge, { backgroundColor: st.bg }]}>
+                  <Text style={[s.statusText, { color: st.fg }]}>{st.label}</Text>
                 </View>
               </View>
 
               <View style={s.meta}>
-                <Text style={s.metaText}>💰 R {b.quotedAmount.toLocaleString()}</Text>
+                <Text style={s.metaText}>R {b.quotedAmount.toLocaleString()}</Text>
+                <Text style={s.metaDivider}>·</Text>
                 <Text style={s.metaText}>#{b.id.slice(-6).toUpperCase()}</Text>
-                <Text style={s.metaText}>🕐 {new Date(b.createdAt).toLocaleDateString('en-ZA')}</Text>
+                <Text style={s.metaDivider}>·</Text>
+                <Text style={s.metaText}>{new Date(b.createdAt).toLocaleDateString('en-ZA')}</Text>
               </View>
+
               {['accepted','en_route','in_progress'].includes(b.status) && (
-                <TouchableOpacity
-                  style={s.chatBtn}
-                  onPress={() => router.push({ pathname: '/(client)/chat', params: { bookingId: b.id, providerName: b.providerId ?? 'Provider' } })}
-                >
-                  <Text style={s.chatBtnText}>💬 Message provider</Text>
-                </TouchableOpacity>
+                <View style={s.chatBtn}>
+                  <Text style={s.chatBtnText}>Tap to view & message provider →</Text>
+                </View>
               )}
-            </View>
+            </TouchableOpacity>
           )
         })}
 
@@ -126,28 +124,28 @@ export default function BookingsTab() {
 }
 
 const s = StyleSheet.create({
-  safe:        { flex: 1, backgroundColor: colors.cream },
-  header:      { backgroundColor: colors.navy, padding: 18, paddingBottom: 22 },
-  title:       { fontSize: 20, fontWeight: '300', color: '#fff' },
-  sub:         { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
-  body:        { padding: 14 },
-  errorBox:    { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#FECACA' },
+  safe:        { flex: 1, backgroundColor: colors.gray50 },
+  header:      { backgroundColor: colors.black, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 },
+  title:       { fontSize: 24, fontWeight: '700', color: colors.white, letterSpacing: -0.3 },
+  sub:         { fontSize: 12, color: colors.gray400, marginTop: 2 },
+  body:        { padding: 16 },
+  errorBox:    { backgroundColor: colors.redBg, borderRadius: 10, padding: 14, marginBottom: 12 },
   errorText:   { fontSize: 13, color: colors.red },
-  empty:       { alignItems: 'center', paddingTop: 80, gap: 8 },
-  emptyEmoji:  { fontSize: 44 },
-  emptyTitle:  { fontSize: 16, fontWeight: '600', color: colors.text },
-  emptySub:    { fontSize: 13, color: colors.textLight },
-  bookBtn:     { marginTop: 12, backgroundColor: colors.gold, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12 },
-  bookBtnText: { fontSize: 14, fontWeight: '600', color: colors.navy },
-  card:        { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.creamMid },
-  cardTop:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  icon:        { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  service:     { fontSize: 14, fontWeight: '600', color: colors.text },
-  address:     { fontSize: 11, color: colors.textLight, marginTop: 2 },
-  statusBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText:  { fontSize: 11, fontWeight: '600' },
-  meta:        { flexDirection: 'row', gap: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.creamMid },
-  metaText:    { fontSize: 11, color: colors.textMuted },
-  chatBtn:     { marginTop: 10, backgroundColor: '#FFF8EC', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#F0C060' },
-  chatBtnText: { fontSize: 12, fontWeight: '600', color: colors.gold },
+  empty:       { alignItems: 'center', paddingTop: 80, gap: 10 },
+  emptyTitle:  { fontSize: 17, fontWeight: '700', color: colors.black },
+  emptySub:    { fontSize: 14, color: colors.gray400 },
+  bookBtn:     { marginTop: 8, backgroundColor: colors.black, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 13 },
+  bookBtnText: { fontSize: 14, fontWeight: '600', color: colors.white },
+  card:        { backgroundColor: colors.white, borderRadius: 14, padding: 16, marginBottom: 10 },
+  cardTop:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  icon:        { width: 44, height: 44, borderRadius: 10, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  service:     { fontSize: 14, fontWeight: '700', color: colors.black },
+  address:     { fontSize: 11, color: colors.gray400, marginTop: 2 },
+  statusBadge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  statusText:  { fontSize: 11, fontWeight: '700' },
+  meta:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.gray100 },
+  metaText:    { fontSize: 12, color: colors.gray600, fontWeight: '500' },
+  metaDivider: { fontSize: 12, color: colors.gray200 },
+  chatBtn:     { marginTop: 10, backgroundColor: colors.gold, borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
+  chatBtnText: { fontSize: 13, fontWeight: '600', color: colors.black },
 })

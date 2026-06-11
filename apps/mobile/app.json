@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Home Solutions",
-    "slug": "home-solutions",
+    "name": "Easy-Fix",
+    "slug": "easy-fix",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -9,11 +9,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "homesolutions",
+    "scheme": "easyfix",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F1923"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": false,
@@ -22,6 +22,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Used for document uploads during KYC verification.",
         "NSPhotoLibraryUsageDescription": "Used to upload profile and KYC documents.",
+        "NSLocationWhenInUseUsageDescription": "Used to find nearby service providers.",
         "UIBackgroundModes": [
           "remote-notification",
           "remote-notification",
@@ -36,7 +37,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
-        "backgroundColor": "#0F1923"
+        "backgroundColor": "#000000"
       },
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -53,6 +54,7 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      "expo-location",
       "expo-secure-store",
       [
         "expo-notifications",

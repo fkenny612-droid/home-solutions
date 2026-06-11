@@ -1,36 +1,42 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider, useAuth } from '../context/auth'
+import SplashScreen from '../components/SplashScreen'
 
 function RootLayoutNav() {
-  const { token, user, isLoading } = useAuth()
+  const { token, user, isLoading, activeMode } = useAuth()
   const segments = useSegments()
   const router   = useRouter()
+  const [splashDone, setSplashDone] = useState(false)
 
   useEffect(() => {
-    if (isLoading) return
+    if (isLoading || !splashDone) return
 
     const inAuth = segments[0] === 'login' || segments[0] === 'register'
 
     if (!token && !inAuth) {
-      // Not signed in — go to login
       router.replace('/login')
     } else if (token && inAuth) {
-      // Signed in but on auth screen — go to correct app
-      router.replace(user?.role === 'provider' ? '/(provider)' : '/(client)')
+      router.replace(activeMode === 'provider' ? '/(provider)' : '/(client)')
     }
-  }, [token, isLoading, segments])
+  }, [token, isLoading, segments, splashDone])
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login"    />
-      <Stack.Screen name="register" />
-      <Stack.Screen name="index"    />
-      <Stack.Screen name="(client)"   />
-      <Stack.Screen name="(provider)" />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login"    />
+        <Stack.Screen name="register" />
+        <Stack.Screen name="index"    />
+        <Stack.Screen name="(client)"   />
+        <Stack.Screen name="(provider)" />
+      </Stack>
+
+      {!splashDone && (
+        <SplashScreen onDone={() => setSplashDone(true)} />
+      )}
+    </>
   )
 }
 

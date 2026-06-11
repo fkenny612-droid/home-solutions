@@ -18,20 +18,23 @@ export interface AuthUser {
 }
 
 interface AuthCtx {
-  user:      AuthUser | null
-  token:     string | null
-  isLoading: boolean
-  login:     (phone: string, password: string) => Promise<AuthUser>
-  register:  (data: Parameters<typeof import('../lib/api').api.auth.register>[0]) => Promise<AuthUser>
-  logout:    () => Promise<void>
+  user:       AuthUser | null
+  token:      string | null
+  isLoading:  boolean
+  activeMode: 'client' | 'provider'
+  login:      (phone: string, password: string) => Promise<AuthUser>
+  register:   (data: Parameters<typeof import('../lib/api').api.auth.register>[0]) => Promise<AuthUser>
+  logout:     () => Promise<void>
+  switchMode: (mode: 'client' | 'provider') => void
 }
 
 const Ctx = createContext<AuthCtx | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,      setUser]      = useState<AuthUser | null>(null)
-  const [token,     setToken]     = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user,       setUser]       = useState<AuthUser | null>(null)
+  const [token,      setToken]      = useState<string | null>(null)
+  const [isLoading,  setIsLoading]  = useState(true)
+  const [activeMode, setActiveMode] = useState<'client' | 'provider'>('client')
 
   // Restore session on boot
   useEffect(() => {
@@ -42,14 +45,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           SecureStore.getItemAsync(USER_KEY),
         ])
         if (t && u) {
+          const parsed = JSON.parse(u) as AuthUser
           setToken(t)
-          setUser(JSON.parse(u))
+          setUser(parsed)
+          setActiveMode(parsed.role === 'provider' ? 'provider' : 'client')
           api.setToken(t)
         }
       } catch {}
       finally { setIsLoading(false) }
     })()
   }, [])
+
+  const switchMode = (mode: 'client' | 'provider') => setActiveMode(mode)
 
   const persist = async (token: string, user: AuthUser) => {
     await Promise.all([
@@ -59,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api.setToken(token)
     setToken(token)
     setUser(user)
+    setActiveMode(user.role === 'provider' ? 'provider' : 'client')
   }
 
   const registerPushToken = async () => {
@@ -93,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <Ctx.Provider value={{ user, token, isLoading, activeMode, login, register, logout, switchMode }}>
       {children}
     </Ctx.Provider>
   )

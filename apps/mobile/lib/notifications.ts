@@ -9,7 +9,9 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge:  true,
-  }),
+    shouldShowBanner: true,
+    shouldShowList:   true,
+  } as any),
 })
 
 export async function registerForPushNotifications(): Promise<string | null> {

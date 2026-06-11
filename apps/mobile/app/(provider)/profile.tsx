@@ -1,21 +1,62 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
+import { api } from '../../lib/api'
+import { useEffect, useState } from 'react'
 
 const MENU = [
-  { emoji: '🏦', label: 'Bank account',       sub: 'For Peach Payments payouts' },
-  { emoji: '🛡️', label: 'KYC documents',      sub: 'ID, trade cert, bank letter', route: '/(provider)/onboarding' },
-  { emoji: '📸', label: 'Hire inventory',      sub: 'Add / manage your hire item photos', route: '/(provider)/onboarding' },
-  { emoji: '📍', label: 'Service area',        sub: 'Durban, Umhlanga, Ballito' },
-  { emoji: '⭐', label: 'Reviews',             sub: '214 reviews · 4.9 avg' },
-  { emoji: '🔔', label: 'Notifications',       sub: 'New jobs, payments, alerts' },
-  { emoji: '❓', label: 'Help & support',      sub: 'Chat, call, email' },
+  { emoji: '✏️', label: 'Edit profile',        sub: 'Name, email & photo',                route: '/(provider)/edit-profile'  },
+  { emoji: '💎', label: 'Provider plan',        sub: 'View & upgrade your plan',           route: '/(provider)/subscription'  },
+  { emoji: '🏦', label: 'Bank account',         sub: 'For Peach Payments payouts',         route: '/(provider)/bank-account'  },
+  { emoji: '🛡️', label: 'KYC documents',       sub: 'ID, trade cert, bank letter',        route: '/(provider)/onboarding'    },
+  { emoji: '📸', label: 'Hire inventory',       sub: 'Add / manage your hire item photos', route: '/(provider)/onboarding'    },
+  { emoji: '📍', label: 'Service area',         sub: 'Set your coverage area' },
+  { emoji: '⭐', label: 'Reviews',              sub: 'See what clients say',               route: '/(provider)/reviews'       },
+  { emoji: '🔔', label: 'Notifications',        sub: 'New jobs, payments, alerts',         route: '/(provider)/notifications' },
+  { emoji: '❓', label: 'Help & support',       sub: 'Chat, call, email' },
 ]
 
 export default function ProviderProfile() {
-  const { user, logout } = useAuth()
+  const { user, logout, switchMode } = useAuth()
+  const [balance,      setBalance]      = useState(0)
+  const [withdrawing,  setWithdrawing]  = useState(false)
+
+  useEffect(() => {
+    if (user?.id) {
+      api.providers.earnings(user.id).then(e => setBalance(e.available)).catch(() => {})
+    }
+  }, [user?.id])
+
+  const handleSwitchToClient = () => {
+    switchMode('client')
+    router.replace('/(client)')
+  }
+
+  const handleWithdraw = () => {
+    if (balance <= 0) { Alert.alert('No balance', 'You have no available balance to withdraw.'); return }
+    Alert.alert(
+      'Withdraw funds',
+      `Withdraw R ${balance.toLocaleString('en-ZA')} to your registered bank account?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Withdraw', style: 'default',
+          onPress: async () => {
+            setWithdrawing(true)
+            try {
+              const updated = await api.providers.withdraw(user!.id, balance)
+              setBalance(updated.earningsBalance)
+              Alert.alert('Withdrawal requested', 'Funds will be paid out within 1–2 business days.')
+            } catch { Alert.alert('Error', 'Could not process withdrawal. Please ensure your bank account is saved in your profile.') }
+            finally { setWithdrawing(false) }
+          },
+        },
+      ]
+    )
+  }
 
   const initials = user?.phone
     ? user.phone.replace('+27', '').replace(/\s/g, '').slice(0, 2)
@@ -58,9 +99,11 @@ export default function ProviderProfile() {
         {/* Payout balance */}
         <View style={s.balanceCard}>
           <Text style={s.balanceLabel}>Available to withdraw</Text>
-          <Text style={s.balanceAmt}>R 4,840</Text>
-          <TouchableOpacity style={s.withdrawBtn}>
-            <Text style={s.withdrawText}>💳  Withdraw via Peach Payments</Text>
+          <Text style={s.balanceAmt}>R {balance.toLocaleString('en-ZA')}</Text>
+          <TouchableOpacity style={[s.withdrawBtn, (withdrawing || balance <= 0) && { opacity: 0.5 }]} onPress={handleWithdraw} disabled={withdrawing || balance <= 0}>
+            {withdrawing
+              ? <ActivityIndicator color={colors.navy} />
+              : <Text style={s.withdrawText}>💳  Withdraw via Peach Payments</Text>}
           </TouchableOpacity>
         </View>
 
@@ -78,6 +121,11 @@ export default function ProviderProfile() {
             <Text style={s.menuArrow}>›</Text>
           </TouchableOpacity>
         ))}
+
+        <TouchableOpacity style={s.switchBtn} onPress={handleSwitchToClient}>
+          <Ionicons name="swap-horizontal-outline" size={16} color={colors.gold} />
+          <Text style={s.switchText}>Switch to client mode</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={s.signout} onPress={handleLogout}>
           <Text style={s.signoutText}>Sign out</Text>
@@ -111,6 +159,8 @@ const s = StyleSheet.create({
   menuLabel:    { fontSize: 13, fontWeight: '600', color: colors.text },
   menuSub:      { fontSize: 11, color: colors.textLight, marginTop: 2 },
   menuArrow:    { fontSize: 18, color: colors.textLight },
-  signout:      { padding: 16, alignItems: 'center', marginTop: 8 },
+  switchBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.black2, borderRadius: 12, padding: 14, marginTop: 8 },
+  switchText:   { fontSize: 14, fontWeight: '600', color: colors.gold },
+  signout:      { padding: 16, alignItems: 'center', marginTop: 4 },
   signoutText:  { fontSize: 14, color: colors.red, fontWeight: '500' },
 })

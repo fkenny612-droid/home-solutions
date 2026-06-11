@@ -124,6 +124,71 @@ model Message {
   createdAt   DateTime @default(now())
 }
 
+model Subscription {
+  id           String   @id @default(uuid())
+  userId       String
+  userRole     String   // 'client' | 'provider'
+  planId       String
+  status       String   @default("active") // active | cancelled | expired
+  peachTokenId String?
+  startsAt     DateTime @default(now())
+  expiresAt    DateTime?
+  cancelledAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, userRole])
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  providerId String
+  clientId   String
+  bookingId  String?
+  stars      Int
+  tags       String[]
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@index([providerId])
+}
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  accountHolder String
+  bankName      String
+  accountNumber String
+  branchCode    String
+  accountType   String   @default("cheque")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SavedAddress {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  address   String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  type      String   // new_job | provider_assigned | job_complete | chat_message | payment
+  data      Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
 model Booking {
   id               String    @id @default(uuid())
   clientId         String

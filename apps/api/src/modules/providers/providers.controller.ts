@@ -6,8 +6,13 @@ export class ProvidersController {
   constructor(private readonly svc: ProvidersService) {}
 
   @Get()
-  findAll(@Query('status') status?: ProviderStatus, @Query('skill') skill?: string) {
-    return this.svc.findAll(status, skill)
+  findAll(
+    @Query('status') status?: ProviderStatus,
+    @Query('skill')  skill?: string,
+    @Query('lat')    lat?: string,
+    @Query('lng')    lng?: string,
+  ) {
+    return this.svc.findAll(status, skill, lat ? parseFloat(lat) : undefined, lng ? parseFloat(lng) : undefined)
   }
 
   @Get(':id')
@@ -44,6 +49,24 @@ export class ProvidersController {
     @Body() inventory: Record<string, Record<string, number>>,
   ) {
     return this.svc.updateHireInventory(id, inventory)
+  }
+
+  @Get(':id/reviews')
+  getReviews(@Param('id') id: string) {
+    return this.svc.getReviews(id)
+  }
+
+  @Post(':id/review')
+  addReview(
+    @Param('id') id: string,
+    @Body() body: { stars: number; tags: string[]; comment?: string; clientId?: string; bookingId?: string },
+  ) {
+    return this.svc.addReview(id, body.stars, body.tags, body.comment, body.clientId, body.bookingId)
+  }
+
+  @Post(':id/withdraw')
+  requestWithdrawal(@Param('id') id: string, @Body('amount') amount: number) {
+    return this.svc.requestWithdrawal(id, amount)
   }
 
   @Patch(':id/kyc')

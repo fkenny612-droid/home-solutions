@@ -87,4 +87,47 @@ export class AuthService {
     await this.prisma.user.update({ where: { id: userId }, data: { pushToken } })
     return { ok: true }
   }
+
+  async getBankAccount(userId: string) {
+    return this.prisma.bankAccount.findUnique({ where: { userId } })
+  }
+
+  async saveBankAccount(userId: string, dto: { accountHolder: string; bankName: string; accountNumber: string; branchCode: string; accountType: string }) {
+    return this.prisma.bankAccount.upsert({
+      where:  { userId },
+      update: dto,
+      create: { userId, ...dto },
+    })
+  }
+
+  async getAddresses(userId: string) {
+    return this.prisma.savedAddress.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } })
+  }
+
+  async saveAddress(userId: string, dto: { label: string; address: string }) {
+    const count = await this.prisma.savedAddress.count({ where: { userId } })
+    return this.prisma.savedAddress.create({ data: { userId, ...dto, isDefault: count === 0 } })
+  }
+
+  async setDefaultAddress(userId: string, addressId: string) {
+    await this.prisma.savedAddress.updateMany({ where: { userId }, data: { isDefault: false } })
+    return this.prisma.savedAddress.update({ where: { id: addressId }, data: { isDefault: true } })
+  }
+
+  async deleteAddress(userId: string, addressId: string) {
+    await this.prisma.savedAddress.deleteMany({ where: { id: addressId, userId } })
+    return { ok: true }
+  }
+
+  async updateProfile(userId: string, dto: { firstName?: string; lastName?: string; email?: string; avatarUrl?: string }) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data:  {
+        ...(dto.firstName !== undefined ? { firstName: dto.firstName } : {}),
+        ...(dto.lastName  !== undefined ? { lastName:  dto.lastName  } : {}),
+        ...(dto.email     !== undefined ? { email:     dto.email     } : {}),
+      },
+    })
+    return { id: user.id, phone: user.phone, role: user.role, firstName: user.firstName, lastName: user.lastName, email: user.email }
+  }
 }

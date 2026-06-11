@@ -3,13 +3,16 @@
  * Wired to live API: create booking, hold payment, complete, release.
  */
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Alert, TextInput } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
+import * as Location from 'expo-location'
+import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { api } from '../../lib/api'
-import type { Provider, Booking } from '../../lib/api'
+import type { Provider, Booking, CardDetails } from '../../lib/api'
+import CardInput from '../../components/CardInput'
 import { useAuth } from '../../context/auth'
 import { getService, calculateEstimate, SERVICES } from '../../lib/serviceConfig'
 import { uploadToCloudinary } from '../../lib/cloudinary'
@@ -17,8 +20,8 @@ import { uploadToCloudinary } from '../../lib/cloudinary'
 type Step = 'details' | 'providers' | 'quote' | 'tracking' | 'rating' | 'done'
 
 const MOCK_PROVIDERS: Provider[] = [
-  { id: 'prov-raj',   name: 'Raj Pillay',   skills: ['plumbing'], rating: 4.9, reviewCount: 214, jobCount: 892, earningsBalance: 4840, kycStatus: 'approved', status: 'active', location: { lat: -29.8587, lng: 31.0218 }, availability: { monFri: true, saturday: true, sunday: false, emergency: true } },
-  { id: 'prov-sipho', name: 'Sipho Ndlovu', skills: ['plumbing','handyman'], rating: 4.7, reviewCount: 98, jobCount: 312, earningsBalance: 0, kycStatus: 'approved', status: 'active', location: null, availability: { monFri: true, saturday: false, sunday: false, emergency: false } },
+  { id: 'prov-raj',   name: 'Raj Pillay',   skills: ['plumbing'], rating: 4.9, reviewCount: 214, jobCount: 892, earningsBalance: 4840, kycStatus: 'approved', status: 'active', lat: -29.8587, lng: 31.0218, distanceKm: null, etaMinutes: null, availability: { monFri: true, saturday: true, sunday: false, emergency: true } },
+  { id: 'prov-sipho', name: 'Sipho Ndlovu', skills: ['plumbing','handyman'], rating: 4.7, reviewCount: 98, jobCount: 312, earningsBalance: 0, kycStatus: 'approved', status: 'active', lat: null, lng: null, distanceKm: null, etaMinutes: null, availability: { monFri: true, saturday: false, sunday: false, emergency: false } },
 ]
 
 const QUOTE_AMOUNT = 1000
@@ -42,16 +45,32 @@ export default function BookScreen() {
   const [eta,            setEta]         = useState(12)
   const [rating,         setRating]      = useState(5)
   const [tags,           setTags]        = useState(['Punctual', 'Professional', 'Friendly'])
+  const [clientCoords,   setClientCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [address,        setAddress]      = useState('')
+  const [card,           setCard]         = useState<CardDetails | null>(null)
+  const [ratingLoading,  setRatingLoading] = useState(false)
   const etaRef = useRef(eta)
 
   const estimate = calculateEstimate(serviceType ?? '', answers)
 
-  // Fetch real providers
+  // Get client GPS location
+  useEffect(() => {
+    Location.requestForegroundPermissionsAsync().then(({ status }) => {
+      if (status !== 'granted') return
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+        .then(loc => setClientCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude }))
+        .catch(() => {})
+    })
+  }, [])
+
+  // Fetch real providers sorted by proximity
   useEffect(() => {
     if (serviceType && serviceType !== 'emergency') {
-      api.providers.list(serviceType).then(p => { if (p.length) setProviders(p) }).catch(() => {})
+      api.providers.list(serviceType, clientCoords?.lat, clientCoords?.lng)
+        .then(p => { if (p.length) setProviders(p) })
+        .catch(() => {})
     }
-  }, [serviceType])
+  }, [serviceType, clientCoords])
 
   // ETA countdown during tracking
   useEffect(() => {
@@ -96,7 +115,7 @@ export default function BookScreen() {
     const asset = result.assets[0]
     setUploadingPhoto(true)
     try {
-      const { url } = await uploadToCloudinary(asset.uri, asset.fileName ?? `photo_${Date.now()}.jpg`, asset.mimeType ?? 'image/jpeg', 'home-solutions/job-photos')
+      const { url } = await uploadToCloudinary(asset.uri, asset.fileName ?? `photo_${Date.now()}.jpg`, asset.mimeType ?? 'image/jpeg', 'easy-fix/job-photos')
       setPhotos(prev => [...prev, url])
     } catch { Alert.alert('Upload failed', 'Please try again.') }
     finally { setUploadingPhoto(false) }
@@ -111,7 +130,7 @@ export default function BookScreen() {
     const asset = result.assets[0]
     setUploadingPhoto(true)
     try {
-      const { url } = await uploadToCloudinary(asset.uri, `photo_${Date.now()}.jpg`, 'image/jpeg', 'home-solutions/job-photos')
+      const { url } = await uploadToCloudinary(asset.uri, `photo_${Date.now()}.jpg`, 'image/jpeg', 'easy-fix/job-photos')
       setPhotos(prev => [...prev, url])
     } catch { Alert.alert('Upload failed', 'Please try again.') }
     finally { setUploadingPhoto(false) }
@@ -120,6 +139,7 @@ export default function BookScreen() {
   // ── Approve & pay → create booking + hold payment ──
   const handleApprove = async () => {
     if (!user) return
+    if (!card) { Alert.alert('Card required', 'Please enter your card details to continue.'); return }
     setLoading(true)
     try {
       // 1. Create booking
@@ -127,8 +147,8 @@ export default function BookScreen() {
       const newBooking = await api.bookings.create({
         clientId:       user.id,
         serviceType:    (serviceType ?? 'handyman') as any,
-        location:       '-29.8587,31.0218',
-        address:        '22 Glenwood Road, Durban',
+        location:       clientCoords ? `${clientCoords.lat},${clientCoords.lng}` : '-29.8587,31.0218',
+        address:        address || 'South Africa',
         quotedAmount:   quoteAmount,
         paymentMethod:  'card',
         notes:          `Requested provider: ${prov?.name}`,
@@ -142,8 +162,8 @@ export default function BookScreen() {
         await api.bookings.assignProvider(newBooking.id, prov.id)
       }
 
-      // 3. Hold payment
-      const payRes = await api.payments.hold(newBooking.id, QUOTE_AMOUNT)
+      // 3. Hold payment with real card details
+      const payRes = await api.payments.hold(newBooking.id, quoteAmount, card)
       setTxnId(payRes.transactionId)
 
       setStep('tracking')
@@ -241,6 +261,20 @@ export default function BookScreen() {
               </View>
             ))}
 
+            {/* Address */}
+            <View style={{ marginBottom: 18 }}>
+              <Text style={s.qLabel}>Service address <Text style={s.qOptional}>(required)</Text></Text>
+              <TextInput
+                style={s.addressInput}
+                value={address}
+                onChangeText={setAddress}
+                placeholder="e.g. 12 Main Rd, Durban North"
+                placeholderTextColor={colors.gray400}
+                returnKeyType="done"
+                multiline={false}
+              />
+            </View>
+
             {/* Photo upload */}
             <Text style={s.qLabel}>Photos of the issue <Text style={s.qOptional}>(optional, up to 3)</Text></Text>
             <View style={s.photoRow}>
@@ -254,17 +288,17 @@ export default function BookScreen() {
               ))}
               {photos.length < 3 && (
                 uploadingPhoto ? (
-                  <View style={[s.photoAdd, { justifyContent: 'center', alignItems: 'center' }]}>
+                  <View style={[s.photoAddBtn, { justifyContent: 'center', alignItems: 'center' }]}>
                     <ActivityIndicator color={colors.gold} />
                   </View>
                 ) : (
-                  <View style={{ gap: 6 }}>
-                    <TouchableOpacity style={s.photoAdd} onPress={takePhoto}>
-                      <Text style={s.photoAddText}>📷</Text>
+                  <View style={s.photoAddRow}>
+                    <TouchableOpacity style={s.photoAddBtn} onPress={takePhoto} activeOpacity={0.75}>
+                      <Ionicons name="camera" size={22} color={colors.black} />
                       <Text style={s.photoAddLabel}>Camera</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={s.photoAdd} onPress={pickPhoto}>
-                      <Text style={s.photoAddText}>🖼️</Text>
+                    <TouchableOpacity style={s.photoAddBtn} onPress={pickPhoto} activeOpacity={0.75}>
+                      <Ionicons name="image" size={22} color={colors.black} />
                       <Text style={s.photoAddLabel}>Gallery</Text>
                     </TouchableOpacity>
                   </View>
@@ -287,7 +321,7 @@ export default function BookScreen() {
           </ScrollView>
 
           <View style={s.ctaBar}>
-            <TouchableOpacity style={s.ctaBtn} onPress={() => setStep('providers')}>
+            <TouchableOpacity style={[s.ctaBtn, !address.trim() && { opacity: 0.5 }]} onPress={() => { if (!address.trim()) { Alert.alert('Address required', 'Please enter the service address.'); return } setStep('providers') }}>
               <Text style={s.ctaBtnText}>Find providers →</Text>
             </TouchableOpacity>
           </View>
@@ -303,32 +337,56 @@ export default function BookScreen() {
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={s.headerTitle}>{serviceType ? serviceType.charAt(0).toUpperCase() + serviceType.slice(1) : 'Service'} near you</Text>
-              <Text style={s.headerSub}>Glenwood, Durban · {providers.length} available</Text>
+              <Text style={s.headerSub}>{providers.length} provider{providers.length !== 1 ? 's' : ''} available near you</Text>
             </View>
           </View>
           <ScrollView style={s.body}>
-            <Text style={s.hint}>Sorted by rating · Verified only</Text>
-            {providers.map((p, i) => (
-              <TouchableOpacity key={p.id} style={[s.provCard, selectedProv === i && s.provCardSel]} onPress={() => setSelected(i)}>
-                <View style={s.provTop}>
-                  <View style={[s.avatar, { backgroundColor: i === 0 ? '#DCF0E8' : '#DBEAFE' }]}>
-                    <Text style={[s.avatarText, { color: i === 0 ? '#1A6842' : '#1D4ED8' }]}>{p.name.split(' ').map(w => w[0]).join('')}</Text>
+            <Text style={s.hint}>{clientCoords ? 'Sorted by proximity · Verified only' : 'Sorted by rating · Verified only'}</Text>
+            {providers.map((p, i) => {
+              const avatarColors = [
+                { bg: '#DCF0E8', fg: '#1A6842' }, { bg: '#DBEAFE', fg: '#1D4ED8' },
+                { bg: '#FEF3C7', fg: '#92400E' }, { bg: '#FCE7F3', fg: '#9D174D' },
+              ]
+              const ac = avatarColors[i % avatarColors.length]
+              const distLabel = p.distanceKm != null ? `${p.distanceKm} km` : null
+              const etaLabel  = p.etaMinutes != null ? `~${p.etaMinutes} min` : null
+              return (
+                <TouchableOpacity key={p.id} style={[s.provCard, selectedProv === i && s.provCardSel]} onPress={() => setSelected(i)}>
+                  <View style={s.provTop}>
+                    <View style={[s.avatar, { backgroundColor: ac.bg }]}>
+                      <Text style={[s.avatarText, { color: ac.fg }]}>{p.name.split(' ').map(w => w[0]).join('')}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.provName}>{p.name}</Text>
+                      <Text style={s.provSkill}>{p.skills[0]} · {p.jobCount > 500 ? '8' : '5'} yrs exp</Text>
+                      <Text style={s.provStars}>{'★'.repeat(Math.round(p.rating))}{'☆'.repeat(5 - Math.round(p.rating))} <Text style={s.reviewCount}>{p.rating} ({p.reviewCount})</Text></Text>
+                    </View>
+                    {etaLabel && (
+                      <View style={s.etaBadge}>
+                        <Text style={s.etaBadgeText}>{etaLabel}</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.provName}>{p.name}</Text>
-                    <Text style={s.provSkill}>{p.skills[0]} · {p.jobCount > 500 ? '8' : '5'} yrs</Text>
-                    <Text style={s.provStars}>{'★'.repeat(Math.round(p.rating))}{'☆'.repeat(5 - Math.round(p.rating))} <Text style={s.reviewCount}>{p.rating} ({p.reviewCount})</Text></Text>
+                  <View style={s.tagRow}>
+                    <View style={s.tag}><Text style={s.tagText}>🏅 Certified</Text></View>
+                    <View style={s.tag}><Text style={s.tagText}>✓ Insured</Text></View>
+                    {p.availability?.emergency && <View style={[s.tag, s.tagEmergency]}><Text style={[s.tagText, { color: colors.red }]}>⚡ Emergency</Text></View>}
                   </View>
-                  <Text style={s.etaText}>~{i === 0 ? 12 : 18} min</Text>
-                </View>
-                <View style={s.tagRow}>
-                  <View style={s.tag}><Text style={s.tagText}>🏅 Certified</Text></View>
-                  <View style={s.tag}><Text style={s.tagText}>✓ Insured</Text></View>
-                  {i === 0 && <View style={s.tag}><Text style={s.tagText}>Geyser spec.</Text></View>}
-                </View>
-                <Text style={s.provMeta}>📍 {i === 0 ? '1.4' : '2.1'}km · 🔧 {p.jobCount} jobs</Text>
-              </TouchableOpacity>
-            ))}
+                  <View style={s.provMetaRow}>
+                    {distLabel && (
+                      <View style={s.provMetaItem}>
+                        <Ionicons name="location-outline" size={12} color={colors.gray400} />
+                        <Text style={s.provMetaText}>{distLabel}</Text>
+                      </View>
+                    )}
+                    <View style={s.provMetaItem}>
+                      <Ionicons name="construct-outline" size={12} color={colors.gray400} />
+                      <Text style={s.provMetaText}>{p.jobCount} jobs</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
           </ScrollView>
           <View style={s.ctaBar}>
             <TouchableOpacity style={s.ctaBtn} onPress={() => setStep('quote')}>
@@ -378,20 +436,16 @@ export default function BookScreen() {
             </View>
 
             <View style={s.paymentBox}>
-              <Text style={s.paymentLabel}>Payment via</Text>
-              <View style={s.paymentOptions}>
-                <View style={[s.payOpt, s.payOptActive]}><Text style={s.payOptActiveText}>Card · saved</Text></View>
-                <View style={s.payOpt}><Text style={s.payOptText}>EFT</Text></View>
-                <View style={s.payOpt}><Text style={s.payOptText}>PayFast</Text></View>
-              </View>
+              <Text style={s.paymentLabel}>Card payment</Text>
+              <CardInput onChange={setCard} />
             </View>
-            <Text style={s.holdNote}>Payment held securely by Peach Payments until job is complete.</Text>
+            <Text style={s.holdNote}>💳 Payment held securely by Peach Payments until job is complete.</Text>
           </ScrollView>
           <View style={s.ctaBar}>
-            <TouchableOpacity style={[s.ctaBtn, loading && { opacity: 0.7 }]} onPress={handleApprove} disabled={loading}>
+            <TouchableOpacity style={[s.ctaBtn, (loading || !card) && { opacity: 0.5 }]} onPress={handleApprove} disabled={loading || !card}>
               {loading
                 ? <ActivityIndicator color={colors.navy} />
-                : <Text style={s.ctaBtnText}>Approve &amp; pay R {Math.round((estimate.min + estimate.max) / 2).toLocaleString()}</Text>}
+                : <Text style={s.ctaBtnText}>{card ? `Approve & pay R ${Math.round((estimate.min + estimate.max) / 2).toLocaleString()}` : 'Enter card details'}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.ctaBtnSec} onPress={() => setStep('providers')} disabled={loading}>
               <Text style={s.ctaBtnSecText}>Request different provider</Text>
@@ -494,8 +548,20 @@ export default function BookScreen() {
             </View>
           </ScrollView>
           <View style={s.ctaBar}>
-            <TouchableOpacity style={s.ctaBtn} onPress={() => setStep('done')}>
-              <Text style={s.ctaBtnText}>Submit review</Text>
+            <TouchableOpacity
+              style={[s.ctaBtn, ratingLoading && { opacity: 0.7 }]}
+              disabled={ratingLoading}
+              onPress={async () => {
+                setRatingLoading(true)
+                try {
+                  if (prov) await api.providers.addReview(prov.id, rating, tags)
+                } catch {}
+                finally { setRatingLoading(false); setStep('done') }
+              }}
+            >
+              {ratingLoading
+                ? <ActivityIndicator color={colors.navy} />
+                : <Text style={s.ctaBtnText}>Submit review</Text>}
             </TouchableOpacity>
           </View>
         </>
@@ -524,6 +590,7 @@ export default function BookScreen() {
 const s = StyleSheet.create({
   qLabel:        { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 8 },
   qOptional:     { fontSize: 11, fontWeight: '400', color: colors.textLight },
+  addressInput:  { borderWidth: 1, borderColor: colors.gray200, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.black, backgroundColor: colors.white },
   optGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   optChip:       { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.creamMid, backgroundColor: '#fff' },
   optChipSel:    { borderColor: colors.gold, backgroundColor: '#FFFBF0' },
@@ -539,9 +606,9 @@ const s = StyleSheet.create({
   photoThumb:    { width: 80, height: 80, borderRadius: 10, overflow: 'hidden', position: 'relative' },
   photoImg:      { width: '100%', height: '100%' },
   photoRemove:   { position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
-  photoAdd:      { width: 80, height: 80, borderRadius: 10, borderWidth: 1.5, borderColor: colors.creamMid, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', gap: 2 },
-  photoAddText:  { fontSize: 20 },
-  photoAddLabel: { fontSize: 9, color: colors.textLight },
+  photoAddRow:   { flexDirection: 'row', gap: 8 },
+  photoAddBtn:   { width: 80, height: 80, borderRadius: 12, backgroundColor: colors.gray50, borderWidth: 1, borderColor: colors.gray100, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  photoAddLabel: { fontSize: 10, fontWeight: '600', color: colors.gray600 },
   estimateBox:   { backgroundColor: colors.navy, borderRadius: 12, padding: 14, marginTop: 4 },
   estimateLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1 },
   estimateRange: { fontSize: 22, fontWeight: '300', color: '#fff', marginVertical: 4 },
@@ -569,10 +636,16 @@ const s = StyleSheet.create({
   provStars:         { fontSize: 11, color: colors.gold, marginTop: 2 },
   reviewCount:       { color: colors.textLight },
   etaText:           { fontSize: 13, fontWeight: '600', color: colors.accent },
-  tagRow:            { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 6 },
-  tag:               { backgroundColor: colors.cream, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: colors.creamMid },
-  tagText:           { fontSize: 10, color: colors.textMuted },
-  provMeta:          { fontSize: 10, color: colors.textMuted },
+  etaBadge:          { backgroundColor: colors.black, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start' },
+  etaBadgeText:      { fontSize: 12, fontWeight: '700', color: colors.white },
+  tagRow:            { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 8 },
+  tag:               { backgroundColor: colors.gray50, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: colors.gray100 },
+  tagEmergency:      { borderColor: colors.red + '40', backgroundColor: colors.redBg },
+  tagText:           { fontSize: 10, color: colors.gray600 },
+  provMeta:          { fontSize: 10, color: colors.gray400 },
+  provMetaRow:       { flexDirection: 'row', gap: 12, marginTop: 2 },
+  provMetaItem:      { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  provMetaText:      { fontSize: 11, color: colors.gray400 },
   provMini:          { backgroundColor: '#fff', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12, borderWidth: 1, borderColor: colors.creamMid },
   provMiniName:      { fontSize: 13, fontWeight: '600', color: colors.text },
   provMiniSub:       { fontSize: 10, color: colors.textLight, marginTop: 1 },
