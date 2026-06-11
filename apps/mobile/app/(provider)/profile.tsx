@@ -14,6 +14,7 @@ const MENU = [
   { emoji: '🛡️', label: 'KYC documents',       sub: 'ID, trade cert, bank letter',        route: '/(provider)/onboarding'    },
   { emoji: '📸', label: 'Hire inventory',       sub: 'Add / manage your hire item photos', route: '/(provider)/onboarding'    },
   { emoji: '📍', label: 'Service area',         sub: 'Set your coverage area' },
+  { emoji: '🕐', label: 'Availability',         sub: 'Mon–Fri, weekends, emergency',       route: '/(provider)/availability' },
   { emoji: '⭐', label: 'Reviews',              sub: 'See what clients say',               route: '/(provider)/reviews'       },
   { emoji: '🔔', label: 'Notifications',        sub: 'New jobs, payments, alerts',         route: '/(provider)/notifications' },
   { emoji: '❓', label: 'Help & support',       sub: 'Chat, call, email' },

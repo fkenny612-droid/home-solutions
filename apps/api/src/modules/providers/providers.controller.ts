@@ -78,4 +78,12 @@ export class ProvidersController {
   updateLocation(@Param('id') id: string, @Body('lat') lat: number, @Body('lng') lng: number) {
     return this.svc.updateLocation(id, lat, lng)
   }
+
+  @Patch(':id/availability')
+  updateAvailability(
+    @Param('id') id: string,
+    @Body() body: { monFri?: boolean; saturday?: boolean; sunday?: boolean; emergency?: boolean },
+  ) {
+    return this.svc.updateAvailability(id, body)
+  }
 }

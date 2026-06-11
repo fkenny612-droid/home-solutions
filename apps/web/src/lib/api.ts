@@ -3,7 +3,7 @@
  * Points to NEXT_PUBLIC_API_URL (set in .env.local) or localhost:4000 in dev
  */
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://home-solutions-ds5b.onrender.com/api/v1'
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

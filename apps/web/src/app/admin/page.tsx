@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://home-solutions-ds5b.onrender.com/api/v1'
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
 
 // Human-readable labels for every service type
 const SERVICE_LABELS: Record<string, string> = {
@@ -411,6 +411,47 @@ function ProvidersSection() {
               ))}
               {docs.length === 0 && <p style={{ fontSize: 11, color: '#9C9CA0', margin: '8px 0' }}>No documents uploaded</p>}
             </div>
+
+            <div style={{ marginTop: 14 }}>
+              <div style={styles.label}>Availability</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                {(['monFri','saturday','sunday','emergency'] as const).map(k => {
+                  const labels: Record<string, string> = { monFri: 'Mon–Fri', saturday: 'Saturday', sunday: 'Sunday', emergency: '⚡ Emergency' }
+                  const on = selected[k]
+                  return (
+                    <button
+                      key={k}
+                      style={{ ...styles.actionBtn, background: on ? '#DCF0E8' : '#FEE2E2', color: on ? '#1A5C38' : '#E63946', border: 'none' }}
+                      onClick={async () => {
+                        await apiFetch(`/providers/${selected.id}/availability`, { method: 'PATCH', body: JSON.stringify({ [k]: !on }) })
+                        setSelected((s: any) => ({ ...s, [k]: !on }))
+                        setProviders(prev => prev.map(p => p.id === selected.id ? { ...p, [k]: !on } : p))
+                      }}
+                    >
+                      {labels[k]}: {on ? 'ON' : 'OFF'}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {selected.earningsBalance > 0 && (
+              <div style={{ marginTop: 14, padding: 12, background: '#FFFBF0', borderRadius: 8, border: '1px solid #EDE8E0' }}>
+                <div style={{ fontSize: 11, color: '#9C9CA0', marginBottom: 4 }}>PENDING WITHDRAWAL</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>R {selected.earningsBalance?.toLocaleString()}</div>
+                <button
+                  style={{ ...styles.actionBtn, background: '#C8922A', color: '#fff', border: 'none' }}
+                  onClick={async () => {
+                    if (!confirm(`Mark R ${selected.earningsBalance} as paid out to ${selected.name}?`)) return
+                    await apiFetch(`/providers/${selected.id}/withdraw`, { method: 'POST', body: JSON.stringify({ amount: selected.earningsBalance }) })
+                    setSelected((s: any) => ({ ...s, earningsBalance: 0 }))
+                    setProviders(prev => prev.map(p => p.id === selected.id ? { ...p, earningsBalance: 0 } : p))
+                  }}
+                >
+                  💳 Mark as paid out
+                </button>
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
               <button style={{ ...styles.actionBtn, background: '#DCF0E8', color: '#1A5C38', border: 'none' }} onClick={() => updateKyc(selected.id, 'approved')}>✓ Approve KYC</button>
