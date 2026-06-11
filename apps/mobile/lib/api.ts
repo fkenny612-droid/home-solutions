@@ -50,6 +50,7 @@ export interface Provider {
   lng: number | null
   distanceKm: number | null
   etaMinutes: number | null
+  serviceAreas: string[]
   availability: { monFri: boolean; saturday: boolean; sunday: boolean; emergency: boolean }
 }
 
@@ -142,6 +143,8 @@ export const api = {
       req<{ earningsBalance: number }>(`/providers/${id}/withdraw`, { method: 'POST', body: JSON.stringify({ amount }) }),
     updateAvailability: (id: string, dto: { monFri?: boolean; saturday?: boolean; sunday?: boolean; emergency?: boolean }) =>
       req<Provider>(`/providers/${id}/availability`, { method: 'PATCH', body: JSON.stringify(dto) }),
+    updateServiceAreas: (id: string, areas: string[]) =>
+      req<Provider>(`/providers/${id}/service-areas`, { method: 'PATCH', body: JSON.stringify({ areas }) }),
   },
 
   hardware: {

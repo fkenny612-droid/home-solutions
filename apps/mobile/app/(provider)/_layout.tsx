@@ -52,6 +52,7 @@ export default function ProviderLayout() {
       <Tabs.Screen name="reviews"       options={{ href: null }} />
       <Tabs.Screen name="bank-account"  options={{ href: null }} />
       <Tabs.Screen name="availability"  options={{ href: null }} />
+      <Tabs.Screen name="service-area"  options={{ href: null }} />
     </Tabs>
   )
 }

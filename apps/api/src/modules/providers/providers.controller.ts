@@ -79,6 +79,11 @@ export class ProvidersController {
     return this.svc.updateLocation(id, lat, lng)
   }
 
+  @Patch(':id/service-areas')
+  updateServiceAreas(@Param('id') id: string, @Body('areas') areas: string[]) {
+    return this.svc.updateServiceAreas(id, areas)
+  }
+
   @Patch(':id/availability')
   updateAvailability(
     @Param('id') id: string,
