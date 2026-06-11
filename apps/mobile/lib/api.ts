@@ -140,6 +140,8 @@ export const api = {
       req<Provider>(`/providers/${id}/kyc`, { method: 'PATCH', body: JSON.stringify({ status }) }),
     withdraw:   (id: string, amount: number) =>
       req<{ earningsBalance: number }>(`/providers/${id}/withdraw`, { method: 'POST', body: JSON.stringify({ amount }) }),
+    updateAvailability: (id: string, dto: { monFri?: boolean; saturday?: boolean; sunday?: boolean; emergency?: boolean }) =>
+      req<Provider>(`/providers/${id}/availability`, { method: 'PATCH', body: JSON.stringify(dto) }),
   },
 
   hardware: {

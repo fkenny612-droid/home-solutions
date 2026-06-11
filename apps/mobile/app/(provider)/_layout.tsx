@@ -51,6 +51,7 @@ export default function ProviderLayout() {
       <Tabs.Screen name="edit-profile"  options={{ href: null }} />
       <Tabs.Screen name="reviews"       options={{ href: null }} />
       <Tabs.Screen name="bank-account"  options={{ href: null }} />
+      <Tabs.Screen name="availability"  options={{ href: null }} />
     </Tabs>
   )
 }
