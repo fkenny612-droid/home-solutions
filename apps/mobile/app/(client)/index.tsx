@@ -1,134 +1,91 @@
-/**
- * Client Home Screen
- * Designed with vendor ad slots — banner carousel, featured provider card,
- * mid-page promo strip and bottom spotlight are all sellable ad spaces.
- */
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Dimensions, FlatList, NativeSyntheticEvent, NativeScrollEvent,
-  TextInput, Keyboard, Platform,
+  TextInput, Keyboard, Platform, Modal,
 } from 'react-native'
 import { router } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
-import { SERVICES, SERVICE_CATEGORIES } from '../../lib/serviceConfig'
+import { SERVICES, SERVICE_CATEGORIES, EASY_HIRE_IDS, EASY_FIX_IDS } from '../../lib/serviceConfig'
+import { api } from '../../lib/api'
+import SliderButton from '../../components/SliderButton'
 
 const { width: SW } = Dimensions.get('window')
 
-// ─── AD DATA (swap with real vendor content) ────────────────────────────────
+// ─── Easy-Fix shortcuts (top icon row like Uber ride types) ──────────────────
+const FIX_SHORTCUTS = ['plumbing', 'electrical', 'cleaning', 'handyman', 'painting', 'landscaping', 'solar', 'security']
 
-const HERO_BANNERS = [
-  {
-    id: '1',
-    bg:       '#0F1923',
-    tag:      '🔥 Limited offer',
-    headline: '20% off your\nfirst booking',
-    sub:      'Use code WELCOME20 at checkout',
-    cta:      'Book now',
-    accent:   colors.gold,
-    // adSlot: true — replace with vendor image/content
-  },
-  {
-    id: '2',
-    bg:       '#1A3A2A',
-    tag:      '☀️ Sponsored',
-    headline: 'Solar panels\nfrom R8,000',
-    sub:      'GreenHome Solutions · Durban & surrounds',
-    cta:      'Get a quote',
-    accent:   '#4ADE80',
-  },
-  {
-    id: '3',
-    bg:       '#1A1A3A',
-    tag:      '🛡️ Premium plan',
-    headline: 'Unlimited\ncallouts for R299/mo',
-    sub:      '90-day warranty on every job',
-    cta:      'Upgrade now',
-    accent:   colors.gold,
-  },
+// ─── Easy-Hire category tiles ─────────────────────────────────────────────────
+const HIRE_TILES = [
+  { label: 'Events',    emoji: '⛺', ids: ['tent_hire','chair_table_hire','decor_hire','sound_pa_hire','jumping_castle_hire','catering_equipment_hire','cold_room_hire','mobile_toilet_hire'] },
+  { label: 'Plant',     emoji: '⚡', ids: ['generator_hire','water_bowser_hire'] },
+  { label: 'Transport', emoji: '🛻', ids: ['van_hire','bakkie_hire','furniture_removal','last_mile_delivery','livestock_transport'] },
+  { label: 'Security',  emoji: '💂', ids: ['security_guard_hire'] },
 ]
 
-const FEATURED_PROVIDER = {
-  name:     'Raj Pillay Plumbing',
-  tag:      '⭐ Featured provider',
-  rating:   4.9,
-  reviews:  214,
-  skills:   'Plumbing · Geyser specialist',
-  area:     'Durban, Umhlanga, Glenwood',
-  badge:    'Certified · Insured · 8yrs exp',
-  initials: 'RP',
-  color:    '#DCF0E8',
-  textColor:'#1A6842',
-  // adSlot: true — vendor pays to feature here
-}
-
-const MID_PROMO = {
-  bg:       colors.gold,
-  headline: '🏠  Refer a friend, earn R100',
-  sub:      'Share your code and both get rewarded',
-  cta:      'Share now',
-  // adSlot: true — swap with vendor promo
-}
-
-const TRUST_STATS = [
-  { emoji: '✅', value: '1,200+', label: 'Vetted providers' },
-  { emoji: '🛡️', value: '90-day', label: 'Warranty' },
-  { emoji: '💳', value: 'Peach',  label: 'Secure payments' },
-  { emoji: '⚡', value: '<15min', label: 'Emergency ETA' },
-]
-
-const HOW_IT_WORKS = [
-  { step: '1', title: 'Choose a service',  sub: 'Pick from 19 categories',      emoji: '📋' },
-  { step: '2', title: 'Get a quote',       sub: 'Matched providers, live prices', emoji: '💰' },
-  { step: '3', title: 'Track & pay',       sub: 'Live tracking, pay on complete', emoji: '📍' },
+// ─── Promos carousel ─────────────────────────────────────────────────────────
+const PROMOS = [
+  { id: '1', tag: 'LIMITED OFFER',  headline: '20% off\nyour first fix',    sub: 'Code WELCOME20',          gold: true  },
+  { id: '2', tag: 'SPONSORED',      headline: 'Solar panels\nfrom R8,000',  sub: 'GreenHome · Nationwide', gold: false },
+  { id: '3', tag: 'EASY-HIRE',      headline: 'Tent hire\nfrom R1,500',     sub: 'Events sorted in minutes', gold: false },
 ]
 
 const RECENT = [
-  { emoji: '⚡', bg: '#FEF3C7', name: 'Electrical — DB board', date: '15 May · Kevin M. · ★★★★★', amt: 'R 850' },
-  { emoji: '💧', bg: '#DBEAFE', name: 'Plumbing — Geyser',    date: '2 May · Raj P. · ★★★★☆',  amt: 'R 2 200' },
+  { emoji: '⚡', name: 'Electrical — DB board', meta: '15 May · Kevin M. · ★★★★★', amt: 'R 850' },
+  { emoji: '💧', name: 'Plumbing — Geyser',    meta: '2 May · Raj P. · ★★★★☆',   amt: 'R 2 200' },
 ]
-
-// Top 6 popular services shown above the fold
-const TOP_SERVICES = ['plumbing', 'electrical', 'cleaning', 'handyman', 'painting', 'landscaping']
 
 function greeting() {
   const h = new Date().getHours()
-  if (h < 12) return 'Good morning,'
-  if (h < 17) return 'Good afternoon,'
-  return 'Good evening,'
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
 }
 
-// Build a flat search index: each service knows its category label
+// Flat search index across all services
 const SEARCH_INDEX = SERVICE_CATEGORIES.flatMap(cat =>
   cat.services.map(svc => ({ ...svc, category: cat.label }))
 )
 
-function searchServices(query: string) {
-  const q = query.toLowerCase().trim()
-  if (!q) return []
-  return SEARCH_INDEX.filter(svc =>
-    svc.label.toLowerCase().includes(q) ||
-    svc.category.toLowerCase().includes(q) ||
-    svc.id.toLowerCase().replace(/_/g, ' ').includes(q)
+function searchServices(q: string) {
+  const qn = q.toLowerCase().trim()
+  if (!qn) return []
+  return SEARCH_INDEX.filter(s =>
+    s.label.toLowerCase().includes(qn) ||
+    s.category.toLowerCase().includes(qn) ||
+    s.id.toLowerCase().replace(/_/g, ' ').includes(qn)
   )
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ClientHome() {
   const { user } = useAuth()
-  const [bannerIdx,    setBannerIdx]    = useState(0)
-  const [showAllSvcs,  setShowAllSvcs]  = useState(false)
+  const insets = useSafeAreaInsets()
+  const [promoIdx,     setPromoIdx]     = useState(0)
   const [searchQuery,  setSearchQuery]  = useState('')
   const [searchActive, setSearchActive] = useState(false)
-  const bannerRef  = useRef<FlatList>(null)
-  const searchRef  = useRef<TextInput>(null)
+  const [unreadCount,  setUnreadCount]  = useState(0)
+  const [filterOpen,   setFilterOpen]   = useState(false)
+  const [minRating,    setMinRating]    = useState(0)
+  const [maxPrice,     setMaxPrice]     = useState(0) // 0 = any
 
-  const displayName  = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.phone || 'there'
-  const topSvcs      = SERVICES.filter(s => TOP_SERVICES.includes(s.id))
-  const visibleSvcs  = showAllSvcs ? SERVICES : SERVICES.slice(0, 6)
+  useEffect(() => {
+    api.notifications.unreadCount().then(r => setUnreadCount(r.count)).catch(() => {})
+    const id = setInterval(() => {
+      api.notifications.unreadCount().then(r => setUnreadCount(r.count)).catch(() => {})
+    }, 30000)
+    return () => clearInterval(id)
+  }, [])
+  const promoRef  = useRef<FlatList>(null)
+  const searchRef = useRef<TextInput>(null)
+
+  const displayName   = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'there'
+  const fixServices   = SERVICES.filter(s => FIX_SHORTCUTS.includes(s.id))
+  const activeFilters = (minRating > 0 ? 1 : 0) + (maxPrice > 0 ? 1 : 0)
   const searchResults = searchServices(searchQuery)
 
   const openSearch = useCallback(() => {
@@ -142,260 +99,324 @@ export default function ClientHome() {
     Keyboard.dismiss()
   }, [])
 
-  const pickResult = useCallback((serviceId: string) => {
+  const pickResult = useCallback((id: string) => {
     closeSearch()
-    router.push({ pathname: '/(client)/book', params: { serviceType: serviceId } })
+    router.push({ pathname: '/(client)/book', params: { serviceType: id } })
   }, [closeSearch])
 
-  // Auto-scroll banner every 4s
+  // Auto-scroll promos
   useEffect(() => {
     if (searchActive) return
     const id = setInterval(() => {
-      const next = (bannerIdx + 1) % HERO_BANNERS.length
-      bannerRef.current?.scrollToIndex({ index: next, animated: true })
-      setBannerIdx(next)
-    }, 4000)
+      const next = (promoIdx + 1) % PROMOS.length
+      promoRef.current?.scrollToOffset({ offset: next * (SW - 20), animated: true })
+      setPromoIdx(next)
+    }, 4500)
     return () => clearInterval(id)
-  }, [bannerIdx, searchActive])
+  }, [promoIdx, searchActive])
 
-  const onBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / (SW - 28))
-    setBannerIdx(idx)
+  const onPromoScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setPromoIdx(Math.round(e.nativeEvent.contentOffset.x / (SW - 20)))
   }
 
   return (
     <SafeAreaView style={s.safe}>
+
       {/* ── Header ── */}
       <View style={s.header}>
         <View style={s.headerTop}>
-          {searchActive ? (
-            // ── Active search bar ──
-            <View style={s.searchActiveRow}>
-              <View style={s.searchActiveBar}>
-                <Text style={s.searchIcon}>🔍</Text>
+          <View>
+            <Text style={s.brand}>Easy-Fix</Text>
+            <Text style={s.greeting}>{greeting()}, {displayName.split(' ')[0]}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={s.premiumPill}>
+              <Text style={s.premiumText}>PREMIUM</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/(client)/notifications')} style={s.bellBtn}>
+              <Ionicons name="notifications-outline" size={22} color={colors.white} />
+              {unreadCount > 0 && (
+                <View style={s.bellBadge}>
+                  <Text style={s.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Uber-style address / search bar */}
+        <TouchableOpacity style={s.searchBar} onPress={openSearch} activeOpacity={0.85}>
+          <View style={s.searchBarIcon}>
+            <Text style={{ fontSize: 10 }}>📍</Text>
+          </View>
+          <Text style={s.searchBarText}>What service do you need?</Text>
+          <View style={s.searchBarRight}>
+            <Text style={s.searchBarArrow}>→</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Search overlay ── */}
+      <Modal visible={searchActive} animationType="slide" onRequestClose={closeSearch}>
+        <View style={{ flex: 1, backgroundColor: colors.white, paddingTop: insets.top }}>
+            <View style={s.searchOverlayHeader}>
+              <View style={s.searchOverlayBar}>
+                <Text style={s.searchOverlayPin}>📍</Text>
                 <TextInput
                   ref={searchRef}
-                  style={s.searchInput}
+                  style={s.searchOverlayInput}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   placeholder="Search services…"
-                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  placeholderTextColor={colors.gray400}
                   returnKeyType="search"
                   autoCorrect={false}
                   autoCapitalize="none"
                 />
                 {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')} style={s.searchClear}>
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
                     <Text style={s.searchClearText}>✕</Text>
                   </TouchableOpacity>
                 )}
               </View>
+              <TouchableOpacity onPress={() => setFilterOpen(true)} style={s.filterBtn}>
+                <Ionicons name="options-outline" size={18} color={activeFilters > 0 ? colors.gold : colors.gray600} />
+                {activeFilters > 0 && <View style={s.filterDot} />}
+              </TouchableOpacity>
               <TouchableOpacity onPress={closeSearch} style={s.searchCancel}>
                 <Text style={s.searchCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            // ── Collapsed header ──
-            <>
-              <View>
-                <Text style={s.greeting}>{greeting()}</Text>
-                <Text style={s.name}>{displayName}</Text>
-              </View>
-              <View style={s.badge}>
-                <Text style={s.badgeText}>👑 Premium</Text>
-              </View>
-            </>
-          )}
-        </View>
 
-        {/* Search bar — tap to open, hidden when active (replaced by row above) */}
-        {!searchActive && (
-          <TouchableOpacity style={s.search} onPress={openSearch} activeOpacity={0.8}>
-            <Text style={s.searchIcon}>🔍</Text>
-            <Text style={s.searchText}>What do you need today?</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* ── Search results overlay ── */}
-      {searchActive && (
-        <View style={s.resultsPane}>
-          {searchQuery.length === 0 ? (
-            // Suggestions when nothing typed yet
-            <View style={s.suggestionsWrap}>
-              <Text style={s.suggestionsLabel}>Popular searches</Text>
-              <View style={s.suggestionsRow}>
-                {['Plumbing', 'Tent Hire', 'Generator', 'Electrical', 'Cleaning', 'Bakkie'].map(tag => (
-                  <TouchableOpacity
-                    key={tag}
-                    style={s.suggestionChip}
-                    onPress={() => setSearchQuery(tag)}
-                  >
-                    <Text style={s.suggestionText}>{tag}</Text>
+            {searchQuery.length === 0 ? (
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <View style={s.searchSuggestions}>
+                  <Text style={s.searchSuggestLabel}>QUICK PICKS</Text>
+                  <View style={s.chipsRow}>
+                    {['Plumbing', 'Tent Hire', 'Generator', 'Electrical', 'Cleaning', 'Bakkie'].map(t => (
+                      <TouchableOpacity key={t} style={s.chip} onPress={() => setSearchQuery(t)}>
+                        <Text style={s.chipText}>{t}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={[s.searchSuggestLabel, { marginTop: 20 }]}>BROWSE</Text>
+                  {SERVICE_CATEGORIES.map(cat => (
+                    <TouchableOpacity key={cat.label} style={s.catRow} onPress={() => setSearchQuery(cat.label)}>
+                      <Text style={s.catRowText}>{cat.label}</Text>
+                      <Text style={s.catRowCount}>{cat.services.length} services</Text>
+                      <Text style={s.catRowArrow}>›</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : searchResults.length === 0 ? (
+              <View style={s.noResults}>
+                <Text style={s.noResultsTitle}>No services found</Text>
+                <Text style={s.noResultsSub}>Try "plumbing", "tent hire" or "generator"</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={searchResults}
+                keyExtractor={item => item.id}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={s.resultRow} onPress={() => pickResult(item.id)}>
+                    <View style={s.resultIcon}>
+                      <Text style={{ fontSize: 18 }}>{item.emoji}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.resultLabel}>{item.label}</Text>
+                      <Text style={s.resultMeta}>{(item as any).category} · {item.priceLabel}</Text>
+                    </View>
+                    <Text style={s.resultArrow}>›</Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={[s.suggestionsLabel, { marginTop: 16 }]}>Browse by category</Text>
-              {SERVICE_CATEGORIES.map(cat => (
-                <TouchableOpacity
-                  key={cat.label}
-                  style={s.catRow}
-                  onPress={() => setSearchQuery(cat.label)}
-                >
-                  <Text style={s.catRowText}>{cat.label}</Text>
-                  <Text style={s.catRowCount}>{cat.services.length} services</Text>
-                  <Text style={s.catRowArrow}>›</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : searchResults.length === 0 ? (
-            // No results
-            <View style={s.noResults}>
-              <Text style={s.noResultsEmoji}>🔍</Text>
-              <Text style={s.noResultsTitle}>No services found</Text>
-              <Text style={s.noResultsSub}>Try "plumbing", "tent hire" or "generator"</Text>
-            </View>
-          ) : (
-            // Results list
-            <FlatList
-              data={searchResults}
-              keyExtractor={item => item.id}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingVertical: 8 }}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={s.resultRow} onPress={() => pickResult(item.id)}>
-                  <View style={[s.resultIcon, { backgroundColor: item.bg }]}>
-                    <Text style={{ fontSize: 20 }}>{item.emoji}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.resultLabel}>{item.label}</Text>
-                    <Text style={s.resultMeta}>{(item as any).category} · {item.priceLabel}</Text>
-                  </View>
-                  <Text style={s.resultArrow}>›</Text>
-                </TouchableOpacity>
-              )}
-            />
-          )}
+                )}
+              />
+            )}
         </View>
-      )}
+      </Modal>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={searchActive && { display: 'none' }}>
+      {/* ── Filter bottom sheet ── */}
+      <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
+        <TouchableOpacity style={s.filterOverlay} activeOpacity={1} onPress={() => setFilterOpen(false)} />
+        <View style={[s.filterSheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={s.filterHandle} />
+          <Text style={s.filterTitle}>Filter providers</Text>
 
-        {/* ── Hero banner carousel (AD SPACE) ── */}
-        <View style={s.bannerWrap}>
+          <Text style={s.filterLabel}>Minimum rating</Text>
+          <View style={s.filterRow}>
+            {[0, 3, 4, 4.5, 5].map(r => (
+              <TouchableOpacity
+                key={r}
+                style={[s.filterChip, minRating === r && s.filterChipActive]}
+                onPress={() => setMinRating(r)}
+              >
+                <Text style={[s.filterChipText, minRating === r && s.filterChipTextActive]}>
+                  {r === 0 ? 'Any' : `${r}★+`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[s.filterLabel, { marginTop: 16 }]}>Max quote (once-off)</Text>
+          <View style={s.filterRow}>
+            {[0, 500, 1000, 2500, 5000].map(p => (
+              <TouchableOpacity
+                key={p}
+                style={[s.filterChip, maxPrice === p && s.filterChipActive]}
+                onPress={() => setMaxPrice(p)}
+              >
+                <Text style={[s.filterChipText, maxPrice === p && s.filterChipTextActive]}>
+                  {p === 0 ? 'Any' : `R${(p / 1000).toFixed(p < 1000 ? 0 : 1)}k`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={s.filterActions}>
+            <TouchableOpacity style={s.filterReset} onPress={() => { setMinRating(0); setMaxPrice(0) }}>
+              <Text style={s.filterResetText}>Reset</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.filterApply} onPress={() => setFilterOpen(false)}>
+              <Text style={s.filterApplyText}>Apply{activeFilters > 0 ? ` (${activeFilters})` : ''}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Main scroll ── */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+
+        {/* ── Emergency slider ── */}
+        <View style={s.emergencyWrap}>
+          <SliderButton
+            label="⚡  EMERGENCY CALLOUT"
+            sublabel="Slide to dispatch — technician in <15 min"
+            trackColor="#1A0000"
+            thumbColor="#C0392B"
+            onConfirm={() => router.push({ pathname: '/(client)/book', params: { serviceType: 'emergency' } })}
+          />
+        </View>
+
+        {/* ── Easy-Fix shortcuts (Uber ride-type row) ── */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Easy-Fix</Text>
+            <View style={s.brandTag}><Text style={s.brandTagText}>HOME SERVICES</Text></View>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
+            {fixServices.map(svc => (
+              <TouchableOpacity
+                key={svc.id}
+                style={s.fixTile}
+                onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: svc.id } })}
+                activeOpacity={0.8}
+              >
+                <View style={s.fixTileIcon}>
+                  <Text style={{ fontSize: 26 }}>{svc.emoji}</Text>
+                </View>
+                <Text style={s.fixTileLabel}>{svc.label}</Text>
+                <Text style={s.fixTilePrice}>{svc.priceLabel}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* ── Easy-Hire section ── */}
+        <View style={s.hireSection}>
+          <View style={s.hireSectionHeader}>
+            <View>
+              <Text style={s.hireSectionTitle}>Easy-Hire</Text>
+              <Text style={s.hireSectionSub}>Equipment · Events · Transport · Security</Text>
+            </View>
+          </View>
+
+          {/* 2×2 grid of hire categories */}
+          <View style={s.hireTileGrid}>
+            {HIRE_TILES.map(tile => (
+              <TouchableOpacity
+                key={tile.label}
+                style={s.hireTile}
+                onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: tile.ids[0] } })}
+                activeOpacity={0.8}
+              >
+                <Text style={s.hireTileEmoji}>{tile.emoji}</Text>
+                <Text style={s.hireTileLabel}>{tile.label}</Text>
+                <Text style={s.hireTileArrow}>→</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Hire promos row */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingBottom: 4 }}>
+            {SERVICES.filter(s => EASY_HIRE_IDS.includes(s.id)).slice(0, 8).map(svc => (
+              <TouchableOpacity
+                key={svc.id}
+                style={s.hireItemChip}
+                onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: svc.id } })}
+              >
+                <Text style={{ fontSize: 16 }}>{svc.emoji}</Text>
+                <Text style={s.hireItemLabel}>{svc.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* ── Promos carousel ── */}
+        <View style={s.promoSection}>
           <FlatList
-            ref={bannerRef}
-            data={HERO_BANNERS}
+            ref={promoRef}
+            data={PROMOS}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onScroll={onBannerScroll}
+            onScroll={onPromoScroll}
             scrollEventThrottle={16}
             keyExtractor={i => i.id}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+            snapToInterval={SW - 20}
+            decelerationRate="fast"
             renderItem={({ item }) => (
-              <View style={[s.banner, { backgroundColor: item.bg, width: SW - 28 }]}>
-                <Text style={s.bannerTag}>{item.tag}</Text>
-                <Text style={s.bannerHeadline}>{item.headline}</Text>
-                <Text style={s.bannerSub}>{item.sub}</Text>
-                <TouchableOpacity style={[s.bannerCta, { backgroundColor: item.accent }]}>
-                  <Text style={[s.bannerCtaText, { color: item.accent === colors.gold ? colors.navy : '#fff' }]}>{item.cta}</Text>
-                </TouchableOpacity>
+              <View style={[s.promoCard, { width: SW - 44 }, item.gold && s.promoCardGold]}>
+                <Text style={[s.promoTag, item.gold && s.promoTagGold]}>{item.tag}</Text>
+                <Text style={[s.promoHeadline, item.gold && s.promoHeadlineGold]}>{item.headline}</Text>
+                <Text style={[s.promoSub, item.gold && s.promoSubGold]}>{item.sub}</Text>
+                <View style={[s.promoCta, item.gold && s.promoCtaGold]}>
+                  <Text style={[s.promoCtaText, item.gold && s.promoCtaTextGold]}>Learn more →</Text>
+                </View>
               </View>
             )}
           />
-          {/* Dots */}
-          <View style={s.bannerDots}>
-            {HERO_BANNERS.map((_, i) => (
-              <View key={i} style={[s.bannerDot, i === bannerIdx && s.bannerDotActive]} />
+          <View style={s.promoDots}>
+            {PROMOS.map((_, i) => (
+              <View key={i} style={[s.promoDot, i === promoIdx && s.promoDotActive]} />
             ))}
           </View>
         </View>
 
-        {/* ── Emergency callout ── */}
-        <TouchableOpacity
-          style={s.emergency}
-          onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: 'plumbing' } })}
-        >
-          <View style={s.emergIcon}><Text style={{ fontSize: 22 }}>🚨</Text></View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.emergTitle}>Emergency callout</Text>
-            <Text style={s.emergSub}>Nearest technician in &lt;15 min · Available 24/7</Text>
-          </View>
-          <Text style={s.emergArrow}>›</Text>
-        </TouchableOpacity>
-
-        {/* ── Popular services ── */}
+        {/* ── Featured provider ── */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Popular services</Text>
-          <View style={s.svcGrid}>
-            {topSvcs.map(svc => (
-              <TouchableOpacity
-                key={svc.id}
-                style={s.svcCard}
-                onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: svc.id } })}
-              >
-                <View style={[s.svcIconBg, { backgroundColor: svc.bg }]}>
-                  <Text style={s.svcEmoji}>{svc.emoji}</Text>
-                </View>
-                <Text style={s.svcName}>{svc.label}</Text>
-                <Text style={s.svcPrice}>{svc.priceLabel}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* ── All services ── */}
-        <View style={s.section}>
-          <View style={s.sectionRow}>
-            <Text style={s.sectionTitle}>All services</Text>
-            <TouchableOpacity onPress={() => setShowAllSvcs(v => !v)}>
-              <Text style={s.sectionLink}>{showAllSvcs ? 'Show less' : 'View all 19 →'}</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={s.svcGrid}>
-            {visibleSvcs.map(svc => (
-              <TouchableOpacity
-                key={svc.id}
-                style={s.svcCard}
-                onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: svc.id } })}
-              >
-                <View style={[s.svcIconBg, { backgroundColor: svc.bg }]}>
-                  <Text style={s.svcEmoji}>{svc.emoji}</Text>
-                </View>
-                <Text style={s.svcName}>{svc.label}</Text>
-                <Text style={s.svcPrice}>{svc.priceLabel}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* ── Featured provider (AD SPACE) ── */}
-        <View style={s.section}>
-          <Text style={s.adLabel}>Sponsored</Text>
+          <Text style={s.sectionTitle}>Featured provider</Text>
           <View style={s.featuredCard}>
-            <View style={s.featuredTop}>
-              <View style={[s.featuredAvatar, { backgroundColor: FEATURED_PROVIDER.color }]}>
-                <Text style={[s.featuredInitials, { color: FEATURED_PROVIDER.textColor }]}>{FEATURED_PROVIDER.initials}</Text>
+            <View style={s.featuredRow}>
+              <View style={s.featuredAvatar}>
+                <Text style={s.featuredInitials}>RP</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.featuredTag}>{FEATURED_PROVIDER.tag}</Text>
-                <Text style={s.featuredName}>{FEATURED_PROVIDER.name}</Text>
-                <Text style={s.featuredSkills}>{FEATURED_PROVIDER.skills}</Text>
+                <Text style={s.featuredName}>Raj Pillay Plumbing</Text>
+                <Text style={s.featuredMeta}>Plumbing · Geyser specialist</Text>
+                <Text style={s.featuredArea}>📍 Nationwide · South Africa</Text>
               </View>
-              <View>
-                <Text style={s.featuredRating}>★ {FEATURED_PROVIDER.rating}</Text>
-                <Text style={s.featuredReviews}>{FEATURED_PROVIDER.reviews} reviews</Text>
+              <View style={s.ratingBox}>
+                <Text style={s.ratingVal}>★ 4.9</Text>
+                <Text style={s.ratingCount}>214</Text>
               </View>
-            </View>
-            <View style={s.featuredMeta}>
-              <Text style={s.featuredMetaText}>📍 {FEATURED_PROVIDER.area}</Text>
-              <Text style={s.featuredMetaText}>🏅 {FEATURED_PROVIDER.badge}</Text>
             </View>
             <TouchableOpacity
               style={s.featuredBtn}
               onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: 'plumbing' } })}
             >
-              <Text style={s.featuredBtnText}>Book Raj Pillay →</Text>
+              <Text style={s.featuredBtnText}>Book now →</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -404,10 +425,13 @@ export default function ClientHome() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>How it works</Text>
           <View style={s.howRow}>
-            {HOW_IT_WORKS.map((h, i) => (
+            {[
+              { n: '1', title: 'Pick a service', sub: 'Easy-Fix or Easy-Hire' },
+              { n: '2', title: 'Get a quote',    sub: 'Instant pricing' },
+              { n: '3', title: 'Track & pay',    sub: 'Pay on completion' },
+            ].map((h, i) => (
               <View key={i} style={s.howCard}>
-                <Text style={s.howEmoji}>{h.emoji}</Text>
-                <View style={s.howStep}><Text style={s.howStepText}>{h.step}</Text></View>
+                <View style={s.howNum}><Text style={s.howNumText}>{h.n}</Text></View>
                 <Text style={s.howTitle}>{h.title}</Text>
                 <Text style={s.howSub}>{h.sub}</Text>
               </View>
@@ -415,195 +439,213 @@ export default function ClientHome() {
           </View>
         </View>
 
-        {/* ── Mid-page promo (AD SPACE) ── */}
-        <TouchableOpacity style={[s.midPromo, { backgroundColor: MID_PROMO.bg }]}>
+        {/* ── Refer strip ── */}
+        <TouchableOpacity style={s.referStrip} activeOpacity={0.85}>
           <View style={{ flex: 1 }}>
-            <Text style={s.midPromoHeadline}>{MID_PROMO.headline}</Text>
-            <Text style={s.midPromoSub}>{MID_PROMO.sub}</Text>
+            <Text style={s.referTitle}>Refer a friend, earn R100</Text>
+            <Text style={s.referSub}>Both of you get rewarded</Text>
           </View>
-          <View style={s.midPromoCta}>
-            <Text style={s.midPromoCtaText}>{MID_PROMO.cta} →</Text>
+          <View style={s.referBtn}>
+            <Text style={s.referBtnText}>Share →</Text>
           </View>
         </TouchableOpacity>
-
-        {/* ── Trust signals ── */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Why Home Solutions?</Text>
-          <View style={s.trustGrid}>
-            {TRUST_STATS.map((t, i) => (
-              <View key={i} style={s.trustCard}>
-                <Text style={s.trustEmoji}>{t.emoji}</Text>
-                <Text style={s.trustValue}>{t.value}</Text>
-                <Text style={s.trustLabel}>{t.label}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
 
         {/* ── Recent jobs ── */}
         {RECENT.length > 0 && (
           <View style={s.section}>
-            <View style={s.sectionRow}>
+            <View style={s.sectionHeaderRow}>
               <Text style={s.sectionTitle}>Recent jobs</Text>
               <TouchableOpacity onPress={() => router.push('/(client)/history' as any)}>
                 <Text style={s.sectionLink}>View all →</Text>
               </TouchableOpacity>
             </View>
-            {RECENT.map((job, i) => (
-              <View key={i} style={s.histItem}>
-                <View style={[s.histIcon, { backgroundColor: job.bg }]}>
-                  <Text style={{ fontSize: 16 }}>{job.emoji}</Text>
+            {RECENT.map((j, i) => (
+              <View key={i} style={s.recentRow}>
+                <View style={s.recentIcon}>
+                  <Text style={{ fontSize: 18 }}>{j.emoji}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.histName}>{job.name}</Text>
-                  <Text style={s.histDate}>{job.date}</Text>
+                  <Text style={s.recentName}>{j.name}</Text>
+                  <Text style={s.recentMeta}>{j.meta}</Text>
                 </View>
-                <Text style={s.histAmt}>{job.amt}</Text>
+                <Text style={s.recentAmt}>{j.amt}</Text>
               </View>
             ))}
           </View>
         )}
 
-        {/* ── Bottom ad strip (AD SPACE) ── */}
-        <View style={s.bottomAd}>
-          <Text style={s.bottomAdTag}>📢 Advertise here</Text>
-          <Text style={s.bottomAdText}>Reach 10,000+ homeowners in Durban & KZN</Text>
-          <Text style={s.bottomAdCta}>Contact us → hello@homesolutions.co.za</Text>
+        {/* ── Advertise ── */}
+        <View style={s.adStrip}>
+          <Text style={s.adTag}>ADVERTISE WITH EASY-FIX</Text>
+          <Text style={s.adText}>Reach 100,000+ homeowners nationwide</Text>
+          <Text style={s.adCta}>hello@easy-fix.co.za →</Text>
         </View>
 
-        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   )
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:              { flex: 1, backgroundColor: colors.cream },
+  safe:                { flex: 1, backgroundColor: colors.gray50 },
 
   // Header
-  header:            { backgroundColor: colors.navy, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 },
-  headerTop:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  greeting:          { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 2 },
-  name:              { fontSize: 20, fontWeight: '300', color: '#fff' },
-  badge:             { backgroundColor: 'rgba(200,146,42,0.2)', borderColor: 'rgba(200,146,42,0.4)', borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText:         { fontSize: 11, color: colors.goldLight },
-  // Search — collapsed
-  search:            { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  searchIcon:        { fontSize: 14 },
-  searchText:        { fontSize: 14, color: 'rgba(255,255,255,0.4)' },
-  // Search — active
-  searchActiveRow:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  searchActiveBar:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  searchInput:       { flex: 1, fontSize: 14, color: '#fff', paddingVertical: Platform.OS === 'ios' ? 2 : 0 },
-  searchClear:       { padding: 2 },
-  searchClearText:   { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
-  searchCancel:      { paddingVertical: 6 },
-  searchCancelText:  { fontSize: 14, color: colors.gold, fontWeight: '500' },
-  // Results pane
-  resultsPane:       { flex: 1, backgroundColor: colors.cream },
-  suggestionsWrap:   { padding: 16 },
-  suggestionsLabel:  { fontSize: 10, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '600', marginBottom: 10 },
-  suggestionsRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  suggestionChip:    { backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: colors.creamMid },
-  suggestionText:    { fontSize: 13, color: colors.text },
-  catRow:            { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 6, borderWidth: 1, borderColor: colors.creamMid },
-  catRowText:        { flex: 1, fontSize: 13, fontWeight: '500', color: colors.text },
-  catRowCount:       { fontSize: 11, color: colors.textLight, marginRight: 8 },
-  catRowArrow:       { fontSize: 18, color: colors.textLight },
-  noResults:         { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 8 },
-  noResultsEmoji:    { fontSize: 40 },
-  noResultsTitle:    { fontSize: 16, fontWeight: '600', color: colors.text },
-  noResultsSub:      { fontSize: 13, color: colors.textLight, textAlign: 'center' },
-  resultRow:         { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.creamMid, backgroundColor: '#fff' },
-  resultIcon:        { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  resultLabel:       { fontSize: 14, fontWeight: '600', color: colors.text },
-  resultMeta:        { fontSize: 11, color: colors.textLight, marginTop: 2 },
-  resultArrow:       { fontSize: 20, color: colors.textLight },
+  header:              { backgroundColor: colors.black, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 },
+  headerTop:           { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  brand:               { fontSize: 18, fontWeight: '800', color: colors.white, letterSpacing: -0.3 },
+  greeting:            { fontSize: 11, color: colors.gray400, marginTop: 1 },
+  premiumPill:         { backgroundColor: colors.gold + '20', borderWidth: 1, borderColor: colors.gold + '50', borderRadius: 6, paddingHorizontal: 9, paddingVertical: 4 },
+  premiumText:         { fontSize: 9, color: colors.gold, fontWeight: '700', letterSpacing: 1 },
+  bellBtn:             { position: 'relative', padding: 2 },
+  bellBadge:           { position: 'absolute', top: -2, right: -2, backgroundColor: colors.gold, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  bellBadgeText:       { fontSize: 9, color: colors.black, fontWeight: '800' },
 
-  // Hero banner
-  bannerWrap:        { marginHorizontal: 14, marginTop: 14, borderRadius: 14, overflow: 'hidden' },
-  banner:            { borderRadius: 14, padding: 18, minHeight: 140 },
-  bannerTag:         { fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 6 },
-  bannerHeadline:    { fontSize: 22, fontWeight: '300', color: '#fff', lineHeight: 28, marginBottom: 6 },
-  bannerSub:         { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 14 },
-  bannerCta:         { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  bannerCtaText:     { fontSize: 12, fontWeight: '600' },
-  bannerDots:        { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 10, marginBottom: 2 },
-  bannerDot:         { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.creamMid },
-  bannerDotActive:   { backgroundColor: colors.gold, width: 18 },
+  // Uber-style address bar
+  searchBar:           { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: 12, overflow: 'hidden' },
+  searchBarIcon:       { width: 46, height: 46, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  searchBarText:       { flex: 1, fontSize: 14, color: colors.gray600, paddingHorizontal: 12, fontWeight: '500' },
+  searchBarRight:      { width: 46, height: 46, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
+  searchBarArrow:      { fontSize: 16, color: colors.black, fontWeight: '700' },
 
-  // Emergency
-  emergency:         { marginHorizontal: 14, marginTop: 14, backgroundColor: colors.red, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  emergIcon:         { width: 42, height: 42, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  emergTitle:        { fontSize: 13, fontWeight: '600', color: '#fff' },
-  emergSub:          { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  emergArrow:        { fontSize: 20, color: 'rgba(255,255,255,0.5)' },
+  // Search overlay
+  searchOverlayHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, paddingTop: 8, borderBottomWidth: 1, borderBottomColor: colors.gray100 },
+  searchOverlayBar:    { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.gray50, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  searchOverlayPin:    { fontSize: 14 },
+  searchOverlayInput:  { flex: 1, fontSize: 15, color: colors.black, paddingVertical: Platform.OS === 'ios' ? 2 : 0 },
+  searchClearText:     { fontSize: 14, color: colors.gray400, paddingHorizontal: 4 },
+  searchCancel:        { paddingVertical: 8, paddingHorizontal: 4 },
+  searchCancelText:    { fontSize: 14, color: colors.gold, fontWeight: '600' },
+  searchSuggestions:   { padding: 16 },
+  searchSuggestLabel:  { fontSize: 10, color: colors.gray400, fontWeight: '700', letterSpacing: 1.2, marginBottom: 10 },
+  chipsRow:            { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip:                { backgroundColor: colors.gray50, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: colors.gray100 },
+  chipText:            { fontSize: 13, color: colors.black, fontWeight: '500' },
+  catRow:              { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.gray100 },
+  catRowText:          { flex: 1, fontSize: 14, fontWeight: '500', color: colors.black },
+  catRowCount:         { fontSize: 12, color: colors.gray400, marginRight: 8 },
+  catRowArrow:         { fontSize: 20, color: colors.gray200 },
+  noResults:           { flex: 1, alignItems: 'center', paddingTop: 80, gap: 8 },
+  noResultsTitle:      { fontSize: 16, fontWeight: '600', color: colors.black },
+  noResultsSub:        { fontSize: 13, color: colors.gray400 },
+  resultRow:           { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.gray100 },
+  resultIcon:          { width: 40, height: 40, borderRadius: 8, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  resultLabel:         { fontSize: 14, fontWeight: '600', color: colors.black },
+  resultMeta:          { fontSize: 11, color: colors.gray400, marginTop: 2 },
+  resultArrow:         { fontSize: 20, color: colors.gray200 },
+
+  // Emergency slider
+  emergencyWrap:       { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.black },
 
   // Sections
-  section:           { paddingHorizontal: 14, marginTop: 20 },
-  sectionRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle:      { fontSize: 15, fontWeight: '600', color: colors.text },
-  sectionLink:       { fontSize: 12, color: colors.gold, fontWeight: '500' },
+  section:             { paddingHorizontal: 16, marginTop: 24 },
+  sectionHeader:       { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, paddingHorizontal: 16 },
+  sectionHeaderRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle:        { fontSize: 17, fontWeight: '700', color: colors.black, letterSpacing: -0.2 },
+  sectionLink:         { fontSize: 13, color: colors.gold, fontWeight: '600' },
+  brandTag:            { backgroundColor: colors.gold + '18', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+  brandTagText:        { fontSize: 9, color: colors.gold, fontWeight: '700', letterSpacing: 0.8 },
 
-  // Service grid
-  svcGrid:           { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  svcCard:           { width: '31%', backgroundColor: '#fff', borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.creamMid },
-  svcIconBg:         { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  svcEmoji:          { fontSize: 20 },
-  svcName:           { fontSize: 10, fontWeight: '500', color: colors.text, textAlign: 'center' },
-  svcPrice:          { fontSize: 9, color: colors.textLight, marginTop: 2, textAlign: 'center' },
+  // Easy-Fix shortcuts (Uber tile row)
+  fixTile:             { width: 86, alignItems: 'center' },
+  fixTileIcon:         { width: 68, height: 68, borderRadius: 18, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  fixTileLabel:        { fontSize: 11, fontWeight: '600', color: colors.black, textAlign: 'center' },
+  fixTilePrice:        { fontSize: 9, color: colors.gray400, marginTop: 2, textAlign: 'center' },
+
+  // Easy-Hire section
+  hireSection:         { marginTop: 24, backgroundColor: colors.black, paddingTop: 18, paddingBottom: 18 },
+  hireSectionHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, marginBottom: 16 },
+  hireSectionTitle:    { fontSize: 19, fontWeight: '800', color: colors.white, letterSpacing: -0.3 },
+  hireSectionSub:      { fontSize: 11, color: colors.gray400, marginTop: 2 },
+
+  // Hire 2×2 grid
+  hireTileGrid:        { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 8, marginBottom: 14 },
+  hireTile:            { width: '47%', backgroundColor: colors.black2, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hireTileEmoji:       { fontSize: 22 },
+  hireTileLabel:       { flex: 1, fontSize: 13, fontWeight: '600', color: colors.white },
+  hireTileArrow:       { fontSize: 12, color: colors.gold, fontWeight: '700' },
+
+  // Hire item chips (horizontal scroll)
+  hireItemChip:        { backgroundColor: colors.black2, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hireItemLabel:       { fontSize: 12, color: colors.gray400, fontWeight: '500' },
+
+  // Promos carousel
+  promoSection:        { marginTop: 20 },
+  promoCard:           { backgroundColor: colors.black2, borderRadius: 14, padding: 18, minHeight: 148, marginRight: 8 },
+  promoCardGold:       { backgroundColor: colors.gold + 'CC' },
+  promoTag:            { fontSize: 9, color: colors.gold, fontWeight: '700', letterSpacing: 1.2, marginBottom: 8 },
+  promoTagGold:        { color: 'rgba(0,0,0,0.6)' },
+  promoHeadline:       { fontSize: 22, fontWeight: '700', color: colors.white, lineHeight: 28, letterSpacing: -0.4, marginBottom: 6 },
+  promoHeadlineGold:   { color: colors.black },
+  promoSub:            { fontSize: 12, color: colors.gray400, marginBottom: 16 },
+  promoSubGold:        { color: 'rgba(0,0,0,0.55)' },
+  promoCta:            { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  promoCtaGold:        { backgroundColor: colors.black },
+  promoCtaText:        { fontSize: 12, fontWeight: '600', color: colors.white },
+  promoCtaTextGold:    { color: colors.white },
+  promoDots:           { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 12 },
+  promoDot:            { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.gray200 },
+  promoDotActive:      { backgroundColor: colors.gold, width: 14 },
 
   // Featured provider
-  adLabel:           { fontSize: 9, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
-  featuredCard:      { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.creamMid },
-  featuredTop:       { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  featuredAvatar:    { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
-  featuredInitials:  { fontSize: 16, fontWeight: '700' },
-  featuredTag:       { fontSize: 10, color: colors.gold, fontWeight: '600', marginBottom: 2 },
-  featuredName:      { fontSize: 14, fontWeight: '600', color: colors.text },
-  featuredSkills:    { fontSize: 11, color: colors.textLight, marginTop: 1 },
-  featuredRating:    { fontSize: 13, color: colors.gold, fontWeight: '600', textAlign: 'right' },
-  featuredReviews:   { fontSize: 10, color: colors.textLight, textAlign: 'right' },
-  featuredMeta:      { gap: 3, marginBottom: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.creamMid },
-  featuredMetaText:  { fontSize: 11, color: colors.textMuted },
-  featuredBtn:       { backgroundColor: colors.navy, borderRadius: 8, padding: 11, alignItems: 'center' },
-  featuredBtnText:   { fontSize: 13, fontWeight: '600', color: '#fff' },
+  featuredCard:        { backgroundColor: colors.white, borderRadius: 14, padding: 16 },
+  featuredRow:         { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
+  featuredAvatar:      { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.black, alignItems: 'center', justifyContent: 'center' },
+  featuredInitials:    { fontSize: 15, fontWeight: '700', color: colors.gold },
+  featuredName:        { fontSize: 14, fontWeight: '700', color: colors.black, marginBottom: 2 },
+  featuredMeta:        { fontSize: 11, color: colors.gray400 },
+  featuredArea:        { fontSize: 11, color: colors.gray400, marginTop: 4 },
+  ratingBox:           { alignItems: 'flex-end' },
+  ratingVal:           { fontSize: 14, fontWeight: '700', color: colors.gold },
+  ratingCount:         { fontSize: 10, color: colors.gray400, marginTop: 2 },
+  featuredBtn:         { backgroundColor: colors.black, borderRadius: 10, padding: 13, alignItems: 'center' },
+  featuredBtnText:     { fontSize: 13, fontWeight: '600', color: colors.white },
 
   // How it works
-  howRow:            { flexDirection: 'row', gap: 8 },
-  howCard:           { flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.creamMid },
-  howEmoji:          { fontSize: 22, marginBottom: 6 },
-  howStep:           { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  howStepText:       { fontSize: 10, fontWeight: '700', color: colors.navy },
-  howTitle:          { fontSize: 11, fontWeight: '600', color: colors.text, textAlign: 'center', marginBottom: 3 },
-  howSub:            { fontSize: 9, color: colors.textLight, textAlign: 'center', lineHeight: 13 },
+  howRow:              { flexDirection: 'row', gap: 8 },
+  howCard:             { flex: 1, backgroundColor: colors.white, borderRadius: 12, padding: 14 },
+  howNum:              { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  howNumText:          { fontSize: 11, fontWeight: '700', color: colors.black },
+  howTitle:            { fontSize: 12, fontWeight: '600', color: colors.black, marginBottom: 3 },
+  howSub:              { fontSize: 10, color: colors.gray400, lineHeight: 14 },
 
-  // Mid promo
-  midPromo:          { marginHorizontal: 14, marginTop: 20, borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  midPromoHeadline:  { fontSize: 14, fontWeight: '600', color: colors.navy },
-  midPromoSub:       { fontSize: 11, color: colors.navy, opacity: 0.7, marginTop: 2 },
-  midPromoCta:       { backgroundColor: colors.navy, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  midPromoCtaText:   { fontSize: 12, fontWeight: '600', color: '#fff' },
-
-  // Trust signals
-  trustGrid:         { flexDirection: 'row', gap: 8 },
-  trustCard:         { flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: colors.creamMid },
-  trustEmoji:        { fontSize: 18, marginBottom: 4 },
-  trustValue:        { fontSize: 13, fontWeight: '700', color: colors.navy },
-  trustLabel:        { fontSize: 9, color: colors.textLight, textAlign: 'center', marginTop: 2 },
+  // Refer strip
+  referStrip:          { marginHorizontal: 16, marginTop: 20, backgroundColor: colors.gold, borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  referTitle:          { fontSize: 14, fontWeight: '700', color: colors.black },
+  referSub:            { fontSize: 11, color: 'rgba(0,0,0,0.55)', marginTop: 2 },
+  referBtn:            { backgroundColor: colors.black, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  referBtnText:        { fontSize: 12, fontWeight: '600', color: colors.white },
 
   // Recent jobs
-  histItem:          { backgroundColor: '#fff', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8, borderWidth: 1, borderColor: colors.creamMid },
-  histIcon:          { width: 36, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  histName:          { fontSize: 13, fontWeight: '500', color: colors.text },
-  histDate:          { fontSize: 10, color: colors.textLight, marginTop: 2 },
-  histAmt:           { fontSize: 13, fontWeight: '600', color: colors.accent },
+  recentRow:           { backgroundColor: colors.white, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
+  recentIcon:          { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  recentName:          { fontSize: 13, fontWeight: '600', color: colors.black },
+  recentMeta:          { fontSize: 11, color: colors.gray400, marginTop: 2 },
+  recentAmt:           { fontSize: 13, fontWeight: '700', color: colors.black },
 
-  // Bottom ad
-  bottomAd:          { marginHorizontal: 14, marginTop: 20, backgroundColor: colors.navy, borderRadius: 12, padding: 16, alignItems: 'center', gap: 4 },
-  bottomAdTag:       { fontSize: 11, color: colors.gold, fontWeight: '600' },
-  bottomAdText:      { fontSize: 13, fontWeight: '300', color: '#fff', textAlign: 'center' },
-  bottomAdCta:       { fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 },
+  // Ad strip
+  adStrip:             { marginHorizontal: 16, marginTop: 24, backgroundColor: colors.black2, borderRadius: 14, padding: 18, alignItems: 'center', gap: 4 },
+  adTag:               { fontSize: 9, color: colors.gold, fontWeight: '700', letterSpacing: 1.2 },
+  adText:              { fontSize: 13, fontWeight: '500', color: colors.white, textAlign: 'center', marginTop: 2 },
+  adCta:               { fontSize: 11, color: colors.gray400, marginTop: 4 },
+
+  // Filter
+  filterBtn:           { padding: 8, position: 'relative' },
+  filterDot:           { position: 'absolute', top: 6, right: 6, width: 7, height: 7, borderRadius: 4, backgroundColor: colors.gold },
+  filterOverlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  filterSheet:         { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
+  filterHandle:        { width: 40, height: 4, backgroundColor: colors.gray200, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  filterTitle:         { fontSize: 17, fontWeight: '700', color: colors.black, marginBottom: 16 },
+  filterLabel:         { fontSize: 11, fontWeight: '700', color: colors.gray400, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
+  filterRow:           { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  filterChip:          { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: colors.gray50, borderWidth: 1, borderColor: colors.gray100 },
+  filterChipActive:    { backgroundColor: colors.black, borderColor: colors.black },
+  filterChipText:      { fontSize: 13, fontWeight: '500', color: colors.gray600 },
+  filterChipTextActive:{ color: colors.white, fontWeight: '700' },
+  filterActions:       { flexDirection: 'row', gap: 10, marginTop: 24 },
+  filterReset:         { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: colors.gray50, alignItems: 'center', borderWidth: 1, borderColor: colors.gray100 },
+  filterResetText:     { fontSize: 14, fontWeight: '600', color: colors.gray600 },
+  filterApply:         { flex: 2, paddingVertical: 13, borderRadius: 12, backgroundColor: colors.gold, alignItems: 'center' },
+  filterApplyText:     { fontSize: 14, fontWeight: '700', color: colors.black },
 })

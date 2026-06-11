@@ -3,7 +3,7 @@
  * Set API_BASE to your deployed API URL (Railway) once live.
  * In Expo Go on a physical device, use your machine's LAN IP.
  */
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'
+const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
 
 let _token: string | null = null
 
@@ -46,7 +46,10 @@ export interface Provider {
   earningsBalance: number
   kycStatus: string
   status: string
-  location: { lat: number; lng: number } | null
+  lat: number | null
+  lng: number | null
+  distanceKm: number | null
+  etaMinutes: number | null
   availability: { monFri: boolean; saturday: boolean; sunday: boolean; emergency: boolean }
 }
 
@@ -81,14 +84,28 @@ export const api = {
       companyName?: string; companyRegistration?: string
       vatNumber?: string; serviceArea?: string
     }) => req<{ accessToken: string; user: { id: string; phone: string; role: string; firstName: string; lastName: string } }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-    savePushToken: (pushToken: string) =>
+    savePushToken:   (pushToken: string) =>
       req<void>('/auth/push-token', { method: 'PATCH', body: JSON.stringify({ pushToken }) }),
+    updateProfile:   (data: { firstName?: string; lastName?: string; email?: string }) =>
+      req<{ id: string; phone: string; role: string; firstName: string | null; lastName: string | null; email: string | null }>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+    me:              () =>
+      req<{ id: string; phone: string; role: string; firstName: string | null; lastName: string | null; email: string | null }>('/auth/me'),
+    getBankAccount:  () => req<BankAccount | null>('/auth/bank-account'),
+    saveBankAccount: (data: Omit<BankAccount, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) =>
+      req<BankAccount>('/auth/bank-account', { method: 'POST', body: JSON.stringify(data) }),
+    getAddresses:    () => req<SavedAddress[]>('/auth/addresses'),
+    saveAddress:     (data: { label: string; address: string }) =>
+      req<SavedAddress>('/auth/addresses', { method: 'POST', body: JSON.stringify(data) }),
+    setDefaultAddress: (id: string) =>
+      req<SavedAddress>(`/auth/addresses/${id}/default`, { method: 'PATCH' }),
+    deleteAddress:   (id: string) =>
+      req<{ ok: boolean }>(`/auth/addresses/${id}`, { method: 'DELETE' }),
   },
 
   bookings: {
     list:           (status?: BookingStatus) => req<Booking[]>(`/bookings${status ? `?status=${status}` : ''}`),
     get:            (id: string)             => req<Booking>(`/bookings/${id}`),
-    create:         (dto: { clientId: string; serviceType: ServiceType; location: string; address: string; quotedAmount: number; paymentMethod: string; notes?: string }) =>
+    create:         (dto: { clientId: string; serviceType: ServiceType; location: string; address: string; quotedAmount: number; paymentMethod: string; notes?: string; serviceDetails?: Record<string, any>; images?: string[] }) =>
       req<Booking>('/bookings', { method: 'POST', body: JSON.stringify(dto) }),
     updateStatus:   (id: string, status: BookingStatus) =>
       req<Booking>(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
@@ -97,7 +114,13 @@ export const api = {
   },
 
   providers: {
-    list:           (skill?: string)         => req<Provider[]>(`/providers${skill ? `?skill=${skill}&status=active` : '?status=active'}`),
+    list:           (skill?: string, lat?: number, lng?: number) => {
+      const params = new URLSearchParams({ status: 'active' })
+      if (skill) params.set('skill', skill)
+      if (lat != null) params.set('lat', String(lat))
+      if (lng != null) params.set('lng', String(lng))
+      return req<Provider[]>(`/providers?${params}`)
+    },
     get:            (id: string)             => req<Provider>(`/providers/${id}`),
     earnings:       (id: string)             => req<{ available: number; thisMonth: number; total: number }>(`/providers/${id}/earnings`),
     updateLocation: (id: string, lat: number, lng: number) =>
@@ -110,6 +133,13 @@ export const api = {
       req<Record<string, Record<string, number>>>(`/providers/${id}/hire-inventory`),
     updateHireInventory: (id: string, inventory: Record<string, Record<string, number>>) =>
       req<void>(`/providers/${id}/hire-inventory`, { method: 'PATCH', body: JSON.stringify(inventory) }),
+    reviews:    (id: string) => req<Review[]>(`/providers/${id}/reviews`),
+    addReview:  (id: string, stars: number, tags: string[], comment?: string, clientId?: string, bookingId?: string) =>
+      req<Provider>(`/providers/${id}/review`, { method: 'POST', body: JSON.stringify({ stars, tags, comment, clientId, bookingId }) }),
+    updateKyc:  (id: string, status: 'pending' | 'in_review' | 'approved' | 'rejected') =>
+      req<Provider>(`/providers/${id}/kyc`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    withdraw:   (id: string, amount: number) =>
+      req<{ earningsBalance: number }>(`/providers/${id}/withdraw`, { method: 'POST', body: JSON.stringify({ amount }) }),
   },
 
   hardware: {
@@ -132,10 +162,15 @@ export const api = {
   },
 
   payments: {
-    hold: (bookingId: string, amount: number) =>
+    hold: (bookingId: string, amount: number, card: CardDetails) =>
       req<{ success: boolean; transactionId: string }>('/payments/hold', {
         method: 'POST',
-        body: JSON.stringify({ bookingId, amount, paymentBrand: 'VISA', descriptor: `HomeSolutions-${bookingId}` }),
+        body: JSON.stringify({
+          bookingId, amount,
+          paymentBrand: card.brand,
+          descriptor: `HomeSolutions-${bookingId}`,
+          card: { number: card.number.replace(/\s/g, ''), holder: card.holder, expiry: card.expiry, cvv: card.cvv },
+        }),
       }),
     release: (transactionId: string, amount: number) =>
       req<{ success: boolean }>(`/payments/release/${transactionId}`, { method: 'POST', body: JSON.stringify({ amount }) }),
@@ -147,12 +182,100 @@ export const api = {
     send: (bookingId: string, msg: { senderId: string; senderRole: string; senderName: string; text?: string; attachments?: ChatAttachment[] }) =>
       req<Message>(`/bookings/${bookingId}/messages`, { method: 'POST', body: JSON.stringify(msg) }),
   },
+
+  notifications: {
+    list:        () => req<AppNotification[]>('/notifications'),
+    unreadCount: () => req<{ count: number }>('/notifications/unread-count'),
+    markRead:    (ids?: string[]) => req<void>('/notifications/mark-read', { method: 'PATCH', body: JSON.stringify({ ids }) }),
+  },
+
+  subscriptions: {
+    clientPlans:   ()                                         => req<SubscriptionPlan[]>('/subscriptions/client-plans'),
+    providerPlans: ()                                         => req<SubscriptionPlan[]>('/subscriptions/provider-plans'),
+    my:            ()                                         => req<ActiveSubscription | null>('/subscriptions/my'),
+    subscribe:     (planId: string, peachTokenId?: string)   => req<ActiveSubscription>('/subscriptions/subscribe', { method: 'POST', body: JSON.stringify({ planId, peachTokenId }) }),
+    cancel:        ()                                         => req<void>('/subscriptions/cancel', { method: 'DELETE' }),
+  },
+}
+
+export interface SubscriptionPlan {
+  id:               string
+  name:             string
+  priceMonthly:     number
+  features:         string[]
+  discount?:        number
+  warrantyDays?:    number
+  emergencyCallouts?: number
+  commissionPct?:   number
+  featured?:        boolean
+}
+
+export interface ActiveSubscription {
+  id:          string
+  userId:      string
+  userRole:    string
+  planId:      string
+  status:      string
+  startsAt:    string
+  expiresAt:   string | null
+  plan:        SubscriptionPlan | null
+}
+
+export interface CardDetails {
+  number: string
+  holder: string
+  expiry: string
+  cvv:    string
+  brand:  'VISA' | 'MASTER' | 'AMEX'
+}
+
+export interface AppNotification {
+  id:        string
+  userId:    string
+  title:     string
+  body:      string
+  type:      string
+  data:      Record<string, any> | null
+  read:      boolean
+  createdAt: string
 }
 
 export interface ChatAttachment {
   url:      string
   type:     'image' | 'file'
   fileName: string
+}
+
+export interface Review {
+  id:         string
+  providerId: string
+  clientId:   string
+  bookingId:  string | null
+  stars:      number
+  tags:       string[]
+  comment:    string | null
+  createdAt:  string
+}
+
+export interface BankAccount {
+  id:            string
+  userId:        string
+  accountHolder: string
+  bankName:      string
+  accountNumber: string
+  branchCode:    string
+  accountType:   string
+  createdAt:     string
+  updatedAt:     string
+}
+
+export interface SavedAddress {
+  id:        string
+  userId:    string
+  label:     string
+  address:   string
+  isDefault: boolean
+  createdAt: string
 }
 
 export interface Message {

@@ -19,7 +19,7 @@ export default function LoginScreen() {
     try {
       const user = await login(phone.trim(), password)
       router.replace(user.role === 'provider' ? '/(provider)' : '/(client)')
-    } catch (e: any) {
+    } catch {
       setError('Incorrect phone number or password')
     } finally {
       setLoading(false)
@@ -30,14 +30,14 @@ export default function LoginScreen() {
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={s.container}>
-          {/* Logo */}
-          <View style={s.logoRow}>
-            <View style={s.logoIcon}><Text style={s.logoEmoji}>🏠</Text></View>
-            <Text style={s.logoText}>Home Solutions</Text>
+
+          {/* Logo mark */}
+          <View style={s.logoMark}>
+            <Text style={s.logoText}>EF</Text>
           </View>
 
-          <Text style={s.title}>Welcome back</Text>
-          <Text style={s.sub}>Sign in to continue</Text>
+          <Text style={s.title}>Sign in</Text>
+          <Text style={s.sub}>Easy-Fix · Nationwide South Africa</Text>
 
           <View style={s.form}>
             <Text style={s.label}>Phone number</Text>
@@ -48,10 +48,10 @@ export default function LoginScreen() {
               keyboardType="phone-pad"
               autoComplete="tel"
               placeholder="+27 82 123 4567"
-              placeholderTextColor={colors.textLight}
+              placeholderTextColor={colors.gray400}
             />
 
-            <Text style={s.label}>Password</Text>
+            <Text style={[s.label, { marginTop: 16 }]}>Password</Text>
             <TextInput
               style={s.input}
               value={password}
@@ -59,7 +59,7 @@ export default function LoginScreen() {
               secureTextEntry
               autoComplete="password"
               placeholder="••••••••"
-              placeholderTextColor={colors.textLight}
+              placeholderTextColor={colors.gray400}
               onSubmitEditing={handleLogin}
               returnKeyType="done"
             />
@@ -68,13 +68,13 @@ export default function LoginScreen() {
 
             <TouchableOpacity style={s.btn} onPress={handleLogin} disabled={loading}>
               {loading
-                ? <ActivityIndicator color={colors.navy} />
-                : <Text style={s.btnText}>Sign in</Text>}
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={s.btnText}>Continue</Text>}
             </TouchableOpacity>
 
             {/* Quick test logins */}
             <View style={s.quickRow}>
-              <Text style={s.quickLabel}>Test accounts:</Text>
+              <Text style={s.quickLabel}>Test:</Text>
               <TouchableOpacity onPress={() => { setPhone('+27821234567'); setPassword('pass123') }}>
                 <Text style={s.quickBtn}>Client</Text>
               </TouchableOpacity>
@@ -85,9 +85,9 @@ export default function LoginScreen() {
           </View>
 
           <View style={s.footer}>
-            <Text style={s.footerText}>Don't have an account? </Text>
+            <Text style={s.footerText}>No account? </Text>
             <TouchableOpacity onPress={() => router.push('/register')}>
-              <Text style={s.footerLink}>Register</Text>
+              <Text style={s.footerLink}>Register →</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -97,24 +97,22 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  safe:       { flex: 1, backgroundColor: colors.navy },
-  container:  { flex: 1, paddingHorizontal: 28, paddingTop: 32, paddingBottom: 24 },
-  logoRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 40 },
-  logoIcon:   { width: 34, height: 34, borderRadius: 8, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
-  logoEmoji:  { fontSize: 16 },
-  logoText:   { fontSize: 17, fontWeight: '600', color: '#fff' },
-  title:      { fontSize: 28, fontWeight: '300', color: '#fff', marginBottom: 4 },
-  sub:        { fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 32 },
-  form:       { gap: 6 },
-  label:      { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 10 },
-  input:      { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: 14, fontSize: 16, color: '#fff', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  error:      { color: '#FF6B6B', fontSize: 13, marginTop: 8 },
-  btn:        { backgroundColor: colors.gold, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 20 },
-  btnText:    { fontSize: 15, fontWeight: '600', color: colors.navy },
+  safe:       { flex: 1, backgroundColor: colors.white },
+  container:  { flex: 1, paddingHorizontal: 28, paddingTop: 48, paddingBottom: 24 },
+  logoMark:   { width: 48, height: 48, borderRadius: 12, backgroundColor: colors.black, alignItems: 'center', justifyContent: 'center', marginBottom: 32 },
+  logoText:   { fontSize: 13, fontWeight: '800', color: colors.gold, letterSpacing: 0.5 },
+  title:      { fontSize: 32, fontWeight: '700', color: colors.black, letterSpacing: -0.5, marginBottom: 4 },
+  sub:        { fontSize: 14, color: colors.gray400, marginBottom: 36 },
+  form:       { gap: 4 },
+  label:      { fontSize: 12, fontWeight: '600', color: colors.gray600, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
+  input:      { backgroundColor: colors.gray50, borderRadius: 10, padding: 15, fontSize: 16, color: colors.black, borderWidth: 1, borderColor: colors.gray100 },
+  error:      { color: colors.red, fontSize: 13, marginTop: 10 },
+  btn:        { backgroundColor: colors.black, borderRadius: 12, padding: 17, alignItems: 'center', marginTop: 24 },
+  btnText:    { fontSize: 16, fontWeight: '600', color: colors.white },
   quickRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, justifyContent: 'center' },
-  quickLabel: { fontSize: 12, color: 'rgba(255,255,255,0.3)' },
-  quickBtn:   { fontSize: 12, color: colors.gold, fontWeight: '600', paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: colors.gold + '40', borderRadius: 6 },
+  quickLabel: { fontSize: 12, color: colors.gray400 },
+  quickBtn:   { fontSize: 12, color: colors.gray600, fontWeight: '600', paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: colors.gray200, borderRadius: 6 },
   footer:     { flexDirection: 'row', justifyContent: 'center', marginTop: 'auto', paddingTop: 20 },
-  footerText: { fontSize: 14, color: 'rgba(255,255,255,0.4)' },
-  footerLink: { fontSize: 14, color: colors.gold, fontWeight: '600' },
+  footerText: { fontSize: 14, color: colors.gray400 },
+  footerLink: { fontSize: 14, color: colors.black, fontWeight: '600' },
 })

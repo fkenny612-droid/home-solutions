@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import {
   FlatList, KeyboardAvoidingView, Platform, StyleSheet,
   Text, TextInput, TouchableOpacity, View, Image,
-  ActionSheetIOS, Alert, ActivityIndicator, Linking,
+  Alert, ActivityIndicator, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'
 import { colors } from '../../constants/theme'
@@ -13,7 +14,6 @@ import { api, Message, ChatAttachment } from '../../lib/api'
 import { useAuth } from '../../context/auth'
 import { uploadToCloudinary } from '../../lib/cloudinary'
 
-// ─── Pending attachment before send ──────────────────────────────────────────
 interface PendingAttachment {
   localUri:  string
   type:      'image' | 'file'
@@ -45,32 +45,10 @@ export default function ChatScreen() {
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100)
   }, [messages.length])
 
-  // ─── Attachment picker ──────────────────────────────────────────────────────
-  const pickAttachment = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', '📷 Take photo', '🖼️ Photo library', '📄 File / document'], cancelButtonIndex: 0 },
-        i => { if (i === 1) pickCamera(); else if (i === 2) pickLibrary(); else if (i === 3) pickFile() }
-      )
-    } else {
-      // Android: show Alert as fallback (expo-action-sheet can be added later)
-      Alert.alert('Add attachment', undefined, [
-        { text: 'Take photo',      onPress: pickCamera  },
-        { text: 'Photo library',   onPress: pickLibrary },
-        { text: 'File / document', onPress: pickFile    },
-        { text: 'Cancel', style: 'cancel' },
-      ])
-    }
-  }
-
-  const addPending = (item: PendingAttachment) =>
-    setPending(prev => [...prev, item])
-
-  const updatePending = (localUri: string, update: Partial<PendingAttachment>) =>
-    setPending(prev => prev.map(p => p.localUri === localUri ? { ...p, ...update } : p))
-
-  const removePending = (localUri: string) =>
-    setPending(prev => prev.filter(p => p.localUri !== localUri))
+  const addPending    = (item: PendingAttachment) => setPending(prev => [...prev, item])
+  const updatePending = (uri: string, patch: Partial<PendingAttachment>) =>
+    setPending(prev => prev.map(p => p.localUri === uri ? { ...p, ...patch } : p))
+  const removePending = (uri: string) => setPending(prev => prev.filter(p => p.localUri !== uri))
 
   const uploadItem = async (localUri: string, fileName: string, mimeType: string, type: 'image' | 'file') => {
     addPending({ localUri, type, fileName, uploading: true })
@@ -85,34 +63,37 @@ export default function ChatScreen() {
 
   const pickCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync()
-    if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access to take photos.'); return }
+    if (!perm.granted) { Alert.alert('Camera access needed', 'Allow camera access in Settings.'); return }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false })
     if (result.canceled) return
-    const asset = result.assets[0]
-    uploadItem(asset.uri, asset.fileName ?? `photo_${Date.now()}.jpg`, asset.mimeType ?? 'image/jpeg', 'image')
+    const a = result.assets[0]
+    uploadItem(a.uri, a.fileName ?? `photo_${Date.now()}.jpg`, a.mimeType ?? 'image/jpeg', 'image')
   }
 
-  const pickLibrary = async () => {
+  const pickGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!perm.granted) { Alert.alert('Permission needed', 'Allow photo library access.'); return }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.85, allowsMultipleSelection: true })
+    if (!perm.granted) { Alert.alert('Gallery access needed', 'Allow photo library access in Settings.'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      quality: 0.85,
+      allowsMultipleSelection: true,
+    })
     if (result.canceled) return
-    for (const asset of result.assets) {
-      const isImage = (asset.mimeType ?? '').startsWith('image/')
-      uploadItem(asset.uri, asset.fileName ?? `file_${Date.now()}`, asset.mimeType ?? 'image/jpeg', isImage ? 'image' : 'file')
+    for (const a of result.assets) {
+      const isImg = (a.mimeType ?? '').startsWith('image/')
+      uploadItem(a.uri, a.fileName ?? `file_${Date.now()}`, a.mimeType ?? 'image/jpeg', isImg ? 'image' : 'file')
     }
   }
 
   const pickFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: true })
     if (result.canceled) return
-    for (const asset of result.assets) {
-      const isImage = (asset.mimeType ?? '').startsWith('image/')
-      uploadItem(asset.uri, asset.name, asset.mimeType ?? 'application/octet-stream', isImage ? 'image' : 'file')
+    for (const a of result.assets) {
+      const isImg = (a.mimeType ?? '').startsWith('image/')
+      uploadItem(a.uri, a.name, a.mimeType ?? 'application/octet-stream', isImg ? 'image' : 'file')
     }
   }
 
-  // ─── Send ───────────────────────────────────────────────────────────────────
   const canSend = (text.trim().length > 0 || pending.some(p => p.url)) && !sending && !pending.some(p => p.uploading)
 
   const send = async () => {
@@ -123,10 +104,10 @@ export default function ChatScreen() {
       .map(p => ({ url: p.url!, type: p.type, fileName: p.fileName }))
     try {
       await api.chat.send(bookingId, {
-        senderId:    user.id,
-        senderRole:  user.role,
-        senderName:  [user.firstName, user.lastName].filter(Boolean).join(' ') || user.phone,
-        text:        text.trim(),
+        senderId:   user.id,
+        senderRole: user.role,
+        senderName: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.phone,
+        text:       text.trim(),
         attachments,
       })
       setText('')
@@ -137,20 +118,14 @@ export default function ChatScreen() {
     }
   }
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
   const renderItem = ({ item }: { item: Message }) => {
     const isMe = item.senderId === user?.id
     const attachments: ChatAttachment[] = Array.isArray(item.attachments) ? item.attachments : []
     return (
-      <View style={[s.bubbleWrap, isMe ? s.bubbleWrapMe : s.bubbleWrapThem]}>
+      <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleThem]}>
         {!isMe && (
-          <Text style={s.senderName}>
-            {item.senderName}{' '}
-            <Text style={{ color: ROLE_COLOR[item.senderRole] ?? colors.textMuted }}>{item.senderRole}</Text>
-          </Text>
+          <Text style={s.senderName}>{item.senderName}</Text>
         )}
-
-        {/* Attachments */}
         {attachments.length > 0 && (
           <View style={s.attachGrid}>
             {attachments.map((att, i) =>
@@ -158,20 +133,17 @@ export default function ChatScreen() {
                 <Image key={i} source={{ uri: att.url }} style={s.attachImg} resizeMode="cover" />
               ) : (
                 <TouchableOpacity key={i} style={[s.filePill, isMe && s.filePillMe]} onPress={() => Linking.openURL(att.url)}>
-                  <Text style={s.filePillIcon}>📄</Text>
+                  <Ionicons name="document-outline" size={18} color={isMe ? 'rgba(255,255,255,0.8)' : colors.gray600} />
                   <Text style={[s.filePillName, isMe && s.filePillNameMe]} numberOfLines={1}>{att.fileName}</Text>
                 </TouchableOpacity>
               )
             )}
           </View>
         )}
-
-        {/* Text */}
         {item.text.length > 0 && (
           <Text style={[s.bubbleText, isMe && s.bubbleTextMe]}>{item.text}</Text>
         )}
-
-        <Text style={[s.time, isMe && { color: 'rgba(255,255,255,0.55)' }]}>
+        <Text style={[s.time, isMe && s.timeMe]}>
           {new Date(item.createdAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
@@ -180,21 +152,25 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.back}>
-          <Text style={s.backText}>‹</Text>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.white} />
         </TouchableOpacity>
-        <View style={s.avatar}>
-          <Text style={s.avatarText}>{(providerName ?? 'P')[0].toUpperCase()}</Text>
+        <View style={s.headerAvatar}>
+          <Text style={s.headerAvatarText}>{(providerName ?? 'P')[0].toUpperCase()}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={s.headerName}>{providerName ?? 'Provider'}</Text>
           <Text style={s.headerSub}>Booking #{bookingId?.slice(-6).toUpperCase()}</Text>
         </View>
+        <TouchableOpacity onPress={pickFile} style={s.headerFileBtn}>
+          <Ionicons name="attach" size={20} color={colors.gray400} />
+        </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+
         <FlatList
           ref={listRef}
           data={messages}
@@ -203,14 +179,14 @@ export default function ChatScreen() {
           contentContainerStyle={s.list}
           ListEmptyComponent={
             <View style={s.empty}>
-              <Text style={s.emptyEmoji}>💬</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={48} color={colors.gray200} />
               <Text style={s.emptyTitle}>No messages yet</Text>
               <Text style={s.emptySub}>Start the conversation below</Text>
             </View>
           }
         />
 
-        {/* Pending attachments preview strip */}
+        {/* Pending attachment previews */}
         {pending.length > 0 && (
           <View style={s.pendingStrip}>
             {pending.map((p, i) => (
@@ -219,18 +195,17 @@ export default function ChatScreen() {
                   <Image source={{ uri: p.localUri }} style={s.pendingImg} resizeMode="cover" />
                 ) : (
                   <View style={s.pendingFile}>
-                    <Text style={s.pendingFileIcon}>📄</Text>
+                    <Ionicons name="document-outline" size={22} color={colors.gray400} />
                     <Text style={s.pendingFileName} numberOfLines={1}>{p.fileName}</Text>
                   </View>
                 )}
-                {p.uploading && (
+                {p.uploading ? (
                   <View style={s.pendingOverlay}>
                     <ActivityIndicator color="#fff" size="small" />
                   </View>
-                )}
-                {!p.uploading && (
+                ) : (
                   <TouchableOpacity style={s.pendingRemove} onPress={() => removePending(p.localUri)}>
-                    <Text style={s.pendingRemoveText}>✕</Text>
+                    <Ionicons name="close" size={10} color="#fff" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -238,92 +213,160 @@ export default function ChatScreen() {
           </View>
         )}
 
-        {/* Input bar */}
-        <View style={s.inputRow}>
-          <TouchableOpacity style={s.attachBtn} onPress={pickAttachment}>
-            <Text style={s.attachBtnIcon}>＋</Text>
-          </TouchableOpacity>
+        {/* ── Input bar ── */}
+        <View style={s.inputBar}>
+          {/* Camera + Gallery side by side */}
+          <View style={s.mediaButtons}>
+            <TouchableOpacity style={s.mediaBtn} onPress={pickCamera} activeOpacity={0.7}>
+              <Ionicons name="camera" size={20} color={colors.black} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.mediaBtn} onPress={pickGallery} activeOpacity={0.7}>
+              <Ionicons name="image" size={20} color={colors.black} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Text input */}
           <TextInput
             style={s.input}
             value={text}
             onChangeText={setText}
-            placeholder="Type a message…"
-            placeholderTextColor={colors.textLight}
+            placeholder="Message…"
+            placeholderTextColor={colors.gray400}
             multiline
             returnKeyType="send"
             onSubmitEditing={send}
           />
+
+          {/* Send */}
           <TouchableOpacity
-            style={[s.sendBtn, !canSend && s.sendBtnDisabled]}
+            style={[s.sendBtn, !canSend && s.sendBtnOff]}
             onPress={send}
             disabled={!canSend}
+            activeOpacity={0.85}
           >
             {sending
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={s.sendIcon}>➤</Text>}
+              : <Ionicons name="arrow-up" size={18} color={canSend ? colors.white : colors.gray400} />}
           </TouchableOpacity>
         </View>
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
 
-const ROLE_COLOR: Record<string, string> = {
-  admin: colors.gold, provider: colors.accent, client: '#1D4ED8',
-}
-
 const s = StyleSheet.create({
-  safe:              { flex: 1, backgroundColor: colors.cream },
-  header:            { backgroundColor: colors.navy, flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
-  back:              { paddingRight: 4 },
-  backText:          { fontSize: 28, color: '#fff', lineHeight: 28 },
-  avatar:            { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E3A2F', alignItems: 'center', justifyContent: 'center' },
-  avatarText:        { fontSize: 14, fontWeight: '600', color: colors.accent },
-  headerName:        { fontSize: 14, fontWeight: '600', color: '#fff' },
-  headerSub:         { fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 1 },
-  list:              { padding: 14, gap: 8, flexGrow: 1 },
+  safe:             { flex: 1, backgroundColor: colors.gray50 },
+
+  // Header
+  header:           { backgroundColor: colors.black, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 10 },
+  backBtn:          { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerAvatar:     { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.black2, borderWidth: 1.5, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
+  headerAvatarText: { fontSize: 14, fontWeight: '700', color: colors.gold },
+  headerName:       { fontSize: 14, fontWeight: '700', color: colors.white },
+  headerSub:        { fontSize: 10, color: colors.gray400, marginTop: 1 },
+  headerFileBtn:    { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+
+  list:             { padding: 16, gap: 10, flexGrow: 1 },
 
   // Bubbles
-  bubbleWrap:        { maxWidth: '82%', marginBottom: 4 },
-  bubbleWrapMe:      { alignSelf: 'flex-end' },
-  bubbleWrapThem:    { alignSelf: 'flex-start' },
-  senderName:        { fontSize: 10, color: colors.textMuted, marginBottom: 3, fontWeight: '600' },
-  bubbleText:        { fontSize: 13, color: colors.text, lineHeight: 19, backgroundColor: '#fff', borderRadius: 14, borderBottomLeftRadius: 4, padding: 10, borderWidth: 1, borderColor: colors.creamMid },
-  bubbleTextMe:      { color: '#fff', backgroundColor: colors.gold, borderColor: colors.gold, borderBottomLeftRadius: 14, borderBottomRightRadius: 4 },
-  time:              { fontSize: 9, color: colors.textMuted, marginTop: 3, textAlign: 'right' },
+  bubble:           { maxWidth: '82%', marginBottom: 2 },
+  bubbleMe:         { alignSelf: 'flex-end' },
+  bubbleThem:       { alignSelf: 'flex-start' },
+  senderName:       { fontSize: 10, color: colors.gray400, marginBottom: 4, fontWeight: '600', letterSpacing: 0.2 },
+  bubbleText:       {
+    fontSize: 14,
+    color: colors.black,
+    lineHeight: 20,
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    borderBottomLeftRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  bubbleTextMe:     {
+    color: colors.white,
+    backgroundColor: colors.black,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 4,
+  },
+  time:             { fontSize: 10, color: colors.gray400, marginTop: 4, textAlign: 'right' },
+  timeMe:           { color: colors.gray400 },
 
   // Attachments in bubbles
-  attachGrid:        { gap: 4, marginBottom: 4 },
-  attachImg:         { width: 220, height: 165, borderRadius: 12 },
-  filePill:          { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: colors.creamMid },
-  filePillMe:        { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.3)' },
-  filePillIcon:      { fontSize: 18 },
-  filePillName:      { flex: 1, fontSize: 12, color: colors.text, fontWeight: '500' },
-  filePillNameMe:    { color: '#fff' },
+  attachGrid:       { gap: 4, marginBottom: 4 },
+  attachImg:        { width: 220, height: 165, borderRadius: 14 },
+  filePill:         {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.white, borderRadius: 12, padding: 10,
+    borderWidth: 1, borderColor: colors.gray100,
+  },
+  filePillMe:       { backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' },
+  filePillName:     { flex: 1, fontSize: 12, color: colors.black, fontWeight: '500' },
+  filePillNameMe:   { color: colors.white },
 
   // Pending strip
-  pendingStrip:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: colors.creamMid },
-  pendingThumb:      { width: 64, height: 64, borderRadius: 10, overflow: 'hidden', backgroundColor: colors.creamMid },
-  pendingImg:        { width: '100%', height: '100%' },
-  pendingFile:       { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 4, gap: 2 },
-  pendingFileIcon:   { fontSize: 22 },
-  pendingFileName:   { fontSize: 8, color: colors.textMuted, textAlign: 'center' },
-  pendingOverlay:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
-  pendingRemove:     { position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
-  pendingRemoveText: { fontSize: 9, color: '#fff', fontWeight: '700' },
+  pendingStrip:     {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 10,
+    backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.gray100,
+  },
+  pendingThumb:     { width: 68, height: 68, borderRadius: 12, overflow: 'hidden', backgroundColor: colors.gray50 },
+  pendingImg:       { width: '100%', height: '100%' },
+  pendingFile:      { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 6, gap: 4 },
+  pendingFileName:  { fontSize: 8, color: colors.gray400, textAlign: 'center' },
+  pendingOverlay:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  pendingRemove:    {
+    position: 'absolute', top: 4, right: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
+    width: 18, height: 18, alignItems: 'center', justifyContent: 'center',
+  },
 
   // Input bar
-  inputRow:          { flexDirection: 'row', alignItems: 'flex-end', padding: 10, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: colors.creamMid, gap: 8 },
-  attachBtn:         { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.creamMid, alignItems: 'center', justifyContent: 'center' },
-  attachBtnIcon:     { fontSize: 22, color: colors.textMuted, lineHeight: 26 },
-  input:             { flex: 1, backgroundColor: colors.cream, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, fontSize: 13, color: colors.text, maxHeight: 100, borderWidth: 1, borderColor: colors.creamMid },
-  sendBtn:           { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
-  sendBtnDisabled:   { backgroundColor: colors.creamMid },
-  sendIcon:          { fontSize: 14, color: '#fff' },
+  inputBar:         {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray100,
+    gap: 8,
+  },
+
+  // Camera + Gallery buttons side by side
+  mediaButtons:     { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  mediaBtn:         {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: colors.gray50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.gray100,
+  },
+
+  // Text input
+  input:            {
+    flex: 1,
+    backgroundColor: colors.gray50,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    fontSize: 14,
+    color: colors.black,
+    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: colors.gray100,
+  },
+
+  // Send button
+  sendBtn:          { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.black, alignItems: 'center', justifyContent: 'center' },
+  sendBtnOff:       { backgroundColor: colors.gray100 },
 
   // Empty state
-  empty:             { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 6 },
-  emptyEmoji:        { fontSize: 40 },
-  emptyTitle:        { fontSize: 15, fontWeight: '600', color: colors.text },
-  emptySub:          { fontSize: 12, color: colors.textLight },
+  empty:            { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 10 },
+  emptyTitle:       { fontSize: 15, fontWeight: '700', color: colors.black },
+  emptySub:         { fontSize: 13, color: colors.gray400 },
 })

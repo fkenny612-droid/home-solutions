@@ -2,39 +2,34 @@ import { useEffect, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { api, Booking } from '../../lib/api'
 import { useAuth } from '../../context/auth'
 
-const STATUS_META: Record<string, { label: string; color: string }> = {
-  pending:     { label: 'Pending',     color: colors.amber  },
-  accepted:    { label: 'Accepted',    color: colors.accent },
-  en_route:    { label: 'En route',    color: colors.accent },
-  in_progress: { label: 'In progress', color: colors.gold   },
-  completed:   { label: 'Completed',   color: colors.accent },
-  emergency:   { label: 'Emergency',   color: colors.red    },
+const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
+  pending:     { label: 'Pending',     bg: colors.amberBg,  fg: colors.amber  },
+  accepted:    { label: 'Accepted',    bg: colors.greenBg,  fg: colors.green  },
+  en_route:    { label: 'En route',    bg: colors.greenBg,  fg: colors.green  },
+  in_progress: { label: 'In progress', bg: '#FFF8EC',       fg: colors.gold   },
+  completed:   { label: 'Completed',   bg: colors.greenBg,  fg: colors.green  },
+  emergency:   { label: 'Emergency',   bg: colors.redBg,    fg: colors.red    },
 }
 
 const SERVICE_EMOJI: Record<string, string> = {
-  // Original
   plumbing: '💧', electrical: '⚡', cleaning: '🧹',
   hvac: '❄️', gas: '🔥', handyman: '🔧',
-  // Home trades
   tiling: '🪟', painting: '🎨', landscaping: '🌿', pool: '🏊',
   pest_control: '🐜', locksmith: '🔑', carpentry: '🪚', solar: '☀️',
   security: '📷', paving: '🛤️', waterproofing: '💦', roofing: '🏠',
   gate_motor: '🚪', moving: '📦', bricklaying: '🧱', borehole: '🌊',
   septic_tank: '🚽', dstv: '📡',
-  // Event hire
   tent_hire: '⛺', chair_table_hire: '🪑', decor_hire: '🌸',
   sound_pa_hire: '🔊', jumping_castle_hire: '🏰',
   catering_equipment_hire: '🍳', cold_room_hire: '🧊', mobile_toilet_hire: '🚻',
-  // Plant & equipment
   generator_hire: '⚡', water_bowser_hire: '🚰',
-  // Transport
   van_hire: '🚐', bakkie_hire: '🛻', furniture_removal: '🛋️',
   last_mile_delivery: '📬', livestock_transport: '🐄',
-  // Security
   security_guard_hire: '💂',
 }
 
@@ -66,15 +61,17 @@ export default function ProviderJobs() {
     try { await api.bookings.assignProvider(id, user.id); await load() } catch {}
   }
 
-  // Active = assigned to this provider, not yet done
+  const declineJob = async (id: string) => {
+    try { await api.bookings.updateStatus(id, 'cancelled'); await load() } catch {}
+  }
+
   const activeJobs  = jobs.filter(j => j.providerId === user?.id && !['completed', 'cancelled'].includes(j.status))
-  // Available = pending with no provider yet
   const pendingJobs = jobs.filter(j => j.status === 'pending' && !j.providerId)
 
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <Text style={s.title}>My Jobs</Text>
+        <Text style={s.title}>Jobs</Text>
         <Text style={s.sub}>{activeJobs.length} active · {pendingJobs.length} available</Text>
       </View>
 
@@ -84,31 +81,55 @@ export default function ProviderJobs() {
       >
         {activeJobs.length > 0 && (
           <>
-            <Text style={s.sectionLabel}>Active</Text>
+            <Text style={s.sectionLabel}>ACTIVE</Text>
             {activeJobs.map(j => (
-              <JobCard key={j.id} job={j} onUpdateStatus={(s) => updateStatus(j.id, s)} />
+              <JobCard key={j.id} job={j} onUpdateStatus={(st) => updateStatus(j.id, st)} />
             ))}
           </>
         )}
 
         {pendingJobs.length > 0 && (
           <>
-            <Text style={[s.sectionLabel, { marginTop: 8 }]}>Available to accept</Text>
+            <Text style={[s.sectionLabel, activeJobs.length > 0 && { marginTop: 8 }]}>AVAILABLE TO ACCEPT</Text>
             {pendingJobs.map(j => (
               <View key={j.id} style={s.card}>
                 <View style={s.cardTop}>
-                  <View style={[s.icon, { backgroundColor: '#F0F9FF' }]}>
+                  <View style={s.icon}>
                     <Text style={{ fontSize: 20 }}>{SERVICE_EMOJI[j.serviceType] ?? '🔧'}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.service}>{j.serviceType.charAt(0).toUpperCase() + j.serviceType.slice(1)}</Text>
+                    <Text style={s.service}>{j.serviceType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Text>
                     <Text style={s.address} numberOfLines={1}>{j.address}</Text>
                   </View>
                   <Text style={s.amt}>R {j.quotedAmount.toLocaleString()}</Text>
                 </View>
-                <TouchableOpacity style={s.acceptBtn} onPress={() => acceptJob(j.id)}>
-                  <Text style={s.acceptBtnText}>Accept job</Text>
-                </TouchableOpacity>
+
+                {/* Job meta */}
+                <View style={s.jobMeta}>
+                  <View style={s.jobMetaItem}>
+                    <Ionicons name="calendar-outline" size={12} color={colors.gray400} />
+                    <Text style={s.jobMetaText}>{new Date(j.createdAt).toLocaleDateString('en-ZA')}</Text>
+                  </View>
+                  <View style={s.jobMetaItem}>
+                    <Ionicons name="cash-outline" size={12} color={colors.gray400} />
+                    <Text style={s.jobMetaText}>R {j.quotedAmount.toLocaleString()} quoted</Text>
+                  </View>
+                  {j.notes && (
+                    <View style={[s.jobMetaItem, { marginTop: 4 }]}>
+                      <Ionicons name="document-text-outline" size={12} color={colors.gray400} />
+                      <Text style={[s.jobMetaText, { flex: 1 }]} numberOfLines={2}>{j.notes}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={s.jobActions}>
+                  <TouchableOpacity style={s.declineBtn} onPress={() => declineJob(j.id)}>
+                    <Text style={s.declineBtnText}>Decline</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.acceptBtn} onPress={() => acceptJob(j.id)}>
+                    <Text style={s.acceptBtnText}>Accept →</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </>
@@ -116,7 +137,6 @@ export default function ProviderJobs() {
 
         {jobs.length === 0 && !refreshing && (
           <View style={s.empty}>
-            <Text style={s.emptyEmoji}>🔧</Text>
             <Text style={s.emptyTitle}>No jobs yet</Text>
             <Text style={s.emptySub}>Pull down to refresh</Text>
           </View>
@@ -129,47 +149,50 @@ export default function ProviderJobs() {
 }
 
 const STATUS_NEXT: Record<string, { label: string; next: 'en_route' | 'in_progress' | 'completed' } | null> = {
-  accepted:    { label: '🚗  I\'m on my way',    next: 'en_route'    },
-  en_route:    { label: '🔧  Start job',          next: 'in_progress' },
-  in_progress: { label: '✅  Mark complete',       next: 'completed'   },
+  accepted:    { label: "I'm on my way",  next: 'en_route'    },
+  en_route:    { label: 'Start job',      next: 'in_progress' },
+  in_progress: { label: 'Mark complete',  next: 'completed'   },
 }
 
-function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'en_route' | 'in_progress' | 'completed') => void; }) {
-  const st   = STATUS_META[job.status] ?? { label: job.status, color: colors.textMuted }
+function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'en_route' | 'in_progress' | 'completed') => void }) {
+  const st   = STATUS_META[job.status] ?? { label: job.status, bg: colors.gray50, fg: colors.gray600 }
   const next = STATUS_NEXT[job.status]
   return (
     <View style={s.card}>
       <View style={s.cardTop}>
-        <View style={[s.icon, { backgroundColor: '#F0F9FF' }]}>
+        <View style={s.icon}>
           <Text style={{ fontSize: 20 }}>{SERVICE_EMOJI[job.serviceType] ?? '🔧'}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={s.service}>{job.serviceType.charAt(0).toUpperCase() + job.serviceType.slice(1)}</Text>
           <Text style={s.address} numberOfLines={1}>{job.address}</Text>
         </View>
-        <View style={[s.statusBadge, { backgroundColor: st.color + '18' }]}>
-          <Text style={[s.statusText, { color: st.color }]}>{st.label}</Text>
+        <View style={[s.statusBadge, { backgroundColor: st.bg }]}>
+          <Text style={[s.statusText, { color: st.fg }]}>{st.label}</Text>
         </View>
       </View>
+
       <View style={s.cardMeta}>
-        <Text style={s.metaText}>💰 R {job.quotedAmount.toLocaleString()}</Text>
+        <Text style={s.metaText}>R {job.quotedAmount.toLocaleString()}</Text>
+        <Text style={s.metaDivider}>·</Text>
         <Text style={s.metaText}>#{job.id.slice(-6).toUpperCase()}</Text>
       </View>
+
       <View style={s.cardActions}>
         <TouchableOpacity style={s.actionBtn} onPress={() => Linking.openURL('tel:+27821234567')}>
-          <Text style={s.actionBtnText}>📞 Call</Text>
+          <Text style={s.actionBtnText}>Call</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={s.actionBtn}
           onPress={() => router.push({ pathname: '/(client)/chat', params: { bookingId: job.id, providerName: 'Client' } } as any)}
         >
-          <Text style={s.actionBtnText}>💬 Chat</Text>
+          <Text style={s.actionBtnText}>Chat</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={s.actionBtn}
           onPress={() => router.push({ pathname: '/(provider)/materials', params: { bookingId: job.id, serviceType: job.serviceType } } as any)}
         >
-          <Text style={s.actionBtnText}>📦 Materials</Text>
+          <Text style={s.actionBtnText}>Materials</Text>
         </TouchableOpacity>
         {next && (
           <TouchableOpacity style={[s.actionBtn, s.actionPrimary]} onPress={() => onUpdateStatus(next.next)}>
@@ -182,31 +205,37 @@ function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'e
 }
 
 const s = StyleSheet.create({
-  safe:              { flex: 1, backgroundColor: colors.cream },
-  header:            { backgroundColor: colors.navy, padding: 18, paddingBottom: 22 },
-  title:             { fontSize: 20, fontWeight: '300', color: '#fff' },
-  sub:               { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
-  body:              { padding: 14 },
-  sectionLabel:      { fontSize: 10, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: '500' },
+  safe:              { flex: 1, backgroundColor: colors.gray50 },
+  header:            { backgroundColor: colors.black, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 },
+  title:             { fontSize: 24, fontWeight: '700', color: colors.white, letterSpacing: -0.3 },
+  sub:               { fontSize: 12, color: colors.gray400, marginTop: 2 },
+  body:              { padding: 16 },
+  sectionLabel:      { fontSize: 10, color: colors.gray400, fontWeight: '700', letterSpacing: 1.2, marginBottom: 10 },
   empty:             { alignItems: 'center', paddingTop: 80, gap: 8 },
-  emptyEmoji:        { fontSize: 44 },
-  emptyTitle:        { fontSize: 16, fontWeight: '600', color: colors.text },
-  emptySub:          { fontSize: 13, color: colors.textLight },
-  card:              { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.creamMid },
-  cardTop:           { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  icon:              { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  service:           { fontSize: 14, fontWeight: '600', color: colors.text },
-  address:           { fontSize: 11, color: colors.textLight, marginTop: 2 },
-  amt:               { fontSize: 14, fontWeight: '700', color: colors.accent },
-  statusBadge:       { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText:        { fontSize: 11, fontWeight: '600' },
-  cardMeta:          { flexDirection: 'row', gap: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.creamMid, marginBottom: 10 },
-  metaText:          { fontSize: 11, color: colors.textMuted },
+  emptyTitle:        { fontSize: 17, fontWeight: '700', color: colors.black },
+  emptySub:          { fontSize: 14, color: colors.gray400 },
+  card:              { backgroundColor: colors.white, borderRadius: 14, padding: 16, marginBottom: 10 },
+  cardTop:           { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  icon:              { width: 44, height: 44, borderRadius: 10, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  service:           { fontSize: 14, fontWeight: '700', color: colors.black },
+  address:           { fontSize: 11, color: colors.gray400, marginTop: 2 },
+  amt:               { fontSize: 14, fontWeight: '700', color: colors.black },
+  statusBadge:       { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  statusText:        { fontSize: 11, fontWeight: '700' },
+  cardMeta:          { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.gray100, marginBottom: 12 },
+  metaText:          { fontSize: 12, color: colors.gray600, fontWeight: '500' },
+  metaDivider:       { fontSize: 12, color: colors.gray200 },
   cardActions:       { flexDirection: 'row', gap: 8 },
-  actionBtn:         { flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.creamMid, alignItems: 'center' },
-  actionBtnText:     { fontSize: 12, color: colors.text },
-  actionPrimary:     { backgroundColor: colors.accent, borderColor: colors.accent },
-  actionPrimaryText: { fontSize: 12, color: '#fff', fontWeight: '600' },
-  acceptBtn:         { backgroundColor: colors.gold, borderRadius: 8, padding: 10, alignItems: 'center', marginTop: 4 },
-  acceptBtnText:     { fontSize: 13, fontWeight: '600', color: colors.navy },
+  actionBtn:         { flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.gray100, alignItems: 'center', backgroundColor: colors.gray50 },
+  actionBtnText:     { fontSize: 12, color: colors.black, fontWeight: '500' },
+  actionPrimary:     { backgroundColor: colors.black, borderColor: colors.black },
+  actionPrimaryText: { fontSize: 12, color: colors.white, fontWeight: '600' },
+  jobMeta:           { borderTopWidth: 1, borderTopColor: colors.gray100, paddingTop: 10, marginTop: 10, gap: 6 },
+  jobMetaItem:       { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  jobMetaText:       { fontSize: 12, color: colors.gray600 },
+  jobActions:        { flexDirection: 'row', gap: 10, marginTop: 12 },
+  declineBtn:        { flex: 1, borderWidth: 1, borderColor: colors.gray200, borderRadius: 10, padding: 12, alignItems: 'center' },
+  declineBtnText:    { fontSize: 14, fontWeight: '600', color: colors.gray600 },
+  acceptBtn:         { flex: 2, backgroundColor: colors.gold, borderRadius: 10, padding: 12, alignItems: 'center' },
+  acceptBtnText:     { fontSize: 14, fontWeight: '700', color: colors.black },
 })

@@ -60,31 +60,19 @@ export class BookingsService {
   async notifyClientOnAssign(clientId: string, providerName: string, serviceType: string, bookingId: string) {
     const client = await this.prisma.user.findUnique({ where: { id: clientId } })
     if (!client) return
-    if (client.pushToken) {
-      await this.notifications.notifyOne(
-        client.pushToken,
-        '✅ Provider on the way!',
-        `${providerName} accepted your ${serviceType} request`,
-        { bookingId, type: 'provider_assigned' },
-      )
-    } else {
-      await this.sms.notifyBookingConfirmed(client.phone, providerName, serviceType, bookingId)
-    }
+    const title = '✅ Provider on the way!'
+    const body  = `${providerName} accepted your ${serviceType} request`
+    await this.notifications.notifyOne(client.pushToken, clientId, title, body, 'provider_assigned', { bookingId })
+    if (!client.pushToken) await this.sms.notifyBookingConfirmed(client.phone, providerName, serviceType, bookingId)
   }
 
   async notifyClientOnComplete(clientId: string, serviceType: string, amount: number, bookingId: string) {
     const client = await this.prisma.user.findUnique({ where: { id: clientId } })
     if (!client) return
-    if (client.pushToken) {
-      await this.notifications.notifyOne(
-        client.pushToken,
-        '✅ Job complete!',
-        `Your ${serviceType} job is done. Rate your provider.`,
-        { bookingId, type: 'job_complete' },
-      )
-    } else {
-      await this.sms.notifyJobComplete(client.phone, serviceType, amount)
-    }
+    const title = '🎉 Job complete!'
+    const body  = `Your ${serviceType} job is done. Rate your provider.`
+    await this.notifications.notifyOne(client.pushToken, clientId, title, body, 'job_complete', { bookingId })
+    if (!client.pushToken) await this.sms.notifyJobComplete(client.phone, serviceType, amount)
   }
 
   async create(dto: {
@@ -112,6 +100,8 @@ export class BookingsService {
         status:         'pending',
       },
     })
+    // Save in-app notification for the client
+    this.notifications.saveInApp(dto.clientId, '📋 Booking received', `We're finding a ${dto.serviceType} provider near you.`, 'booking_created', { bookingId: booking.id }).catch(() => {})
     // Notify matching providers in the background
     this.notifyProviders(dto.serviceType, booking.id, dto.address).catch(() => {})
     return booking

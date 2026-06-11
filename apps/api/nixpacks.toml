@@ -1,0 +1,9 @@
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = [
+  "npx prisma generate",
+  "rm -f tsconfig.tsbuildinfo",
+  "npx tsc"
+]

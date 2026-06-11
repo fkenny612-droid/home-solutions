@@ -263,6 +263,8 @@ export default function ProviderOnboarding() {
   const [hireInventory, setHireInventory] = useState<HireInventory>({})
   const [hirePhotos,    setHirePhotos]    = useState<HirePhoto[]>([])
   const [savingInventory, setSavingInventory] = useState(false)
+  const [submitted,       setSubmitted]       = useState(false)
+  const [submitting,      setSubmitting]      = useState(false)
 
   // Debounce inventory save
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -659,10 +661,32 @@ export default function ProviderOnboarding() {
         </View>
 
         {/* ── Status banner ───────────────────────────────────────────── */}
-        {isComplete ? (
+        {submitted ? (
           <View style={s.successBanner}>
-            <Text style={s.successText}>✅ All documents submitted — under review within 24hrs</Text>
+            <Text style={s.successText}>✅ Documents submitted — under review within 24hrs</Text>
           </View>
+        ) : isComplete ? (
+          <>
+            <TouchableOpacity
+              style={[s.submitBtn, submitting && { opacity: 0.6 }]}
+              disabled={submitting}
+              onPress={async () => {
+                if (!user) return
+                setSubmitting(true)
+                try {
+                  await api.providers.updateHireInventory(user.id, hireInventory as any)
+                  await api.providers.updateKyc(user.id, 'in_review')
+                  setSubmitted(true)
+                } catch {}
+                finally { setSubmitting(false) }
+              }}
+            >
+              {submitting
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={s.submitBtnText}>Submit for verification →</Text>}
+            </TouchableOpacity>
+            <Text style={s.submitNote}>We'll review your documents within 24 hours and activate your account.</Text>
+          </>
         ) : (
           <View style={s.infoBanner}>
             <Text style={s.infoText}>
@@ -750,6 +774,9 @@ const s = StyleSheet.create({
   toggleThumb:        { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: 'flex-end' },
   toggleThumbOff:     { alignSelf: 'flex-start' },
 
+  submitBtn:          { backgroundColor: colors.black, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
+  submitBtnText:      { color: colors.white, fontSize: 15, fontWeight: '700' },
+  submitNote:         { fontSize: 12, color: colors.gray400, textAlign: 'center', marginTop: 8, marginBottom: 4 },
   successBanner:      { backgroundColor: '#EAF5EE', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.accent },
   successText:        { fontSize: 13, color: '#1A5C38', lineHeight: 20 },
   infoBanner:         { backgroundColor: '#FFF9EC', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.gold + '40' },
