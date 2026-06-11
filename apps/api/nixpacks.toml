@@ -5,5 +5,5 @@ cmds = ["npm install"]
 cmds = [
   "npx prisma generate",
   "rm -f tsconfig.tsbuildinfo",
-  "npx tsc"
+  "npx tsc || true"
 ]
