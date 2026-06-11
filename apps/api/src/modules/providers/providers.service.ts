@@ -89,10 +89,11 @@ export class ProvidersService {
   }
 
   updateAvailability(id: string, dto: { monFri?: boolean; saturday?: boolean; sunday?: boolean; emergency?: boolean }) {
-    return this.prisma.provider.update({
-      where: { id },
-      data:  dto,
-    })
+    return this.prisma.provider.update({ where: { id }, data: dto })
+  }
+
+  updateServiceAreas(id: string, areas: string[]) {
+    return this.prisma.provider.update({ where: { id }, data: { serviceAreas: areas } })
   }
 
   async earnings(id: string) {
