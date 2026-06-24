@@ -21,7 +21,24 @@ model User {
   vatNumber           String?
   serviceArea         String?
   pushToken           String?
+  loyaltyPoints       Int      @default(0)
+  referralCode        String?  @unique
+  referredById        String?
+  referralRewarded    Boolean  @default(false)
   createdAt           DateTime @default(now())
+}
+
+model LoyaltyRedemption {
+  id             String   @id @default(uuid())
+  userId         String
+  rewardId       String
+  pointsSpent    Int
+  discountAmount Float
+  code           String   @unique
+  used           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Provider {

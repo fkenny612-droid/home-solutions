@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Easy-Fix",
-    "slug": "easy-fix",
+    "slug": "home-solutions",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -13,7 +13,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#0C0A09"
     },
     "ios": {
       "supportsTablet": false,
@@ -24,8 +24,6 @@
         "NSPhotoLibraryUsageDescription": "Used to upload profile and KYC documents.",
         "NSLocationWhenInUseUsageDescription": "Used to find nearby service providers.",
         "UIBackgroundModes": [
-          "remote-notification",
-          "remote-notification",
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -34,15 +32,13 @@
     "android": {
       "package": "co.za.homesolutions.app",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#0C0A09"
       },
-      "googleServicesFile": "./google-services.json",
       "permissions": [
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
       ]

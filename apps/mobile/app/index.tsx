@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { router } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors } from '../constants/theme'
+import { LogoMark } from '../components/Logo'
 
 export default function RoleSelector() {
   return (
@@ -10,16 +11,14 @@ export default function RoleSelector() {
 
         {/* Logo */}
         <View style={s.logoRow}>
-          <View style={s.logoMark}>
-            <Text style={s.logoMarkText}>EF</Text>
-          </View>
+          <LogoMark size={44} variant="dark" />
           <View>
             <Text style={s.logoName}>Easy-Fix</Text>
             <Text style={s.logoSub}>Powered by Easy-Hire</Text>
           </View>
         </View>
 
-        <Text style={s.eyebrow}>Nationwide · South Africa</Text>
+        <Text style={s.eyebrow}>Durban · KwaZulu-Natal</Text>
         <Text style={s.headline}>Home services,{'\n'}<Text style={s.headlineAccent}>on demand</Text></Text>
         <Text style={s.sub}>Vetted tradespeople. Live tracking.{'\n'}90-day warranty. Peach Payments.</Text>
 
@@ -35,7 +34,7 @@ export default function RoleSelector() {
           </TouchableOpacity>
         </View>
 
-        <Text style={s.footer}>Serving Johannesburg, Cape Town, Durban & nationwide</Text>
+        <Text style={s.footer}>Serving Durban, Umhlanga, Pinetown & surrounding areas</Text>
       </View>
     </SafeAreaView>
   )
@@ -46,8 +45,6 @@ const s = StyleSheet.create({
   container:         { flex: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 32 },
 
   logoRow:           { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 48 },
-  logoMark:          { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
-  logoMarkText:      { fontSize: 15, fontWeight: '800', color: colors.black, letterSpacing: 0.5 },
   logoName:          { fontSize: 20, fontWeight: '800', color: colors.white, letterSpacing: -0.3 },
   logoSub:           { fontSize: 10, color: colors.gray400, marginTop: 1 },
 

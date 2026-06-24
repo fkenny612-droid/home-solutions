@@ -4,23 +4,46 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
-import { api } from '../../lib/api'
+import { api, Booking } from '../../lib/api'
 import { useAuth } from '../../context/auth'
 
-const RECENT_JOBS = [
-  { emoji: '💧', name: 'Geyser repair',  detail: 'Today · Priya G. · ★★★★★',    amt: 'R 1 000' },
-  { emoji: '💧', name: 'Burst pipe fix', detail: 'Yesterday · Ahmed P. · ★★★★★', amt: 'R 1 450' },
-  { emoji: '💧', name: 'Drain blockage', detail: '22 May · Mark W. · ★★★★☆',    amt: 'R 650'   },
-]
+const SERVICE_EMOJI: Record<string, string> = {
+  plumbing: '💧', electrical: '⚡', cleaning: '🧹', hvac: '❄️', gas: '🔥', handyman: '🔧',
+  tiling: '🪟', painting: '🎨', landscaping: '🌿', pool: '🏊', pest_control: '🐜',
+  locksmith: '🔑', carpentry: '🪚', solar: '☀️', security: '📷',
+}
+
+function formatService(svc: string) {
+  return svc.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function formatRelativeDate(iso: string) {
+  const d = new Date(iso)
+  const today = new Date()
+  const diffDays = Math.floor((today.setHours(0,0,0,0) - new Date(d).setHours(0,0,0,0)) / 86400000)
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  return d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+}
 
 export default function ProviderEarnings() {
   const { user, logout } = useAuth()
   const [online,      setOnline]      = useState(true)
   const [earnings,    setEarnings]    = useState({ available: 4840, thisMonth: 28440, total: 892 })
   const [unreadCount, setUnreadCount] = useState(0)
+  const [recentJobs,  setRecentJobs]  = useState<Booking[]>([])
 
   useEffect(() => {
-    if (user?.id) api.providers.earnings(user.id).then(setEarnings).catch(() => {})
+    if (user?.id) {
+      api.providers.earnings(user.id).then(setEarnings).catch(() => {})
+      api.bookings.list('completed').then(all => {
+        const mine = all
+          .filter(b => b.providerId === user.id)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 3)
+        setRecentJobs(mine)
+      }).catch(() => {})
+    }
     api.notifications.unreadCount().then(r => setUnreadCount(r.count)).catch(() => {})
     const id = setInterval(() => {
       api.notifications.unreadCount().then(r => setUnreadCount(r.count)).catch(() => {})
@@ -97,19 +120,30 @@ export default function ProviderEarnings() {
         </View>
 
         {/* Recent jobs */}
-        <Text style={s.sectionLabel}>RECENT JOBS</Text>
+        <View style={s.sectionHeaderRow}>
+          <Text style={s.sectionLabel}>RECENT JOBS</Text>
+          <TouchableOpacity onPress={() => router.push('/(provider)/earnings-history')}>
+            <Text style={s.seeAllText}>See all →</Text>
+          </TouchableOpacity>
+        </View>
         <View style={s.card}>
-          {RECENT_JOBS.map((j, i) => (
-            <View key={i} style={[s.jobRow, i < RECENT_JOBS.length - 1 && s.jobRowBorder]}>
+          {recentJobs.length === 0 ? (
+            <Text style={s.noJobsText}>No completed jobs yet</Text>
+          ) : recentJobs.map((j, i) => (
+            <TouchableOpacity
+              key={j.id}
+              style={[s.jobRow, i < recentJobs.length - 1 && s.jobRowBorder]}
+              onPress={() => router.push('/(provider)/earnings-history')}
+            >
               <View style={s.jobIcon}>
-                <Text style={{ fontSize: 18 }}>{j.emoji}</Text>
+                <Text style={{ fontSize: 18 }}>{SERVICE_EMOJI[j.serviceType] ?? '🔧'}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.jobName}>{j.name}</Text>
-                <Text style={s.jobDetail}>{j.detail}</Text>
+                <Text style={s.jobName}>{formatService(j.serviceType)}</Text>
+                <Text style={s.jobDetail}>{formatRelativeDate(j.createdAt)} · {j.address}</Text>
               </View>
-              <Text style={s.jobAmt}>{j.amt}</Text>
-            </View>
+              <Text style={s.jobAmt}>R {(j.finalAmount ?? j.quotedAmount).toLocaleString('en-ZA')}</Text>
+            </TouchableOpacity>
           ))}
         </View>
 
@@ -177,6 +211,9 @@ const s = StyleSheet.create({
 
   // Section label
   sectionLabel:  { fontSize: 10, color: colors.gray400, fontWeight: '700', letterSpacing: 1.2, marginBottom: 10 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  seeAllText:    { fontSize: 11, color: colors.gold, fontWeight: '700', marginBottom: 10 },
+  noJobsText:    { fontSize: 12, color: colors.gray400, textAlign: 'center', paddingVertical: 16 },
 
   // Job rows
   jobRow:        { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },

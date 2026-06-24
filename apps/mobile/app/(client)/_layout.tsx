@@ -52,7 +52,13 @@ export default function ClientLayout() {
       <Tabs.Screen name="subscription"   options={{ href: null }} />
       <Tabs.Screen name="notifications"    options={{ href: null }} />
       <Tabs.Screen name="booking-detail"  options={{ href: null }} />
-      <Tabs.Screen name="edit-profile"    options={{ href: null }} />
+      <Tabs.Screen name="edit-profile"       options={{ href: null }} />
+      <Tabs.Screen name="warranties"         options={{ href: null }} />
+      <Tabs.Screen name="payment-methods"    options={{ href: null }} />
+      <Tabs.Screen name="help"               options={{ href: null }} />
+      <Tabs.Screen name="receipt"            options={{ href: null }} />
+      <Tabs.Screen name="loyalty"            options={{ href: null }} />
+      <Tabs.Screen name="referral"           options={{ href: null }} />
     </Tabs>
   )
 }

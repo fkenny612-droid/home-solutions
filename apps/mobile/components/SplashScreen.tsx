@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, View, Text, Easing } from 'react-native'
 import { colors } from '../constants/theme'
+import { LogoMark } from './Logo'
 
 interface Props {
   onDone: () => void
@@ -82,8 +83,8 @@ export default function SplashScreen({ onDone }: Props) {
   return (
     <Animated.View style={[s.container, { opacity: screenOpacity }]}>
       {/* Logo mark */}
-      <Animated.View style={[s.logoMark, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
-        <Text style={s.logoMarkText}>EF</Text>
+      <Animated.View style={{ transform: [{ scale: logoScale }], opacity: logoOpacity, marginBottom: 24 }}>
+        <LogoMark size={80} variant="gold" />
       </Animated.View>
 
       {/* Brand name */}
@@ -115,16 +116,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 999,
   },
-  logoMark:     {
-    width: 80,
-    height: 80,
-    borderRadius: 22,
-    backgroundColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  logoMarkText: { fontSize: 28, fontWeight: '800', color: colors.black, letterSpacing: 1 },
   brandName:    { fontSize: 40, fontWeight: '800', color: colors.white, letterSpacing: -1, marginBottom: 12 },
   goldBar:      { height: 3, backgroundColor: colors.gold, borderRadius: 2, marginBottom: 16 },
   tagline:      { fontSize: 15, color: 'rgba(255,255,255,0.6)', fontWeight: '500', letterSpacing: 0.2 },

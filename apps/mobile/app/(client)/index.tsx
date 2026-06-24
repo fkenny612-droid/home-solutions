@@ -15,10 +15,10 @@ import SliderButton from '../../components/SliderButton'
 
 const { width: SW } = Dimensions.get('window')
 
-// ─── Easy-Fix shortcuts (top icon row like Uber ride types) ──────────────────
+// ─── Quick-book shortcuts (top icon row like Uber ride types) ───────────────
 const FIX_SHORTCUTS = ['plumbing', 'electrical', 'cleaning', 'handyman', 'painting', 'landscaping', 'solar', 'security']
 
-// ─── Easy-Hire category tiles ─────────────────────────────────────────────────
+// ─── Equipment hire category tiles ──────────────────────────────────────────
 const HIRE_TILES = [
   { label: 'Events',    emoji: '⛺', ids: ['tent_hire','chair_table_hire','decor_hire','sound_pa_hire','jumping_castle_hire','catering_equipment_hire','cold_room_hire','mobile_toilet_hire'] },
   { label: 'Plant',     emoji: '⚡', ids: ['generator_hire','water_bowser_hire'] },
@@ -298,7 +298,7 @@ export default function ClientHome() {
           />
         </View>
 
-        {/* ── Easy-Fix shortcuts (Uber ride-type row) ── */}
+        {/* ── Quick-book shortcuts (Uber ride-type row) ── */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>Easy-Fix</Text>
@@ -322,7 +322,7 @@ export default function ClientHome() {
           </ScrollView>
         </View>
 
-        {/* ── Easy-Hire section ── */}
+        {/* ── Equipment hire section ── */}
         <View style={s.hireSection}>
           <View style={s.hireSectionHeader}>
             <View>
@@ -547,13 +547,13 @@ const s = StyleSheet.create({
   brandTag:            { backgroundColor: colors.gold + '18', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
   brandTagText:        { fontSize: 9, color: colors.gold, fontWeight: '700', letterSpacing: 0.8 },
 
-  // Easy-Fix shortcuts (Uber tile row)
+  // Quick-book shortcuts (Uber tile row)
   fixTile:             { width: 86, alignItems: 'center' },
   fixTileIcon:         { width: 68, height: 68, borderRadius: 18, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   fixTileLabel:        { fontSize: 11, fontWeight: '600', color: colors.black, textAlign: 'center' },
   fixTilePrice:        { fontSize: 9, color: colors.gray400, marginTop: 2, textAlign: 'center' },
 
-  // Easy-Hire section
+  // Equipment hire section
   hireSection:         { marginTop: 24, backgroundColor: colors.black, paddingTop: 18, paddingBottom: 18 },
   hireSectionHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, marginBottom: 16 },
   hireSectionTitle:    { fontSize: 19, fontWeight: '800', color: colors.white, letterSpacing: -0.3 },

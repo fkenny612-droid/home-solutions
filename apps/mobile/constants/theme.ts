@@ -1,38 +1,40 @@
 export const colors = {
-  // Core — Uber monochrome
-  black:       '#000000',
-  black1:      '#111111',
-  black2:      '#1A1A1A',
-  gray50:      '#F5F5F5',
-  gray100:     '#EBEBEB',
-  gray200:     '#D4D4D4',
-  gray400:     '#8C8C8C',
-  gray600:     '#525252',
-  gray900:     '#1A1A1A',
+  // Core — warm premium near-black, refined from pure black/grey
+  black:       '#0C0A09',
+  black1:      '#1C1917',
+  black2:      '#292524',
+  gray50:      '#FAFAF9',
+  gray100:     '#F0EEEC',
+  gray200:     '#D6D3D1',
+  gray300:     '#B8B5B1',
+  gray400:     '#8C8682',
+  gray600:     '#57534E',
+  gray900:     '#1C1917',
   white:       '#FFFFFF',
 
-  // Gold — used sparingly for primary CTAs and key highlights only
-  gold:        '#C8922A',
-  goldLight:   '#F0C060',
+  // Gold — richer ochre, used sparingly for primary CTAs and key highlights only
+  gold:        '#CA8A04',
+  goldLight:   '#EAB308',
+  goldDim:     '#8A5F03',
 
   // Semantic
-  green:       '#166534',
+  green:       '#15803D',
   greenBg:     '#F0FDF4',
-  red:         '#C0392B',
+  red:         '#B91C1C',
   redBg:       '#FEF2F2',
   amber:       '#B45309',
   amberBg:     '#FFFBEB',
 
   // Legacy aliases so un-migrated files still compile
-  navy:        '#000000',
-  navyMid:     '#1A1A1A',
-  cream:       '#F5F5F5',
-  creamMid:    '#EBEBEB',
-  accent:      '#166534',
-  accentLight: '#166534',
-  text:        '#1A1A1A',
-  textMuted:   '#525252',
-  textLight:   '#8C8C8C',
+  navy:        '#0C0A09',
+  navyMid:     '#1C1917',
+  cream:       '#FAFAF9',
+  creamMid:    '#F0EEEC',
+  accent:      '#15803D',
+  accentLight: '#15803D',
+  text:        '#1C1917',
+  textMuted:   '#57534E',
+  textLight:   '#8C8682',
 }
 
 export const fonts = {
@@ -45,4 +47,25 @@ export const radius = {
   md: 10,
   lg: 16,
   xl: 24,
+}
+
+// Spacing scale — use for new screens/components going forward
+export const spacing = {
+  xs:  4,
+  sm:  8,
+  md:  12,
+  lg:  16,
+  xl:  24,
+  xxl: 32,
+}
+
+// Type scale (px) — pairs with fonts.sans / fonts.serif
+export const type = {
+  display: 34,
+  h1:      28,
+  h2:      22,
+  h3:      17,
+  body:    15,
+  caption: 12,
+  micro:   10,
 }

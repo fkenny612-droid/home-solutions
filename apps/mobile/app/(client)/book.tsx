@@ -20,8 +20,8 @@ import { uploadToCloudinary } from '../../lib/cloudinary'
 type Step = 'details' | 'providers' | 'quote' | 'tracking' | 'rating' | 'done'
 
 const MOCK_PROVIDERS: Provider[] = [
-  { id: 'prov-raj',   name: 'Raj Pillay',   skills: ['plumbing'], rating: 4.9, reviewCount: 214, jobCount: 892, earningsBalance: 4840, kycStatus: 'approved', status: 'active', lat: -29.8587, lng: 31.0218, distanceKm: null, etaMinutes: null, availability: { monFri: true, saturday: true, sunday: false, emergency: true } },
-  { id: 'prov-sipho', name: 'Sipho Ndlovu', skills: ['plumbing','handyman'], rating: 4.7, reviewCount: 98, jobCount: 312, earningsBalance: 0, kycStatus: 'approved', status: 'active', lat: null, lng: null, distanceKm: null, etaMinutes: null, availability: { monFri: true, saturday: false, sunday: false, emergency: false } },
+  { id: 'prov-raj',   name: 'Raj Pillay',   skills: ['plumbing'], rating: 4.9, reviewCount: 214, jobCount: 892, earningsBalance: 4840, kycStatus: 'approved', status: 'active', lat: -29.8587, lng: 31.0218, distanceKm: null, etaMinutes: null, serviceAreas: [], availability: { monFri: true, saturday: true, sunday: false, emergency: true } },
+  { id: 'prov-sipho', name: 'Sipho Ndlovu', skills: ['plumbing','handyman'], rating: 4.7, reviewCount: 98, jobCount: 312, earningsBalance: 0, kycStatus: 'approved', status: 'active', lat: null, lng: null, distanceKm: null, etaMinutes: null, serviceAreas: [], availability: { monFri: true, saturday: false, sunday: false, emergency: false } },
 ]
 
 const QUOTE_AMOUNT = 1000
@@ -37,6 +37,7 @@ export default function BookScreen() {
   const [photos,         setPhotos]       = useState<string[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [selectedProv,   setSelected]    = useState(0)
+  const [providerView,   setProviderView] = useState<'list' | 'map'>('list')
   const [providers,      setProviders]   = useState<Provider[]>(MOCK_PROVIDERS)
   const [booking,        setBooking]     = useState<Booking | null>(null)
   const [liveStatus,     setLiveStatus]  = useState<string | null>(null)
@@ -339,7 +340,29 @@ export default function BookScreen() {
               <Text style={s.headerTitle}>{serviceType ? serviceType.charAt(0).toUpperCase() + serviceType.slice(1) : 'Service'} near you</Text>
               <Text style={s.headerSub}>{providers.length} provider{providers.length !== 1 ? 's' : ''} available near you</Text>
             </View>
+            <View style={s.viewToggle}>
+              <TouchableOpacity
+                style={[s.viewToggleBtn, providerView === 'list' && s.viewToggleBtnActive]}
+                onPress={() => setProviderView('list')}
+              >
+                <Ionicons name="list" size={15} color={providerView === 'list' ? colors.black : colors.textLight} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.viewToggleBtn, providerView === 'map' && s.viewToggleBtnActive]}
+                onPress={() => setProviderView('map')}
+              >
+                <Ionicons name="map" size={15} color={providerView === 'map' ? colors.black : colors.textLight} />
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {providerView === 'map' ? (
+            <ProviderRadar
+              providers={providers}
+              selectedIndex={selectedProv}
+              onSelect={setSelected}
+            />
+          ) : (
           <ScrollView style={s.body}>
             <Text style={s.hint}>{clientCoords ? 'Sorted by proximity · Verified only' : 'Sorted by rating · Verified only'}</Text>
             {providers.map((p, i) => {
@@ -388,6 +411,7 @@ export default function BookScreen() {
               )
             })}
           </ScrollView>
+          )}
           <View style={s.ctaBar}>
             <TouchableOpacity style={s.ctaBtn} onPress={() => setStep('quote')}>
               <Text style={s.ctaBtnText}>Request quote from {prov?.name.split(' ')[0]}</Text>
@@ -587,6 +611,71 @@ export default function BookScreen() {
   )
 }
 
+const RADAR_SIZE = 280
+const RADAR_RADIUS = RADAR_SIZE / 2
+
+function hashAngle(id: string) {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
+  return (h % 360) * (Math.PI / 180)
+}
+
+function ProviderRadar({ providers, selectedIndex, onSelect }: {
+  providers: Provider[]
+  selectedIndex: number
+  onSelect: (i: number) => void
+}) {
+  const maxDist = Math.max(5, ...providers.map(p => p.distanceKm ?? 0))
+  const selected = providers[selectedIndex]
+
+  return (
+    <View style={s.radarWrap}>
+      <View style={s.radar}>
+        {[1, 0.66, 0.33].map(frac => (
+          <View key={frac} style={[s.radarRing, {
+            width: RADAR_SIZE * frac, height: RADAR_SIZE * frac,
+            top: (RADAR_SIZE - RADAR_SIZE * frac) / 2, left: (RADAR_SIZE - RADAR_SIZE * frac) / 2,
+          }]} />
+        ))}
+        <View style={s.radarCenter}>
+          <Text style={s.radarCenterText}>YOU</Text>
+        </View>
+
+        {providers.map((p, i) => {
+          const angle  = hashAngle(p.id)
+          const distFrac = p.distanceKm != null ? Math.min(1, p.distanceKm / maxDist) : 0.3 + (hashAngle(p.id + 'r') % 1000) / 2000
+          const r = 26 + distFrac * (RADAR_RADIUS - 40)
+          const x = RADAR_RADIUS + r * Math.cos(angle) - 18
+          const y = RADAR_RADIUS + r * Math.sin(angle) - 18
+          const isSel = i === selectedIndex
+          return (
+            <TouchableOpacity
+              key={p.id}
+              style={[s.radarPin, isSel && s.radarPinSel, { left: x, top: y }]}
+              onPress={() => onSelect(i)}
+            >
+              <Text style={[s.radarPinText, isSel && s.radarPinTextSel]}>
+                {p.name.split(' ').map(w => w[0]).join('')}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+
+      {selected && (
+        <View style={s.radarInfoCard}>
+          <Text style={s.radarInfoName}>{selected.name}</Text>
+          <View style={s.radarInfoRow}>
+            <Text style={s.radarInfoText}>★ {selected.rating} ({selected.reviewCount})</Text>
+            {selected.distanceKm != null && <Text style={s.radarInfoText}>· {selected.distanceKm} km away</Text>}
+            {selected.etaMinutes != null && <Text style={s.radarInfoText}>· ~{selected.etaMinutes} min</Text>}
+          </View>
+        </View>
+      )}
+    </View>
+  )
+}
+
 const s = StyleSheet.create({
   qLabel:        { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 8 },
   qOptional:     { fontSize: 11, fontWeight: '400', color: colors.textLight },
@@ -621,6 +710,24 @@ const s = StyleSheet.create({
   backArrow:         { fontSize: 16, color: colors.textMuted },
   headerTitle:       { fontSize: 15, fontWeight: '600', color: colors.text },
   headerSub:         { fontSize: 11, color: colors.textLight, marginTop: 1 },
+  // View toggle
+  viewToggle:        { flexDirection: 'row', backgroundColor: colors.gray50, borderRadius: 8, padding: 2, gap: 2 },
+  viewToggleBtn:     { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 6 },
+  viewToggleBtnActive: { backgroundColor: '#fff' },
+  // Radar
+  radarWrap:         { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  radar:             { width: RADAR_SIZE, height: RADAR_SIZE, position: 'relative' },
+  radarRing:         { position: 'absolute', borderRadius: 999, borderWidth: 1, borderColor: colors.creamMid },
+  radarCenter:       { position: 'absolute', width: 36, height: 36, borderRadius: 18, backgroundColor: colors.navy, alignItems: 'center', justifyContent: 'center', left: RADAR_RADIUS - 18, top: RADAR_RADIUS - 18 },
+  radarCenterText:   { fontSize: 8, fontWeight: '800', color: colors.gold, letterSpacing: 0.5 },
+  radarPin:          { position: 'absolute', width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', borderWidth: 2, borderColor: colors.gray200, alignItems: 'center', justifyContent: 'center' },
+  radarPinSel:       { borderColor: colors.gold, backgroundColor: '#FFFBF0' },
+  radarPinText:      { fontSize: 11, fontWeight: '700', color: colors.textMuted },
+  radarPinTextSel:   { color: colors.gold },
+  radarInfoCard:     { marginTop: 24, backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.creamMid, width: '100%' },
+  radarInfoName:     { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  radarInfoRow:      { flexDirection: 'row', gap: 6 },
+  radarInfoText:     { fontSize: 12, color: colors.textLight },
   bookingId:         { fontSize: 10, color: colors.textLight },
   body:              { flex: 1, padding: 14 },
   hint:              { fontSize: 11, color: colors.textMuted, marginBottom: 10 },

@@ -90,7 +90,7 @@ export default function ProviderSection() {
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Upload docs to start earning</div>
             <div style={{ display: 'flex', gap: 5, marginTop: 10 }}>
               {[true, true, false, false].map((done, i) => (
-                <div key={i} style={{ height: 3, borderRadius: 3, flex: 1, background: done ? (i === 1 ? 'rgba(200,146,42,0.55)' : 'var(--gold)') : 'rgba(255,255,255,0.18)' }} />
+                <div key={i} style={{ height: 3, borderRadius: 3, flex: 1, background: done ? (i === 1 ? 'rgba(202,138,4,0.55)' : 'var(--gold)') : 'rgba(255,255,255,0.18)' }} />
               ))}
             </div>
           </div>

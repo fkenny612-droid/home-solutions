@@ -15,6 +15,13 @@ export interface RegisterDto {
   companyRegistration?: string
   vatNumber?:          string
   serviceArea?:        string
+  referralCode?:       string
+}
+
+function generateReferralCode(firstName: string) {
+  const prefix = (firstName || 'USER').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 5) || 'USER'
+  const suffix = Math.floor(1000 + Math.random() * 9000)
+  return `${prefix}${suffix}`
 }
 
 @Injectable()
@@ -45,6 +52,15 @@ export class AuthService {
       )
     }
 
+    let referredById: string | null = null
+    if (dto.referralCode) {
+      const referrer = await this.prisma.user.findUnique({ where: { referralCode: dto.referralCode.toUpperCase() } })
+      if (referrer) referredById = referrer.id
+    }
+
+    let referralCode = generateReferralCode(dto.firstName)
+    while (await this.prisma.user.findUnique({ where: { referralCode } })) referralCode = generateReferralCode(dto.firstName)
+
     const user = await this.prisma.user.create({
       data: {
         phone:               dto.phone,
@@ -57,6 +73,8 @@ export class AuthService {
         companyRegistration: dto.companyRegistration,
         vatNumber:           dto.vatNumber || null,
         serviceArea:         dto.serviceArea,
+        referralCode,
+        referredById,
       },
     })
 
@@ -117,6 +135,16 @@ export class AuthService {
   async deleteAddress(userId: string, addressId: string) {
     await this.prisma.savedAddress.deleteMany({ where: { id: addressId, userId } })
     return { ok: true }
+  }
+
+  async getReferral(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    const referred = await this.prisma.user.findMany({ where: { referredById: userId }, select: { referralRewarded: true } })
+    return {
+      code:          user?.referralCode ?? null,
+      referredCount: referred.length,
+      rewardedCount: referred.filter(r => r.referralRewarded).length,
+    }
   }
 
   async updateProfile(userId: string, dto: { firstName?: string; lastName?: string; email?: string; avatarUrl?: string }) {

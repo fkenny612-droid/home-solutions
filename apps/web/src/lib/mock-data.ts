@@ -20,7 +20,7 @@ export const PROVIDERS = [
 ]
 
 export const SUBSCRIPTIONS = [
-  { label: 'Basic Home', count: 1248, pct: 72, color: '#C8922A' },
+  { label: 'Basic Home', count: 1248, pct: 72, color: '#CA8A04' },
   { label: 'Premium Home', count: 774, pct: 45, color: '#2D8A6E' },
   { label: 'Estate / Biz', count: 38, pct: 22, color: '#243447' },
   { label: 'Emergency Add-on', count: 582, pct: 34, color: '#C0392B' },

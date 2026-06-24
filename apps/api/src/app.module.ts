@@ -9,6 +9,7 @@ import { PaymentsModule } from './modules/payments/payments.module'
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { ChatModule } from './modules/chat/chat.module'
+import { LoyaltyModule } from './modules/loyalty/loyalty.module'
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ChatModule } from './modules/chat/chat.module'
     PaymentsModule,
     SubscriptionsModule,
     ChatModule,
+    LoyaltyModule,
   ],
 })
 export class AppModule {}

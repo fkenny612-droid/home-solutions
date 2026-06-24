@@ -12,7 +12,7 @@ const PANELS = [
   {
     id: 'client' as ActiveSection,
     icon: 'ti-device-mobile',
-    iconBg: 'rgba(200,146,42,0.15)',
+    iconBg: 'rgba(202,138,4,0.15)',
     iconColor: 'var(--gold)',
     title: 'Client App',
     desc: 'For homeowners, tenants, and estate managers. Book services, approve quotes, track technicians live, and manage warranties — all from one app.',
@@ -32,7 +32,7 @@ const PANELS = [
   {
     id: 'provider' as ActiveSection,
     icon: 'ti-tools',
-    iconBg: 'rgba(200,146,42,0.10)',
+    iconBg: 'rgba(202,138,4,0.10)',
     iconColor: 'var(--gold)',
     title: 'Provider App',
     desc: 'For vetted tradespeople. KYC onboarding, job management, earnings dashboard, and Peach Payments withdrawals — built for South African providers.',

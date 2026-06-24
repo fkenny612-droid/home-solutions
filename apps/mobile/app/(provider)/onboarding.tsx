@@ -736,12 +736,12 @@ const s = StyleSheet.create({
   skillsHint:         { fontSize: 11, color: colors.textMuted, marginBottom: 12, marginTop: -2, lineHeight: 16 },
   catRow:             { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   catLabel:           { fontSize: 11, color: colors.textLight, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8 },
-  hireBadge:          { backgroundColor: '#FFF3CD', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#F0C060' },
+  hireBadge:          { backgroundColor: '#FFF3CD', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#EAB308' },
   hireBadgeText:      { fontSize: 9, color: '#92600A', fontWeight: '700', textTransform: 'uppercase' },
   skillGrid:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   skillChip:          { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.creamMid, backgroundColor: '#fff', width: '47%' },
   skillChipSel:       { borderColor: colors.gold, backgroundColor: '#FFFBF0' },
-  skillChipHire:      { borderColor: '#F0C060', backgroundColor: '#FFFBF0' },
+  skillChipHire:      { borderColor: '#EAB308', backgroundColor: '#FFFBF0' },
   skillLabel:         { fontSize: 11, color: colors.textMuted, flex: 1 },
   skillLabelSel:      { color: colors.gold, fontWeight: '600' },
 
@@ -750,7 +750,7 @@ const s = StyleSheet.create({
   inventorySaved:     { fontSize: 11, color: colors.accent, fontWeight: '600', marginTop: 2 },
 
   photoHeaderRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  hirePhotoBanner:    { backgroundColor: '#FFF8EC', borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#F0C060' },
+  hirePhotoBanner:    { backgroundColor: '#FFF8EC', borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#EAB308' },
   hirePhotoBannerText:{ fontSize: 12, color: '#7C4A00', lineHeight: 18 },
 
   photoGrid:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },

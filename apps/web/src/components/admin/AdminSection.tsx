@@ -113,7 +113,7 @@ export default function AdminSection() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px',
                     borderRadius: 7, margin: '1px 7px', cursor: 'pointer',
-                    background: activeNav === item.label ? 'rgba(200,146,42,0.18)' : 'transparent',
+                    background: activeNav === item.label ? 'rgba(202,138,4,0.18)' : 'transparent',
                     color: activeNav === item.label ? 'var(--gold-light)' : 'rgba(255,255,255,0.5)',
                     fontSize: 12, transition: 'all 0.15s',
                   }}

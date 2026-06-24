@@ -20,9 +20,15 @@ export class AuthController {
     phone: string; email: string; password: string
     firstName: string; lastName: string; role: 'client' | 'provider'
     companyName?: string; companyRegistration?: string
-    vatNumber?: string; serviceArea?: string
+    vatNumber?: string; serviceArea?: string; referralCode?: string
   }) {
     return this.svc.register(body)
+  }
+
+  @Get('referral')
+  @UseGuards(AuthGuard('jwt'))
+  getReferral(@Req() req: any) {
+    return this.svc.getReferral(req.user.sub)
   }
 
   @Patch('push-token')

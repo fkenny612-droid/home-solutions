@@ -1,0 +1,10 @@
+{
+  "experimentalServices": {
+    "api": {
+      "root": "apps/api",
+      "entrypoint": "src/main.ts",
+      "routePrefix": "/",
+      "buildCommand": "npm install && npm run build"
+    }
+  }
+}

@@ -25,7 +25,7 @@ export default function HomePage() {
       <div style={{
         padding: '60px 32px 48px',
         textAlign: 'center',
-        background: 'linear-gradient(180deg, #0A0A0A 0%, #0F1923 100%)',
+        background: 'linear-gradient(180deg, #0C0A09 0%, #0C0A09 100%)',
       }}>
         <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 16 }}>
           Durban · KZN · South Africa

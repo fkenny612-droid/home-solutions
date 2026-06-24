@@ -1,5 +1,5 @@
 /**
- * Home Solutions — React Native API client
+ * Easy-Fix — React Native API client
  * Set API_BASE to your deployed API URL (Railway) once live.
  * In Expo Go on a physical device, use your machine's LAN IP.
  */
@@ -83,8 +83,9 @@ export const api = {
       phone: string; email: string; password: string
       firstName: string; lastName: string; role: 'client' | 'provider'
       companyName?: string; companyRegistration?: string
-      vatNumber?: string; serviceArea?: string
+      vatNumber?: string; serviceArea?: string; referralCode?: string
     }) => req<{ accessToken: string; user: { id: string; phone: string; role: string; firstName: string; lastName: string } }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+    getReferral:     () => req<{ code: string | null; referredCount: number; rewardedCount: number }>('/auth/referral'),
     savePushToken:   (pushToken: string) =>
       req<void>('/auth/push-token', { method: 'PATCH', body: JSON.stringify({ pushToken }) }),
     updateProfile:   (data: { firstName?: string; lastName?: string; email?: string }) =>
@@ -201,6 +202,13 @@ export const api = {
     subscribe:     (planId: string, peachTokenId?: string)   => req<ActiveSubscription>('/subscriptions/subscribe', { method: 'POST', body: JSON.stringify({ planId, peachTokenId }) }),
     cancel:        ()                                         => req<void>('/subscriptions/cancel', { method: 'DELETE' }),
   },
+
+  loyalty: {
+    rewards:     ()             => req<LoyaltyReward[]>('/loyalty/rewards'),
+    balance:     ()             => req<{ points: number }>('/loyalty/balance'),
+    redemptions: ()             => req<LoyaltyRedemption[]>('/loyalty/redemptions'),
+    redeem:      (rewardId: string) => req<LoyaltyRedemption>('/loyalty/redeem', { method: 'POST', body: JSON.stringify({ rewardId }) }),
+  },
 }
 
 export interface SubscriptionPlan {
@@ -281,6 +289,25 @@ export interface SavedAddress {
   address:   string
   isDefault: boolean
   createdAt: string
+}
+
+export interface LoyaltyReward {
+  id:             string
+  label:          string
+  description:    string
+  pointsCost:     number
+  discountAmount: number
+}
+
+export interface LoyaltyRedemption {
+  id:             string
+  userId:         string
+  rewardId:       string
+  pointsSpent:    number
+  discountAmount: number
+  code:           string
+  used:           boolean
+  createdAt:      string
 }
 
 export interface Message {

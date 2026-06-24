@@ -1,6 +1,7 @@
 'use client'
 
 import { ActiveSection } from '@/app/page'
+import LogoMark from './Logo'
 
 const tabs: { id: ActiveSection; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: 'ti-layout' },
@@ -12,7 +13,7 @@ const tabs: { id: ActiveSection; label: string; icon: string }[] = [
 export default function SiteNav({ active, onNavigate }: { active: ActiveSection; onNavigate: (s: ActiveSection) => void }) {
   return (
     <nav style={{
-      background: '#0A0A0A',
+      background: '#0C0A09',
       borderBottom: '1px solid rgba(255,255,255,0.08)',
       padding: '0 32px',
       display: 'flex',
@@ -24,14 +25,7 @@ export default function SiteNav({ active, onNavigate }: { active: ActiveSection;
     }}>
       {/* Logo */}
       <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-        <div style={{
-          width: 32, height: 32,
-          background: 'linear-gradient(135deg, var(--gold), var(--gold-light))',
-          borderRadius: 8,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <i className="ti ti-home-2" style={{ color: 'var(--navy)', fontSize: 17 }} />
-        </div>
+        <LogoMark size={32} variant="dark" />
         <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 16, color: '#fff' }}>
           Home Solutions
         </span>
@@ -47,7 +41,7 @@ export default function SiteNav({ active, onNavigate }: { active: ActiveSection;
               padding: '7px 14px',
               borderRadius: 8,
               border: 'none',
-              background: active === tab.id ? 'rgba(200,146,42,0.15)' : 'transparent',
+              background: active === tab.id ? 'rgba(202,138,4,0.15)' : 'transparent',
               color: active === tab.id ? 'var(--gold-light)' : 'rgba(255,255,255,0.5)',
               fontFamily: "'DM Sans', sans-serif",
               fontSize: 13,

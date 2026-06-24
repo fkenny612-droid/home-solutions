@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { SmsService } from '../notifications/sms.service'
 import { BookingStatus, ServiceType } from './booking.types'
+import { POINTS_PER_RAND_SPENT, REFERRAL_BONUS_POINTS } from '../loyalty/loyalty.constants'
 
 @Injectable()
 export class BookingsService {
@@ -127,9 +128,26 @@ export class BookingsService {
         booking.finalAmount ?? booking.quotedAmount,
         booking.id,
       ).catch(() => {})
+      this.awardLoyaltyAndReferral(booking.clientId, booking.finalAmount ?? booking.quotedAmount).catch(() => {})
     }
 
     return booking
+  }
+
+  async awardLoyaltyAndReferral(clientId: string, amount: number) {
+    const earnedPoints = Math.floor(amount * POINTS_PER_RAND_SPENT)
+    await this.prisma.user.update({ where: { id: clientId }, data: { loyaltyPoints: { increment: earnedPoints } } })
+
+    const client = await this.prisma.user.findUnique({ where: { id: clientId } })
+    if (!client?.referredById || client.referralRewarded) return
+
+    const completedCount = await this.prisma.booking.count({ where: { clientId, status: 'completed' } })
+    if (completedCount !== 1) return // only reward on the referred user's first completed job
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: client.referredById }, data: { loyaltyPoints: { increment: REFERRAL_BONUS_POINTS } } }),
+      this.prisma.user.update({ where: { id: clientId }, data: { referralRewarded: true } }),
+    ])
   }
 
   async assignProvider(id: string, providerId: string) {

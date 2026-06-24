@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import LogoMark from '../../components/Logo'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
 
@@ -71,9 +72,9 @@ const NAV: { section: string; items: { id: Section; label: string; icon: string 
 
 const STATUS_COLORS: Record<string, string> = {
   pending:     '#D97706', accepted: '#2D8A6E', en_route: '#2D8A6E',
-  in_progress: '#C8922A', completed: '#6B7280', cancelled: '#E63946',
+  in_progress: '#CA8A04', completed: '#6B7280', cancelled: '#E63946',
   emergency:   '#E63946', active: '#2D8A6E', pending_kyc: '#D97706',
-  suspended:   '#E63946', approved: '#2D8A6E', in_review: '#C8922A',
+  suspended:   '#E63946', approved: '#2D8A6E', in_review: '#CA8A04',
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
@@ -116,7 +117,7 @@ export default function AdminPortal() {
     <div style={styles.loginPage}>
       <div style={styles.loginCard}>
         <div style={styles.loginLogo}>
-          <div style={styles.logoIcon}>🏠</div>
+          <LogoMark size={32} variant="dark" />
           <div>
             <div style={styles.logoName}>Home Solutions</div>
             <div style={styles.logoSub}>Admin Portal</div>
@@ -140,7 +141,7 @@ export default function AdminPortal() {
       {/* Sidebar */}
       <nav style={styles.sidebar}>
         <div style={styles.sidebarLogo}>
-          <div style={styles.logoIcon}>🏠</div>
+          <LogoMark size={32} variant="dark" />
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Home Solutions</div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, textTransform: 'uppercase' }}>Admin</div>
@@ -208,7 +209,7 @@ function DashboardSection() {
 
   const statCards = [
     { label: 'Active bookings', value: stats?.active ?? '—',     icon: '📋', color: '#2D8A6E' },
-    { label: 'Providers online', value: providers.length || '—', icon: '🔧', color: '#C8922A' },
+    { label: 'Providers online', value: providers.length || '—', icon: '🔧', color: '#CA8A04' },
     { label: 'Total bookings',  value: stats?.total ?? '—',      icon: '📊', color: '#1D4ED8' },
     { label: 'Revenue today',   value: stats?.revenueToday ? `R${(stats.revenueToday/1000).toFixed(1)}k` : 'R0', icon: '💰', color: '#7C3AED' },
   ]
@@ -219,7 +220,7 @@ function DashboardSection() {
         {statCards.map(s => (
           <div key={s.label} style={styles.statCard}>
             <div style={{ fontSize: 24 }}>{s.icon}</div>
-            <div style={{ fontSize: 28, fontWeight: 300, color: '#0F1923', margin: '6px 0 2px' }}>{s.value}</div>
+            <div style={{ fontSize: 28, fontWeight: 300, color: '#0C0A09', margin: '6px 0 2px' }}>{s.value}</div>
             <div style={{ fontSize: 11, color: '#9C9CA0' }}>{s.label}</div>
           </div>
         ))}
@@ -403,10 +404,10 @@ function ProvidersSection() {
             <div style={{ marginTop: 12 }}>
               <div style={styles.label}>KYC Documents ({docs.length})</div>
               {docs.map((doc: any) => (
-                <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #EDE8E0' }}>
+                <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #F0EEEC' }}>
                   <span style={{ flex: 1, fontSize: 12 }}>{doc.type.replace('_',' ')}</span>
                   <StatusBadge status={doc.status} />
-                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#C8922A' }}>View →</a>
+                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#CA8A04' }}>View →</a>
                 </div>
               ))}
               {docs.length === 0 && <p style={{ fontSize: 11, color: '#9C9CA0', margin: '8px 0' }}>No documents uploaded</p>}
@@ -436,11 +437,11 @@ function ProvidersSection() {
             </div>
 
             {selected.earningsBalance > 0 && (
-              <div style={{ marginTop: 14, padding: 12, background: '#FFFBF0', borderRadius: 8, border: '1px solid #EDE8E0' }}>
+              <div style={{ marginTop: 14, padding: 12, background: '#FFFBF0', borderRadius: 8, border: '1px solid #F0EEEC' }}>
                 <div style={{ fontSize: 11, color: '#9C9CA0', marginBottom: 4 }}>PENDING WITHDRAWAL</div>
                 <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>R {selected.earningsBalance?.toLocaleString()}</div>
                 <button
-                  style={{ ...styles.actionBtn, background: '#C8922A', color: '#fff', border: 'none' }}
+                  style={{ ...styles.actionBtn, background: '#CA8A04', color: '#fff', border: 'none' }}
                   onClick={async () => {
                     if (!confirm(`Mark R ${selected.earningsBalance} as paid out to ${selected.name}?`)) return
                     await apiFetch(`/providers/${selected.id}/withdraw`, { method: 'POST', body: JSON.stringify({ amount: selected.earningsBalance }) })
@@ -573,10 +574,10 @@ function HardwareSection() {
             <div style={{ marginTop: 12 }}>
               <div style={styles.label}>Products ({products.length})</div>
               {products.slice(0, 10).map((p: any) => (
-                <div key={p.id} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #EDE8E0', fontSize: 12 }}>
+                <div key={p.id} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #F0EEEC', fontSize: 12 }}>
                   <span style={{ flex: 1 }}>{p.name}</span>
                   <span style={{ color: '#9C9CA0' }}>{p.unit}</span>
-                  <span style={{ fontWeight: 600, color: '#0F1923' }}>R{p.price}</span>
+                  <span style={{ fontWeight: 600, color: '#0C0A09' }}>R{p.price}</span>
                   <span style={{ color: p.inStock ? '#2D8A6E' : '#E63946', fontSize: 10 }}>{p.inStock ? '✓' : '✗'}</span>
                 </div>
               ))}
@@ -639,7 +640,7 @@ function MaterialsSection() {
           </div>
           <div style={{ display: 'flex', gap: 6, padding: '0 8px 8px' }}>
             {['pending','confirmed','ready','delivered'].map(s => (
-              <button key={s} style={{ ...styles.actionBtn, ...(o.status === s ? { background: '#C8922A', color: '#fff', border: 'none' } : {}) }} onClick={() => updateStatus(o.id, s)}>
+              <button key={s} style={{ ...styles.actionBtn, ...(o.status === s ? { background: '#CA8A04', color: '#fff', border: 'none' } : {}) }} onClick={() => updateStatus(o.id, s)}>
                 {s}
               </button>
             ))}
@@ -671,9 +672,9 @@ function FinanceSection() {
         ].map(s => (
           <div key={s.label} style={styles.statCard}>
             <div style={{ fontSize: 24 }}>{s.icon}</div>
-            <div style={{ fontSize: 28, fontWeight: 300, color: '#0F1923', margin: '6px 0 2px' }}>{s.value}</div>
+            <div style={{ fontSize: 28, fontWeight: 300, color: '#0C0A09', margin: '6px 0 2px' }}>{s.value}</div>
             <div style={{ fontSize: 11, color: '#9C9CA0' }}>{s.label}</div>
-            <div style={{ fontSize: 10, color: '#C8922A', marginTop: 2 }}>{s.sub}</div>
+            <div style={{ fontSize: 10, color: '#CA8A04', marginTop: 2 }}>{s.sub}</div>
           </div>
         ))}
       </div>
@@ -719,7 +720,7 @@ function SettingsSection() {
           { label: 'Emergency alerts',      enabled: true },
           { label: 'Provider KYC alerts',   enabled: true },
         ].map(n => (
-          <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #EDE8E0' }}>
+          <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F0EEEC' }}>
             <span style={{ fontSize: 13 }}>{n.label}</span>
             <span style={{ fontSize: 12, color: n.enabled ? '#2D8A6E' : '#9C9CA0', fontWeight: 600 }}>{n.enabled ? '● Enabled' : '○ Disabled'}</span>
           </div>
@@ -794,11 +795,11 @@ function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; m
     } finally { setSending(false) }
   }
 
-  const ROLE_COLOR: Record<string, string> = { admin: '#C8922A', provider: '#2D8A6E', client: '#1D4ED8' }
+  const ROLE_COLOR: Record<string, string> = { admin: '#CA8A04', provider: '#2D8A6E', client: '#1D4ED8' }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #EDE8E0', overflow: 'hidden', marginTop: 0 }}>
-      <div style={{ padding: '12px 18px', borderBottom: '1px solid #EDE8E0', display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #F0EEEC', overflow: 'hidden', marginTop: 0 }}>
+      <div style={{ padding: '12px 18px', borderBottom: '1px solid #F0EEEC', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 16 }}>💬</span>
         <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>Booking Chat</span>
         <span style={{ fontSize: 10, color: '#9C9CA0', marginLeft: 'auto' }}>Polls every 3s</span>
@@ -827,8 +828,8 @@ function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; m
                 ) : (
                   <a key={i} href={att.url} target="_blank" rel="noreferrer" style={{
                     display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                    background: isMe ? 'rgba(255,255,255,0.2)' : '#F7F3EE',
-                    borderRadius: 10, border: '1px solid #EDE8E0', textDecoration: 'none',
+                    background: isMe ? 'rgba(255,255,255,0.2)' : '#FAFAF9',
+                    borderRadius: 10, border: '1px solid #F0EEEC', textDecoration: 'none',
                   }}>
                     <span style={{ fontSize: 18 }}>📄</span>
                     <span style={{ fontSize: 12, color: isMe ? '#fff' : '#1C1C1E', fontWeight: 500 }}>{att.fileName}</span>
@@ -838,7 +839,7 @@ function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; m
                 {m.text && (
                   <div style={{
                     padding: '8px 12px', borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                    background: isMe ? '#C8922A' : '#F7F3EE',
+                    background: isMe ? '#CA8A04' : '#FAFAF9',
                     color: isMe ? '#fff' : '#1C1C1E', fontSize: 13, lineHeight: 1.5,
                   }}>
                     {m.text}
@@ -853,12 +854,12 @@ function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; m
 
       {/* Pending attachments preview */}
       {pendingAtts.length > 0 && (
-        <div style={{ padding: '8px 14px', borderTop: '1px solid #EDE8E0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ padding: '8px 14px', borderTop: '1px solid #F0EEEC', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {pendingAtts.map((att, i) => (
             <div key={i} style={{ position: 'relative' }}>
               {att.type === 'image'
                 ? <img src={att.url} style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover' }} />
-                : <div style={{ width: 56, height: 56, borderRadius: 8, background: '#F7F3EE', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 10, gap: 2, padding: 4 }}>
+                : <div style={{ width: 56, height: 56, borderRadius: 8, background: '#FAFAF9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 10, gap: 2, padding: 4 }}>
                     <span style={{ fontSize: 20 }}>📄</span>
                     <span style={{ color: '#6B7280', textAlign: 'center', overflow: 'hidden', maxWidth: 50 }}>{att.fileName}</span>
                   </div>}
@@ -870,13 +871,13 @@ function BookingChat({ bookingId, myId, myName, myRole }: { bookingId: string; m
       )}
 
       {/* Input */}
-      <div style={{ padding: '10px 14px', borderTop: '1px solid #EDE8E0', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+      <div style={{ padding: '10px 14px', borderTop: '1px solid #F0EEEC', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
         {/* Hidden file input */}
         <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: 'none' }} onChange={handleFileChange} />
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          style={{ width: 36, height: 36, borderRadius: 18, background: '#F7F3EE', border: '1px solid #EDE8E0', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: uploading ? 0.5 : 1 }}
+          style={{ width: 36, height: 36, borderRadius: 18, background: '#FAFAF9', border: '1px solid #F0EEEC', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: uploading ? 0.5 : 1 }}
           title="Attach photo or file"
         >{uploading ? '⏳' : '＋'}</button>
         <input
@@ -928,14 +929,14 @@ function TrackingSection() {
           <div style={{ ...styles.statCard, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 0 }}>
             <span style={{ fontSize: 20 }}>🔧</span>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 300, color: '#0F1923' }}>{onlineProviders.length}</div>
+              <div style={{ fontSize: 20, fontWeight: 300, color: '#0C0A09' }}>{onlineProviders.length}</div>
               <div style={{ fontSize: 10, color: '#9C9CA0' }}>Providers on map</div>
             </div>
           </div>
           <div style={{ ...styles.statCard, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 0 }}>
             <span style={{ fontSize: 20 }}>📋</span>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 300, color: '#0F1923' }}>{activeBookings.length}</div>
+              <div style={{ fontSize: 20, fontWeight: 300, color: '#0C0A09' }}>{activeBookings.length}</div>
               <div style={{ fontSize: 10, color: '#9C9CA0' }}>Active jobs</div>
             </div>
           </div>
@@ -948,7 +949,7 @@ function TrackingSection() {
 
       {/* Map + sidebar */}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div style={{ flex: 1, background: '#fff', borderRadius: 12, border: '1px solid #EDE8E0', overflow: 'hidden' }}>
+        <div style={{ flex: 1, background: '#fff', borderRadius: 12, border: '1px solid #F0EEEC', overflow: 'hidden' }}>
           <LeafletMap providers={onlineProviders} bookings={activeBookings} onSelect={setSelected} />
         </div>
 
@@ -1065,7 +1066,7 @@ function LeafletMap({ providers, bookings, onSelect }: {
         if (!p.location?.lat) return
         const icon = L.divIcon({
           className: '',
-          html: `<div style="width:32px;height:32px;background:#C8922A;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3)">🔧</div>`,
+          html: `<div style="width:32px;height:32px;background:#CA8A04;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3)">🔧</div>`,
           iconSize: [32, 32],
           iconAnchor: [16, 16],
         })
@@ -1146,7 +1147,7 @@ function Avatar({ name }: { name: string }) {
 
 function Detail({ label, value }: { label: string; value: any }) {
   return (
-    <div style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #EDE8E0', fontSize: 12 }}>
+    <div style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EEEC', fontSize: 12 }}>
       <span style={{ color: '#9C9CA0', width: 100, flexShrink: 0 }}>{label}</span>
       <span style={{ color: '#1C1C1E', fontWeight: 500 }}>{value}</span>
     </div>
@@ -1163,48 +1164,47 @@ function CloseBtn({ onClick }: { onClick: () => void }) {
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 const styles: Record<string, React.CSSProperties> = {
-  shell:          { display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: "'DM Sans', -apple-system, sans-serif", background: '#F7F3EE' },
-  sidebar:        { width: 220, background: '#0F1923', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' },
+  shell:          { display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: "'DM Sans', -apple-system, sans-serif", background: '#FAFAF9' },
+  sidebar:        { width: 220, background: '#0C0A09', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' },
   sidebarLogo:    { display: 'flex', alignItems: 'center', gap: 10, padding: '16px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)' },
-  logoIcon:       { width: 32, height: 32, background: '#C8922A', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 },
   logoName:       { fontSize: 14, fontWeight: 600, color: '#fff' },
   logoSub:        { fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase' as const },
   navGroup:       { padding: '12px 14px 4px', fontSize: 9, color: 'rgba(255,255,255,0.28)', letterSpacing: 1.5, textTransform: 'uppercase' as const },
   navItem:        { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 12px', margin: '1px 8px', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', background: 'transparent', border: 'none', width: 'calc(100% - 16px)', textAlign: 'left' as const, fontFamily: 'inherit' },
-  navItemActive:  { background: 'rgba(200,146,42,0.18)', color: '#F0C060' },
+  navItemActive:  { background: 'rgba(200,146,42,0.18)', color: '#EAB308' },
   logoutBtn:      { margin: 'auto 12px 12px', padding: '8px 12px', borderRadius: 7, border: 'none', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const },
   main:           { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  topbar:         { padding: '14px 24px', background: '#fff', borderBottom: '1px solid #EDE8E0', display: 'flex', alignItems: 'center', flexShrink: 0 },
-  topbarTitle:    { fontSize: 18, fontWeight: 600, color: '#0F1923' },
+  topbar:         { padding: '14px 24px', background: '#fff', borderBottom: '1px solid #F0EEEC', display: 'flex', alignItems: 'center', flexShrink: 0 },
+  topbarTitle:    { fontSize: 18, fontWeight: 600, color: '#0C0A09' },
   topbarSub:      { fontSize: 11, color: '#9C9CA0', marginTop: 2 },
   content:        { flex: 1, overflowY: 'auto', padding: 24 },
   statsGrid:      { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 },
-  statCard:       { background: '#fff', borderRadius: 12, padding: '16px 18px', border: '1px solid #EDE8E0' },
+  statCard:       { background: '#fff', borderRadius: 12, padding: '16px 18px', border: '1px solid #F0EEEC' },
   twoCol:         { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   twoColWide:     { display: 'flex', gap: 16, alignItems: 'flex-start' },
-  card:           { background: '#fff', borderRadius: 12, border: '1px solid #EDE8E0', overflow: 'hidden', marginBottom: 16 },
-  cardHeader:     { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #EDE8E0' },
+  card:           { background: '#fff', borderRadius: 12, border: '1px solid #F0EEEC', overflow: 'hidden', marginBottom: 16 },
+  cardHeader:     { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #F0EEEC' },
   cardTitle:      { fontSize: 14, fontWeight: 600, color: '#1C1C1E' },
-  tableRow:       { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', borderBottom: '1px solid #EDE8E0' },
+  tableRow:       { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', borderBottom: '1px solid #F0EEEC' },
   rowTitle:       { fontSize: 13, fontWeight: 500, color: '#1C1C1E' },
   rowSub:         { fontSize: 11, color: '#9C9CA0', marginTop: 2 },
-  rowAmt:         { fontSize: 13, fontWeight: 700, color: '#0F1923', minWidth: 80, textAlign: 'right' as const },
-  avatar:         { width: 34, height: 34, borderRadius: '50%', background: '#EDE8E0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#1C1C1E', flexShrink: 0 },
+  rowAmt:         { fontSize: 13, fontWeight: 700, color: '#0C0A09', minWidth: 80, textAlign: 'right' as const },
+  avatar:         { width: 34, height: 34, borderRadius: '50%', background: '#F0EEEC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#1C1C1E', flexShrink: 0 },
   filterRow:      { display: 'flex', gap: 4, flexWrap: 'wrap' as const },
-  filterBtn:      { padding: '4px 10px', borderRadius: 20, border: '1px solid #EDE8E0', background: '#F7F3EE', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit', color: '#5C5C60' },
-  filterBtnActive:{ background: '#C8922A', color: '#fff', border: 'none' },
-  actionBtn:      { padding: '5px 10px', borderRadius: 6, border: '1px solid #EDE8E0', background: '#F7F3EE', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', color: '#1C1C1E' },
-  primaryBtn:     { padding: '8px 14px', borderRadius: 8, border: 'none', background: '#C8922A', color: '#0F1923', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  filterBtn:      { padding: '4px 10px', borderRadius: 20, border: '1px solid #F0EEEC', background: '#FAFAF9', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit', color: '#5C5C60' },
+  filterBtnActive:{ background: '#CA8A04', color: '#fff', border: 'none' },
+  actionBtn:      { padding: '5px 10px', borderRadius: 6, border: '1px solid #F0EEEC', background: '#FAFAF9', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', color: '#1C1C1E' },
+  primaryBtn:     { padding: '8px 14px', borderRadius: 8, border: 'none', background: '#CA8A04', color: '#0C0A09', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   label:          { fontSize: 10, color: '#9C9CA0', textTransform: 'uppercase' as const, letterSpacing: 0.5, fontWeight: 600, marginBottom: 4 },
-  input:          { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #EDE8E0', fontSize: 13, fontFamily: 'inherit', color: '#1C1C1E', background: '#fff', boxSizing: 'border-box' as const },
-  addForm:        { padding: '14px 18px', borderBottom: '1px solid #EDE8E0', display: 'flex', flexDirection: 'column', gap: 8 },
-  orderCard:      { border: '1px solid #EDE8E0', borderRadius: 10, margin: '8px 18px', overflow: 'hidden' },
-  loginPage:      { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F1923', fontFamily: "'DM Sans', sans-serif" },
+  input:          { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #F0EEEC', fontSize: 13, fontFamily: 'inherit', color: '#1C1C1E', background: '#fff', boxSizing: 'border-box' as const },
+  addForm:        { padding: '14px 18px', borderBottom: '1px solid #F0EEEC', display: 'flex', flexDirection: 'column', gap: 8 },
+  orderCard:      { border: '1px solid #F0EEEC', borderRadius: 10, margin: '8px 18px', overflow: 'hidden' },
+  loginPage:      { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0C0A09', fontFamily: "'DM Sans', sans-serif" },
   loginCard:      { background: '#fff', borderRadius: 20, padding: 36, width: 380, maxWidth: '90vw' },
   loginLogo:      { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 },
-  loginTitle:     { fontSize: 24, fontWeight: 300, color: '#0F1923', marginBottom: 4 },
+  loginTitle:     { fontSize: 24, fontWeight: 300, color: '#0C0A09', marginBottom: 4 },
   loginSub:       { fontSize: 13, color: '#9C9CA0', marginBottom: 24 },
-  loginBtn:       { width: '100%', padding: 14, background: '#C8922A', color: '#0F1923', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 },
+  loginBtn:       { width: '100%', padding: 14, background: '#CA8A04', color: '#0C0A09', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 },
   loginHint:      { textAlign: 'center' as const, fontSize: 11, color: '#9C9CA0', marginTop: 12 },
   error:          { color: '#E63946', fontSize: 12, marginTop: 4 },
   center:         { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' },

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useAuth } from '../context/auth'
 import { colors } from '../constants/theme'
+import { LogoMark } from '../components/Logo'
 
 export default function LoginScreen() {
   const { login } = useAuth()
@@ -32,12 +33,12 @@ export default function LoginScreen() {
         <View style={s.container}>
 
           {/* Logo mark */}
-          <View style={s.logoMark}>
-            <Text style={s.logoText}>EF</Text>
+          <View style={{ marginBottom: 32 }}>
+            <LogoMark size={48} variant="dark" />
           </View>
 
           <Text style={s.title}>Sign in</Text>
-          <Text style={s.sub}>Easy-Fix · Nationwide South Africa</Text>
+          <Text style={s.sub}>Easy-Fix · Durban, KwaZulu-Natal</Text>
 
           <View style={s.form}>
             <Text style={s.label}>Phone number</Text>
@@ -99,8 +100,6 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   safe:       { flex: 1, backgroundColor: colors.white },
   container:  { flex: 1, paddingHorizontal: 28, paddingTop: 48, paddingBottom: 24 },
-  logoMark:   { width: 48, height: 48, borderRadius: 12, backgroundColor: colors.black, alignItems: 'center', justifyContent: 'center', marginBottom: 32 },
-  logoText:   { fontSize: 13, fontWeight: '800', color: colors.gold, letterSpacing: 0.5 },
   title:      { fontSize: 32, fontWeight: '700', color: colors.black, letterSpacing: -0.5, marginBottom: 4 },
   sub:        { fontSize: 14, color: colors.gray400, marginBottom: 36 },
   form:       { gap: 4 },

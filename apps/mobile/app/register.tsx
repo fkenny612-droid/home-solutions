@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useAuth } from '../context/auth'
 import { colors } from '../constants/theme'
+import { LogoMark } from '../components/Logo'
 
 type Role = 'client' | 'provider'
 type Step = 1 | 2 | 3
@@ -43,6 +44,7 @@ export default function RegisterScreen() {
   const [companyRegistration, setCompanyRegistration] = useState('')
   const [vatNumber,           setVatNumber]           = useState('')
   const [serviceArea,         setServiceArea]         = useState('')
+  const [referralCode,        setReferralCode]        = useState('')
 
   const validateStep2 = () => {
     if (!firstName.trim())   return 'First name is required'
@@ -88,6 +90,7 @@ export default function RegisterScreen() {
         companyRegistration: companyRegistration.trim() || undefined,
         vatNumber: vatNumber.trim() || undefined,
         serviceArea: serviceArea || undefined,
+        referralCode: referralCode.trim() || undefined,
       })
       router.replace(user.role === 'provider' ? '/(provider)' : '/(client)')
     } catch (e: any) {
@@ -114,8 +117,8 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
 
-          <View style={s.logoMark}>
-            <Text style={s.logoText}>EF</Text>
+          <View style={{ marginBottom: 24 }}>
+            <LogoMark size={40} variant="dark" />
           </View>
 
           {/* ── STEP 1: Role ── */}
@@ -179,7 +182,13 @@ export default function RegisterScreen() {
               <Text style={[s.label, { marginTop: 14 }]}>Confirm password</Text>
               <TextInput style={s.input} value={confirm} onChangeText={setConfirm}
                 placeholder="Repeat password" placeholderTextColor={colors.gray400}
-                secureTextEntry returnKeyType="done" onSubmitEditing={handleNext} />
+                secureTextEntry returnKeyType={role === 'provider' ? 'next' : 'done'}
+                onSubmitEditing={role === 'provider' ? undefined : handleNext} />
+
+              <Text style={[s.label, { marginTop: 14 }]}>Referral code <Text style={s.optional}>(optional)</Text></Text>
+              <TextInput style={s.input} value={referralCode} onChangeText={t => setReferralCode(t.toUpperCase())}
+                placeholder="e.g. PRIYA482" placeholderTextColor={colors.gray400}
+                autoCapitalize="characters" returnKeyType="done" onSubmitEditing={handleNext} />
             </>
           )}
 
@@ -258,8 +267,6 @@ const s = StyleSheet.create({
   progressTrack:   { height: 3, backgroundColor: colors.gray100 },
   progressFill:    { height: 3, backgroundColor: colors.gold },
   container:       { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 32 },
-  logoMark:        { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.black, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  logoText:        { fontSize: 14, fontWeight: '700', color: colors.gold, letterSpacing: 1 },
   title:           { fontSize: 28, fontWeight: '700', color: colors.black, letterSpacing: -0.5, marginBottom: 4 },
   sub:             { fontSize: 14, color: colors.gray400, marginBottom: 24 },
   roleRow:         { flexDirection: 'row', gap: 12, marginBottom: 24 },

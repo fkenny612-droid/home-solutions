@@ -128,7 +128,7 @@ function HomeView({ onService }: { onService: (id: string) => void }) {
       <div style={{ background: 'var(--navy)', padding: '18px 18px 24px', color: '#fff' }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 2 }}>Good morning,</div>
         <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, marginBottom: 12 }}>Priya Govender</div>
-        <div style={{ background: 'rgba(200,146,42,0.2)', border: '1px solid rgba(200,146,42,0.4)', borderRadius: 20, padding: '4px 11px', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--gold-light)' }}>
+        <div style={{ background: 'rgba(202,138,4,0.2)', border: '1px solid rgba(202,138,4,0.4)', borderRadius: 20, padding: '4px 11px', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--gold-light)' }}>
           <i className="ti ti-crown" style={{ fontSize: 11 }} /> Premium Home · Active
         </div>
       </div>
@@ -540,7 +540,7 @@ function RatingView({ rating, tags, onRating, onTagToggle, onSubmit }: { rating:
             >{t}</span>
           ))}
         </div>
-        <div style={{ background: '#FFFBF0', borderRadius: 9, border: '1px solid #F0C060', padding: '9px 11px', display: 'flex', alignItems: 'center', gap: 7, textAlign: 'left' }}>
+        <div style={{ background: '#FFFBF0', borderRadius: 9, border: '1px solid #EAB308', padding: '9px 11px', display: 'flex', alignItems: 'center', gap: 7, textAlign: 'left' }}>
           <i className="ti ti-shield-check" style={{ color: 'var(--gold)', fontSize: 16, flexShrink: 0 }} />
           <span style={{ fontSize: 11, color: '#7A5010' }}>90-day warranty now active. Raj saved to your contacts.</span>
         </div>

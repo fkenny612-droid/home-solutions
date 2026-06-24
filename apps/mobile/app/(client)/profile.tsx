@@ -1,22 +1,35 @@
+import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
+import { api } from '../../lib/api'
 
 const MENU = [
   { label: 'Edit profile',      sub: 'Name, email & photo',          route: '/(client)/edit-profile'  },
   { label: 'Subscription',      sub: 'View & manage your plan',      route: '/(client)/subscription'  },
-  { label: 'Payment methods',   sub: 'Visa •••• 4242' },
-  { label: 'Active warranties', sub: '2 warranties · expiring Jul 2026' },
-  { label: 'Saved addresses',   sub: 'Manage your saved locations',   route: '/(client)/addresses'     },
-  { label: 'Notifications',     sub: 'Push, SMS enabled',             route: '/(client)/notifications' },
-  { label: 'Help & support',    sub: 'Chat, call, email' },
+  { label: 'Payment methods',   sub: 'Visa •••• 4242',                route: '/(client)/payment-methods' },
+  { label: 'Active warranties', sub: '2 warranties · expiring Jul 2026', route: '/(client)/warranties'      },
+  { label: 'Saved addresses',   sub: 'Manage your saved locations',   route: '/(client)/addresses'          },
+  { label: 'Refer a friend',    sub: 'Share your code, earn points',  route: '/(client)/referral'           },
+  { label: 'Notifications',     sub: 'Push, SMS enabled',             route: '/(client)/notifications'      },
+  { label: 'Help & support',    sub: 'Chat, call, email',             route: '/(client)/help'               },
 ]
+
+const NEXT_REWARD_POINTS = 500
 
 export default function ProfileTab() {
   const { user, logout, switchMode } = useAuth()
+  const [points, setPoints] = useState(0)
+
+  useEffect(() => {
+    api.loyalty.balance().then(b => setPoints(b.points)).catch(() => {})
+  }, [])
+
+  const progress = Math.min(1, (points % NEXT_REWARD_POINTS) / NEXT_REWARD_POINTS)
+  const pointsToNext = NEXT_REWARD_POINTS - (points % NEXT_REWARD_POINTS)
 
   const handleSwitchToProvider = () => {
     switchMode('provider')
@@ -52,16 +65,16 @@ export default function ProfileTab() {
 
       <ScrollView style={s.body}>
         {/* Loyalty */}
-        <View style={s.loyaltyBox}>
+        <TouchableOpacity style={s.loyaltyBox} onPress={() => router.push('/(client)/loyalty')}>
           <View style={s.loyaltyTop}>
             <Text style={s.loyaltyLabel}>Loyalty points</Text>
-            <Text style={s.loyaltyVal}>340 pts</Text>
+            <Text style={s.loyaltyVal}>{points.toLocaleString('en-ZA')} pts</Text>
           </View>
           <View style={s.loyaltyTrack}>
-            <View style={[s.loyaltyFill, { width: '68%' }]} />
+            <View style={[s.loyaltyFill, { width: `${progress * 100}%` as any }]} />
           </View>
-          <Text style={s.loyaltySub}>160 pts until your next reward</Text>
-        </View>
+          <Text style={s.loyaltySub}>{pointsToNext} pts until your next reward</Text>
+        </TouchableOpacity>
 
         {/* Menu */}
         <View style={s.menuSection}>

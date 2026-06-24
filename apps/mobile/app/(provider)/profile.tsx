@@ -17,7 +17,7 @@ const MENU = [
   { emoji: '🕐', label: 'Availability',         sub: 'Mon–Fri, weekends, emergency',       route: '/(provider)/availability' },
   { emoji: '⭐', label: 'Reviews',              sub: 'See what clients say',               route: '/(provider)/reviews'       },
   { emoji: '🔔', label: 'Notifications',        sub: 'New jobs, payments, alerts',         route: '/(provider)/notifications' },
-  { emoji: '❓', label: 'Help & support',       sub: 'Chat, call, email' },
+  { emoji: '❓', label: 'Help & support',       sub: 'Chat, call, email',            route: '/(provider)/help' },
 ]
 
 export default function ProviderProfile() {

@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { api, Booking } from '../../lib/api'
+import { useAuth } from '../../context/auth'
+
+const REVIEW_TAGS = ['On time', 'Professional', 'Great work', 'Tidy', 'Friendly', 'Highly skilled', 'Good value']
 
 const STATUS_META: Record<string, { label: string; bg: string; fg: string; step: number }> = {
   pending:     { label: 'Pending',     bg: colors.amberBg, fg: colors.amber, step: 0 },
@@ -37,10 +40,20 @@ const SERVICE_EMOJI: Record<string, string> = {
 
 export default function BookingDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const { user } = useAuth()
   const [booking,    setBooking]    = useState<Booking | null>(null)
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+
+  const [hasReviewed,    setHasReviewed]    = useState(false)
+  const [checkedReview,  setCheckedReview]  = useState(false)
+  const [ratingOpen,     setRatingOpen]     = useState(false)
+  const [autoPrompted,   setAutoPrompted]   = useState(false)
+  const [stars,          setStars]          = useState(0)
+  const [selectedTags,   setSelectedTags]   = useState<string[]>([])
+  const [comment,        setComment]        = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
 
   const load = useCallback(async (isRefresh = false) => {
     if (!id) return
@@ -53,6 +66,44 @@ export default function BookingDetail() {
   }, [id])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!booking || booking.status !== 'completed' || !booking.providerId) { setCheckedReview(true); return }
+    api.providers.reviews(booking.providerId)
+      .then(reviews => setHasReviewed(reviews.some(r => r.bookingId === booking.id)))
+      .catch(() => {})
+      .finally(() => setCheckedReview(true))
+  }, [booking?.id, booking?.status, booking?.providerId])
+
+  useEffect(() => {
+    if (checkedReview && booking?.status === 'completed' && booking.providerId && !hasReviewed && !autoPrompted) {
+      setAutoPrompted(true)
+      setRatingOpen(true)
+    }
+  }, [checkedReview, hasReviewed, autoPrompted, booking?.status, booking?.providerId])
+
+  const toggleTag = (tag: string) =>
+    setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+
+  const closeRating = () => {
+    setRatingOpen(false)
+    setStars(0); setSelectedTags([]); setComment('')
+  }
+
+  const submitReview = async () => {
+    if (!booking?.providerId || stars === 0) { Alert.alert('Add a rating', 'Please select a star rating.'); return }
+    setSubmittingReview(true)
+    try {
+      await api.providers.addReview(booking.providerId, stars, selectedTags, comment.trim() || undefined, user?.id, booking.id)
+      setHasReviewed(true)
+      closeRating()
+      Alert.alert('Thank you!', 'Your review has been submitted.')
+    } catch {
+      Alert.alert('Error', 'Could not submit your review. Please try again.')
+    } finally {
+      setSubmittingReview(false)
+    }
+  }
 
   const handleCancel = () => {
     Alert.alert(
@@ -180,7 +231,35 @@ export default function BookingDetail() {
               <Text style={s.warrantyText}>90-day warranty active · expires {new Date(booking.warrantyExpiresAt).toLocaleDateString('en-ZA')}</Text>
             </View>
           )}
+          {isComplete && booking.paymentReleased && (
+            <TouchableOpacity style={s.receiptLink} onPress={() => router.push({ pathname: '/(client)/receipt', params: { id: booking.id } })}>
+              <Ionicons name="receipt-outline" size={14} color={colors.gray600} />
+              <Text style={s.receiptLinkText}>View receipt</Text>
+            </TouchableOpacity>
+          )}
         </View>
+
+        {/* Rate this job */}
+        {isComplete && booking.providerId && checkedReview && (
+          hasReviewed ? (
+            <View style={s.card}>
+              <View style={s.ratedRow}>
+                <Ionicons name="star" size={16} color={colors.gold} />
+                <Text style={s.ratedText}>You've rated this job. Thanks for the feedback!</Text>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={s.rateCard} onPress={() => setRatingOpen(true)}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.rateTitle}>How was your service?</Text>
+                <Text style={s.rateSub}>Rate this job to help other clients</Text>
+              </View>
+              <View style={s.rateBtn}>
+                <Text style={s.rateBtnText}>Rate now</Text>
+              </View>
+            </TouchableOpacity>
+          )
+        )}
 
         {/* Notes */}
         {booking.notes && (
@@ -216,6 +295,65 @@ export default function BookingDetail() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Rating modal */}
+      <Modal visible={ratingOpen} animationType="slide" transparent onRequestClose={closeRating}>
+        <KeyboardAvoidingView style={s.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitle}>Rate your service</Text>
+            <Text style={s.modalSub}>{label} · #{booking.id.slice(-8).toUpperCase()}</Text>
+
+            <View style={s.starsRow}>
+              {[1, 2, 3, 4, 5].map(n => (
+                <TouchableOpacity key={n} onPress={() => setStars(n)} style={{ padding: 4 }}>
+                  <Ionicons name={n <= stars ? 'star' : 'star-outline'} size={34} color={colors.gold} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={s.tagsWrap}>
+              {REVIEW_TAGS.map(tag => {
+                const active = selectedTags.includes(tag)
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    style={[s.tagChip, active && s.tagChipActive]}
+                    onPress={() => toggleTag(tag)}
+                  >
+                    <Text style={[s.tagChipText, active && s.tagChipTextActive]}>{tag}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+
+            <TextInput
+              style={s.commentInput}
+              placeholder="Add a comment (optional)"
+              placeholderTextColor={colors.gray300}
+              value={comment}
+              onChangeText={setComment}
+              multiline
+              maxLength={300}
+            />
+
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={s.skipBtn} onPress={closeRating}>
+                <Text style={s.skipBtnText}>Not now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.submitBtn, (submittingReview || stars === 0) && { opacity: 0.5 }]}
+                onPress={submitReview}
+                disabled={submittingReview || stars === 0}
+              >
+                {submittingReview
+                  ? <ActivityIndicator color={colors.black} size="small" />
+                  : <Text style={s.submitBtnText}>Submit review</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -263,4 +401,33 @@ const s = StyleSheet.create({
   actionBtnText:     { fontSize: 15, fontWeight: '600', color: colors.white },
   actionBtnSec:      { borderRadius: 12, borderWidth: 1, borderColor: colors.red, alignItems: 'center', paddingVertical: 14 },
   actionBtnSecText:  { fontSize: 15, fontWeight: '600', color: colors.red },
+  // Receipt link
+  receiptLink:       { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.gray100 },
+  receiptLinkText:   { fontSize: 13, color: colors.gray600, fontWeight: '600' },
+  // Rate card
+  rateCard:          { backgroundColor: colors.white, borderRadius: 14, padding: 16, margin: 16, marginBottom: 0, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: colors.gold + '40' },
+  rateTitle:         { fontSize: 14, fontWeight: '700', color: colors.black },
+  rateSub:           { fontSize: 11, color: colors.gray400, marginTop: 2 },
+  rateBtn:           { backgroundColor: colors.gold, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9 },
+  rateBtnText:       { fontSize: 12, fontWeight: '700', color: colors.black },
+  ratedRow:          { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ratedText:         { fontSize: 13, color: colors.gray600, flex: 1 },
+  // Rating modal
+  modalOverlay:      { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalSheet:        { backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32 },
+  modalHandle:        { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.gray200, alignSelf: 'center', marginBottom: 16 },
+  modalTitle:        { fontSize: 17, fontWeight: '700', color: colors.black, textAlign: 'center' },
+  modalSub:          { fontSize: 12, color: colors.gray400, textAlign: 'center', marginTop: 4, marginBottom: 18 },
+  starsRow:          { flexDirection: 'row', justifyContent: 'center', gap: 4, marginBottom: 18 },
+  tagsWrap:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14, justifyContent: 'center' },
+  tagChip:           { borderWidth: 1, borderColor: colors.gray200, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+  tagChipActive:     { backgroundColor: colors.gold + '20', borderColor: colors.gold },
+  tagChipText:       { fontSize: 12, color: colors.gray600, fontWeight: '500' },
+  tagChipTextActive: { color: colors.gold, fontWeight: '700' },
+  commentInput:      { backgroundColor: colors.gray50, borderRadius: 10, borderWidth: 1, borderColor: colors.gray100, padding: 12, fontSize: 13, color: colors.black, minHeight: 70, textAlignVertical: 'top', marginBottom: 18 },
+  modalBtns:         { flexDirection: 'row', gap: 10 },
+  skipBtn:           { flex: 1, borderWidth: 1, borderColor: colors.gray200, borderRadius: 10, padding: 13, alignItems: 'center' },
+  skipBtnText:       { fontSize: 14, fontWeight: '600', color: colors.gray400 },
+  submitBtn:         { flex: 2, backgroundColor: colors.gold, borderRadius: 10, padding: 13, alignItems: 'center' },
+  submitBtnText:     { fontSize: 14, fontWeight: '700', color: colors.black },
 })
