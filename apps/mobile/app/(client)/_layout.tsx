@@ -87,7 +87,8 @@ export default function ClientLayout() {
       <Tabs.Screen name="help"            options={{ href: null }} />
       <Tabs.Screen name="receipt"         options={{ href: null }} />
       <Tabs.Screen name="loyalty"         options={{ href: null }} />
-      <Tabs.Screen name="referral"        options={{ href: null }} />
+      <Tabs.Screen name="referral"          options={{ href: null }} />
+      <Tabs.Screen name="provider-profile"  options={{ href: null }} />
     </Tabs>
   )
 }

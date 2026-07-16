@@ -52,6 +52,7 @@ export default function BookScreen() {
   const [ratingLoading,  setRatingLoading] = useState(false)
   const [redemptions,    setRedemptions]  = useState<import('../../lib/api').LoyaltyRedemption[]>([])
   const [appliedCode,    setAppliedCode]  = useState<import('../../lib/api').LoyaltyRedemption | null>(null)
+  const [hasSub,         setHasSub]       = useState<boolean | null>(null)
   const etaRef = useRef(eta)
 
   const estimate = calculateEstimate(serviceType ?? '', answers)
@@ -75,12 +76,15 @@ export default function BookScreen() {
     }
   }, [serviceType, clientCoords])
 
-  // Load unused loyalty redemption codes when reaching quote step
+  // Load unused loyalty redemption codes + subscription status when reaching quote step
   useEffect(() => {
     if (step !== 'quote') return
     api.loyalty.redemptions()
       .then(r => setRedemptions(r.filter(x => !x.used)))
       .catch(() => {})
+    api.subscriptions.my()
+      .then(sub => setHasSub(!!(sub && sub.status === 'active')))
+      .catch(() => setHasSub(false))
   }, [step])
 
   // ETA countdown during tracking
@@ -417,6 +421,13 @@ export default function BookScreen() {
                       <Ionicons name="construct-outline" size={12} color={colors.gray400} />
                       <Text style={s.provMetaText}>{p.jobCount} jobs</Text>
                     </View>
+                    <TouchableOpacity
+                      onPress={e => { e.stopPropagation?.(); router.push(`/(client)/provider-profile?id=${p.id}` as any) }}
+                      style={s.provMetaItem}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={[s.provMetaText, { color: colors.gold, fontWeight: '600' }]}>View profile →</Text>
+                    </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
               )
@@ -466,6 +477,15 @@ export default function BookScreen() {
               ))}
             </View>
 
+            {hasSub === false && (
+              <TouchableOpacity style={s.upgradePrompt} onPress={() => router.push('/(client)/subscription')}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.upgradeTitle}>🌟 Upgrade to Premium</Text>
+                  <Text style={s.upgradeSub}>Get a 90-day warranty, priority providers & discounts on every job</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.gold} />
+              </TouchableOpacity>
+            )}
             <View style={s.warrantyBox}>
               <Text style={s.warrantyText}>🛡️ <Text style={{ fontWeight: '700' }}>90-day warranty</Text> on all parts and labour with Premium plan.</Text>
             </View>
@@ -794,6 +814,9 @@ const s = StyleSheet.create({
   quoteVal:          { fontSize: 12, color: colors.text },
   warrantyBox:       { backgroundColor: '#E8F5EE', borderRadius: 10, padding: 12, marginBottom: 10 },
   warrantyText:      { fontSize: 12, color: '#1A5C38', lineHeight: 18 },
+  upgradePrompt:     { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.black, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: colors.gold + '60' },
+  upgradeTitle:      { fontSize: 13, fontWeight: '700', color: colors.gold, marginBottom: 2 },
+  upgradeSub:        { fontSize: 11, color: colors.gray400, lineHeight: 16 },
   paymentBox:        { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: colors.creamMid },
   paymentLabel:      { fontSize: 11, color: colors.textMuted, marginBottom: 8 },
   paymentOptions:    { flexDirection: 'row', gap: 8 },

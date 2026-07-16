@@ -47,14 +47,17 @@ export class ChatService {
     // Notify the other party
     const recipientId = dto.senderRole === 'client' ? booking.providerId : booking.clientId
     if (recipientId) {
-      const recipient = await this.prisma.user.findFirst({
-        where: dto.senderRole === 'client'
-          ? { role: 'provider' }  // providers look up by clientId join not needed — just save in-app
-          : { id: recipientId },
-      })
+      let recipientUser: { pushToken: string | null } | null = null
+      if (dto.senderRole === 'client') {
+        // providerId references the Provider table — look up the matching User via phone
+        const provider = await this.prisma.provider.findUnique({ where: { id: recipientId } })
+        if (provider) recipientUser = await this.prisma.user.findFirst({ where: { phone: provider.phone }, select: { pushToken: true } })
+      } else {
+        recipientUser = await this.prisma.user.findUnique({ where: { id: recipientId }, select: { pushToken: true } })
+      }
       const preview = dto.text?.slice(0, 60) ?? (dto.attachments?.length ? '📎 Attachment' : '')
       this.notifications.notifyOne(
-        dto.senderRole === 'client' ? null : recipient?.pushToken,
+        recipientUser?.pushToken,
         recipientId,
         `💬 ${dto.senderName}`,
         preview,

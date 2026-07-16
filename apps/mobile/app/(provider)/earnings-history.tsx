@@ -77,18 +77,27 @@ export default function EarningsHistoryScreen() {
           contentContainerStyle={jobs.length === 0 ? s.emptyWrap : { padding: 16, paddingBottom: 32 }}
           ListHeaderComponent={
             jobs.length > 0 ? (
-              <View style={s.summaryRow}>
-                <View style={s.summaryBox}>
-                  <Text style={s.summaryLabel}>This month (net)</Text>
-                  <Text style={s.summaryVal}>R {monthNet.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}</Text>
-                  <Text style={s.summarySub}>{monthJobs.length} jobs</Text>
+              <>
+                <View style={s.summaryRow}>
+                  <View style={s.summaryBox}>
+                    <Text style={s.summaryLabel}>This month (net)</Text>
+                    <Text style={s.summaryVal}>R {monthNet.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}</Text>
+                    <Text style={s.summarySub}>{monthJobs.length} jobs</Text>
+                  </View>
+                  <View style={s.summaryBox}>
+                    <Text style={s.summaryLabel}>All-time (net)</Text>
+                    <Text style={s.summaryVal}>R {netTotal.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}</Text>
+                    <Text style={s.summarySub}>{jobs.length} jobs · {Math.round(COMMISSION_PCT * 100)}% fee</Text>
+                  </View>
                 </View>
-                <View style={s.summaryBox}>
-                  <Text style={s.summaryLabel}>All-time (net)</Text>
-                  <Text style={s.summaryVal}>R {netTotal.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}</Text>
-                  <Text style={s.summarySub}>{jobs.length} jobs</Text>
-                </View>
-              </View>
+                <TouchableOpacity style={s.upgradePrompt} onPress={() => router.push('/(provider)/subscription')}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.upgradeTitle}>💎 Lower your commission</Text>
+                    <Text style={s.upgradeSub}>Pro plan: 10% · Elite plan: 7% — keep more of every job</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.gold} />
+                </TouchableOpacity>
+              </>
             ) : null
           }
           ListEmptyComponent={
@@ -155,4 +164,7 @@ const s = StyleSheet.create({
   breakdownRow:  { flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.gray100 },
   breakdownText: { fontSize: 11, color: colors.gray400 },
   breakdownDot:  { fontSize: 11, color: colors.gray200 },
+  upgradePrompt: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.black, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1.5, borderColor: colors.gold + '60' },
+  upgradeTitle:  { fontSize: 13, fontWeight: '700', color: colors.gold, marginBottom: 2 },
+  upgradeSub:    { fontSize: 11, color: colors.gray400, lineHeight: 16 },
 })

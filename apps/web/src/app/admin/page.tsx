@@ -196,6 +196,27 @@ export default function AdminPortal() {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
+function MiniChart({ data, color = '#CA8A04', height = 56 }: { data: number[]; color?: string; height?: number }) {
+  if (!data.length) return null
+  const max = Math.max(...data, 1)
+  const w = 280, h = height, pad = 4
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1 || 1)) * (w - pad * 2)
+    const y = h - pad - (v / max) * (h - pad * 2)
+    return `${x},${y}`
+  }).join(' ')
+  return (
+    <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      {data.map((v, i) => {
+        const x = pad + (i / (data.length - 1 || 1)) * (w - pad * 2)
+        const y = h - pad - (v / max) * (h - pad * 2)
+        return <circle key={i} cx={x} cy={y} r="3" fill={color} />
+      })}
+    </svg>
+  )
+}
+
 function DashboardSection() {
   const [stats,     setStats]     = useState<any>(null)
   const [providers, setProviders] = useState<any[]>([])
@@ -206,6 +227,18 @@ function DashboardSection() {
     apiFetch('/providers?status=active').then(setProviders).catch(() => {})
     apiFetch('/bookings').then(setBookings).catch(() => {})
   }, [])
+
+  // Derive last-7-days booking counts and revenue from raw bookings
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i))
+    return d.toISOString().slice(0, 10)
+  })
+  const bookingsByDay = last7.map(day => bookings.filter(b => b.createdAt?.slice(0, 10) === day).length)
+  const revenueByDay  = last7.map(day =>
+    bookings.filter(b => b.createdAt?.slice(0, 10) === day && b.status === 'completed')
+      .reduce((sum: number, b: any) => sum + (b.finalAmount ?? b.quotedAmount ?? 0), 0)
+  )
+  const dayLabels = last7.map(d => new Date(d).toLocaleDateString('en-ZA', { weekday: 'short' }))
 
   const statCards = [
     { label: 'Active bookings', value: stats?.active ?? '—',     icon: '📋', color: '#2D8A6E' },
@@ -224,6 +257,37 @@ function DashboardSection() {
             <div style={{ fontSize: 11, color: '#9C9CA0' }}>{s.label}</div>
           </div>
         ))}
+      </div>
+
+      <div style={styles.twoCol}>
+        <Card title="Bookings — last 7 days">
+          <div style={{ marginBottom: 8 }}>
+            <MiniChart data={bookingsByDay} color="#CA8A04" />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            {dayLabels.map((d, i) => (
+              <div key={d} style={{ textAlign: 'center', minWidth: 32 }}>
+                <div style={{ fontSize: 13, fontWeight: '600', color: '#0C0A09' }}>{bookingsByDay[i]}</div>
+                <div style={{ fontSize: 10, color: '#9C9CA0' }}>{d}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card title="Revenue — last 7 days (completed)">
+          <div style={{ marginBottom: 8 }}>
+            <MiniChart data={revenueByDay} color="#15803D" />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            {dayLabels.map((d, i) => (
+              <div key={d} style={{ textAlign: 'center', minWidth: 32 }}>
+                <div style={{ fontSize: 13, fontWeight: '600', color: '#0C0A09' }}>
+                  {revenueByDay[i] >= 1000 ? `R${(revenueByDay[i]/1000).toFixed(1)}k` : revenueByDay[i] ? `R${revenueByDay[i]}` : '—'}
+                </div>
+                <div style={{ fontSize: 10, color: '#9C9CA0' }}>{d}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       <div style={styles.twoCol}>
