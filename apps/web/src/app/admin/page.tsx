@@ -258,13 +258,31 @@ function DashboardSection() {
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────
 function BookingsSection() {
-  const [bookings, setBookings] = useState<any[]>([])
-  const [filter,   setFilter]   = useState('all')
-  const [selected, setSelected] = useState<any>(null)
+  const [bookings,   setBookings]   = useState<any[]>([])
+  const [providers,  setProviders]  = useState<any[]>([])
+  const [filter,     setFilter]     = useState('all')
+  const [selected,   setSelected]   = useState<any>(null)
+  const [assigning,  setAssigning]  = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => {
-    apiFetch('/bookings').then(setBookings).catch(() => {})
-  }, [])
+  const load = () => {
+    setRefreshing(true)
+    Promise.all([
+      apiFetch('/bookings'),
+      apiFetch('/providers?status=active'),
+    ]).then(([b, p]) => { setBookings(b); setProviders(p) }).catch(() => {}).finally(() => setRefreshing(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const assignProvider = async (bookingId: string, providerId: string) => {
+    setAssigning(true)
+    try {
+      await apiFetch(`/bookings/${bookingId}/assign`, { method: 'PATCH', body: JSON.stringify({ providerId }) })
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, providerId, status: 'accepted' } : b))
+      setSelected((s: any) => s?.id === bookingId ? { ...s, providerId, status: 'accepted' } : s)
+    } catch {} finally { setAssigning(false) }
+  }
 
   const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter)
 
@@ -279,7 +297,10 @@ function BookingsSection() {
       <div style={{ flex: 2 }}>
         <Card title="All bookings" action={
           <div style={styles.filterRow}>
-            {['all','pending','accepted','en_route','in_progress','completed','emergency'].map(f => (
+            <button onClick={load} disabled={refreshing} style={{ ...styles.filterBtn, marginRight: 4 }}>
+              {refreshing ? '…' : '↻'}
+            </button>
+            {['all','pending','accepted','en_route','in_progress','completed','cancelled','emergency'].map(f => (
               <button key={f} onClick={() => setFilter(f)} style={{ ...styles.filterBtn, ...(filter === f ? styles.filterBtnActive : {}) }}>
                 {f === 'all' ? 'All' : f.replace('_',' ')}
               </button>
@@ -306,7 +327,23 @@ function BookingsSection() {
             <Detail label="Service"  value={svcLabel(selected.serviceType)} />
             <Detail label="Address"  value={selected.address} />
             <Detail label="Client"   value={selected.clientId} />
-            <Detail label="Provider" value={selected.providerId ?? 'Unassigned'} />
+            <Detail label="Provider" value={
+              selected.providerId
+                ? providers.find((p: any) => p.id === selected.providerId)?.name ?? selected.providerId
+                : (
+                  <select
+                    style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid #D6D3D1', background: '#fff' }}
+                    defaultValue=""
+                    disabled={assigning}
+                    onChange={e => { if (e.target.value) assignProvider(selected.id, e.target.value) }}
+                  >
+                    <option value="">— Assign provider —</option>
+                    {providers.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name} · ★{p.rating?.toFixed(1)}</option>
+                    ))}
+                  </select>
+                )
+            } />
             <Detail label="Status"   value={<StatusBadge status={selected.status} />} />
             <Detail label="Quoted"   value={`R ${selected.quotedAmount?.toLocaleString()}`} />
             <Detail label="Payment held"     value={selected.paymentHeld ? 'Yes' : 'No'} />

@@ -121,17 +121,37 @@ export class BookingsService {
       },
     })
 
+    this.notifyOnStatusChange(booking, status).catch(() => {})
+
     if (status === 'completed') {
-      this.notifyClientOnComplete(
-        booking.clientId,
-        booking.serviceType,
-        booking.finalAmount ?? booking.quotedAmount,
-        booking.id,
-      ).catch(() => {})
       this.awardLoyaltyAndReferral(booking.clientId, booking.finalAmount ?? booking.quotedAmount).catch(() => {})
     }
 
     return booking
+  }
+
+  private async notifyOnStatusChange(booking: { id: string; clientId: string; providerId: string | null; serviceType: string; finalAmount: number | null; quotedAmount: number }, status: BookingStatus) {
+    const client = await this.prisma.user.findUnique({ where: { id: booking.clientId } })
+    if (!client) return
+    const data = { bookingId: booking.id }
+
+    if (status === 'en_route') {
+      await this.notifications.notifyOne(client.pushToken, booking.clientId, '🚗 Provider on the way', `Your ${booking.serviceType} provider is heading to you now.`, 'en_route', data)
+    } else if (status === 'in_progress') {
+      await this.notifications.notifyOne(client.pushToken, booking.clientId, '🔧 Work started', `Your ${booking.serviceType} job has started.`, 'in_progress', data)
+    } else if (status === 'completed') {
+      await this.notifications.notifyOne(client.pushToken, booking.clientId, '🎉 Job complete!', `Your ${booking.serviceType} job is done. Tap to rate your provider.`, 'job_complete', data)
+      if (!client.pushToken) await this.sms.notifyJobComplete(client.phone, booking.serviceType, booking.finalAmount ?? booking.quotedAmount)
+    } else if (status === 'cancelled') {
+      await this.notifications.notifyOne(client.pushToken, booking.clientId, '❌ Booking cancelled', `Your ${booking.serviceType} booking has been cancelled.`, 'cancelled', data)
+      // Also notify the provider if one was assigned
+      if (booking.providerId) {
+        const provider = await this.prisma.user.findFirst({ where: { phone: (await this.prisma.provider.findUnique({ where: { id: booking.providerId } }))?.phone ?? '' } })
+        if (provider) {
+          await this.notifications.notifyOne(provider.pushToken, provider.id, '❌ Job cancelled', `The ${booking.serviceType} booking was cancelled by the client.`, 'cancelled', data)
+        }
+      }
+    }
   }
 
   async awardLoyaltyAndReferral(clientId: string, amount: number) {

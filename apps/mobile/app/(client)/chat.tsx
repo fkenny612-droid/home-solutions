@@ -37,7 +37,7 @@ export default function ChatScreen() {
 
   useEffect(() => { load() }, [bookingId])
   useEffect(() => {
-    const id = setInterval(load, 3000)
+    const id = setInterval(load, 1500)
     return () => clearInterval(id)
   }, [bookingId])
   useEffect(() => {
@@ -102,17 +102,30 @@ export default function ChatScreen() {
     const attachments: ChatAttachment[] = pending
       .filter(p => p.url)
       .map(p => ({ url: p.url!, type: p.type, fileName: p.fileName }))
+    const optimistic: Message = {
+      id: `opt-${Date.now()}`,
+      bookingId,
+      senderId:   user.id,
+      senderRole: user.role,
+      senderName: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.phone,
+      text:       text.trim(),
+      attachments,
+      createdAt:  new Date().toISOString(),
+    }
+    setMessages(prev => [...prev, optimistic])
+    setText('')
+    setPending([])
     try {
       await api.chat.send(bookingId, {
-        senderId:   user.id,
-        senderRole: user.role,
-        senderName: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.phone,
-        text:       text.trim(),
+        senderId:   optimistic.senderId,
+        senderRole: optimistic.senderRole,
+        senderName: optimistic.senderName,
+        text:       optimistic.text,
         attachments,
       })
-      setText('')
-      setPending([])
       await load()
+    } catch {
+      setMessages(prev => prev.filter(m => m.id !== optimistic.id))
     } finally {
       setSending(false)
     }

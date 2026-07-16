@@ -50,6 +50,8 @@ export default function BookScreen() {
   const [address,        setAddress]      = useState('')
   const [card,           setCard]         = useState<CardDetails | null>(null)
   const [ratingLoading,  setRatingLoading] = useState(false)
+  const [redemptions,    setRedemptions]  = useState<import('../../lib/api').LoyaltyRedemption[]>([])
+  const [appliedCode,    setAppliedCode]  = useState<import('../../lib/api').LoyaltyRedemption | null>(null)
   const etaRef = useRef(eta)
 
   const estimate = calculateEstimate(serviceType ?? '', answers)
@@ -72,6 +74,14 @@ export default function BookScreen() {
         .catch(() => {})
     }
   }, [serviceType, clientCoords])
+
+  // Load unused loyalty redemption codes when reaching quote step
+  useEffect(() => {
+    if (step !== 'quote') return
+    api.loyalty.redemptions()
+      .then(r => setRedemptions(r.filter(x => !x.used)))
+      .catch(() => {})
+  }, [step])
 
   // ETA countdown during tracking
   useEffect(() => {
@@ -144,7 +154,8 @@ export default function BookScreen() {
     setLoading(true)
     try {
       // 1. Create booking
-      const quoteAmount = Math.round((estimate.min + estimate.max) / 2)
+      const baseAmount  = Math.round((estimate.min + estimate.max) / 2)
+      const quoteAmount = Math.max(0, baseAmount - (appliedCode?.discountAmount ?? 0))
       const newBooking = await api.bookings.create({
         clientId:       user.id,
         serviceType:    (serviceType ?? 'handyman') as any,
@@ -459,6 +470,24 @@ export default function BookScreen() {
               <Text style={s.warrantyText}>🛡️ <Text style={{ fontWeight: '700' }}>90-day warranty</Text> on all parts and labour with Premium plan.</Text>
             </View>
 
+            {redemptions.length > 0 && (
+              <View style={s.loyaltyBox}>
+                <Text style={s.paymentLabel}>🎁 Loyalty discount</Text>
+                {redemptions.map(r => {
+                  const active = appliedCode?.id === r.id
+                  return (
+                    <TouchableOpacity key={r.id} style={[s.loyaltyChip, active && s.loyaltyChipActive]} onPress={() => setAppliedCode(active ? null : r)}>
+                      <Text style={[s.loyaltyChipText, active && s.loyaltyChipTextActive]}>{r.code} — R{r.discountAmount} off</Text>
+                      {active && <Ionicons name="checkmark-circle" size={16} color={colors.gold} />}
+                    </TouchableOpacity>
+                  )
+                })}
+                {appliedCode && (
+                  <Text style={s.loyaltyApplied}>−R{appliedCode.discountAmount} applied · New total: R{Math.max(0, Math.round((estimate.min + estimate.max) / 2) - appliedCode.discountAmount).toLocaleString()}</Text>
+                )}
+              </View>
+            )}
+
             <View style={s.paymentBox}>
               <Text style={s.paymentLabel}>Card payment</Text>
               <CardInput onChange={setCard} />
@@ -469,7 +498,7 @@ export default function BookScreen() {
             <TouchableOpacity style={[s.ctaBtn, (loading || !card) && { opacity: 0.5 }]} onPress={handleApprove} disabled={loading || !card}>
               {loading
                 ? <ActivityIndicator color={colors.navy} />
-                : <Text style={s.ctaBtnText}>{card ? `Approve & pay R ${Math.round((estimate.min + estimate.max) / 2).toLocaleString()}` : 'Enter card details'}</Text>}
+                : <Text style={s.ctaBtnText}>{card ? `Approve & pay R ${Math.max(0, Math.round((estimate.min + estimate.max) / 2) - (appliedCode?.discountAmount ?? 0)).toLocaleString()}` : 'Enter card details'}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.ctaBtnSec} onPress={() => setStep('providers')} disabled={loading}>
               <Text style={s.ctaBtnSecText}>Request different provider</Text>
@@ -773,6 +802,12 @@ const s = StyleSheet.create({
   payOptActiveText:  { fontSize: 11, fontWeight: '600', color: colors.gold },
   payOptText:        { fontSize: 11, color: colors.textMuted },
   holdNote:          { fontSize: 10, color: colors.textLight, textAlign: 'center', marginBottom: 16 },
+  loyaltyBox:        { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: colors.gold + '40' },
+  loyaltyChip:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.gray200, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 6 },
+  loyaltyChipActive: { borderColor: colors.gold, backgroundColor: colors.gold + '10' },
+  loyaltyChipText:   { fontSize: 13, color: colors.text },
+  loyaltyChipTextActive: { fontWeight: '700', color: colors.black },
+  loyaltyApplied:    { fontSize: 11, color: colors.green, fontWeight: '600', marginTop: 4 },
   mapBox:            { backgroundColor: colors.navyMid, borderRadius: 12, height: 160, marginBottom: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   mapLabel:          { color: '#fff', fontSize: 12, opacity: 0.7 },
   mapDot:            { position: 'absolute', bottom: 24, right: 80, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.gold, borderWidth: 2.5, borderColor: '#fff' },
