@@ -1,9 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { SmsService } from '../notifications/sms.service'
 import { BookingStatus, ServiceType } from './booking.types'
 import { POINTS_PER_RAND_SPENT, REFERRAL_BONUS_POINTS } from '../loyalty/loyalty.constants'
+
+export interface RequestUser {
+  sub:  string
+  role: string
+}
 
 @Injectable()
 export class BookingsService {
@@ -13,9 +18,16 @@ export class BookingsService {
     private sms:            SmsService,
   ) {}
 
-  findAll(status?: BookingStatus, serviceType?: ServiceType) {
+  /** Clients see only their own bookings, providers see their assigned + open pending jobs, admins see all. */
+  findAll(user: RequestUser, status?: BookingStatus, serviceType?: ServiceType) {
+    const scope =
+      user.role === 'admin'    ? {} :
+      user.role === 'provider' ? { OR: [{ providerId: user.sub }, { providerId: null, status: 'pending' }] } :
+      /* client */                { clientId: user.sub }
+
     return this.prisma.booking.findMany({
       where: {
+        ...scope,
         ...(status      ? { status }      : {}),
         ...(serviceType ? { serviceType } : {}),
       },
@@ -23,10 +35,19 @@ export class BookingsService {
     })
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: RequestUser) {
     const booking = await this.prisma.booking.findUnique({ where: { id } })
     if (!booking) throw new NotFoundException(`Booking ${id} not found`)
+    this.assertParty(booking, user)
     return booking
+  }
+
+  /** Caller must be the client, the assigned provider, or an admin. */
+  private assertParty(booking: { clientId: string; providerId: string | null }, user: RequestUser) {
+    if (user.role === 'admin') return
+    if (booking.clientId === user.sub) return
+    if (booking.providerId && booking.providerId === user.sub) return
+    throw new ForbiddenException('Not your booking')
   }
 
   async notifyProviders(serviceType: string, bookingId: string, address: string) {
@@ -76,8 +97,8 @@ export class BookingsService {
     if (!client.pushToken) await this.sms.notifyJobComplete(client.phone, serviceType, amount)
   }
 
-  async create(dto: {
-    clientId:       string
+  async create(user: RequestUser, dto: {
+    clientId?:      string
     serviceType:    ServiceType
     location:       string
     address:        string
@@ -87,9 +108,12 @@ export class BookingsService {
     serviceDetails?: Record<string, any>
     images?:         string[]
   }) {
+    // Always derive clientId from the authenticated caller — never trust the body —
+    // except admins, who may create a booking on a client's behalf.
+    const clientId = user.role === 'admin' && dto.clientId ? dto.clientId : user.sub
     const booking = await this.prisma.booking.create({
       data: {
-        clientId:       dto.clientId,
+        clientId,
         serviceType:    dto.serviceType,
         location:       dto.location,
         address:        dto.address,
@@ -102,13 +126,17 @@ export class BookingsService {
       },
     })
     // Save in-app notification for the client
-    this.notifications.saveInApp(dto.clientId, '📋 Booking received', `We're finding a ${dto.serviceType} provider near you.`, 'booking_created', { bookingId: booking.id }).catch(() => {})
+    this.notifications.saveInApp(clientId, '📋 Booking received', `We're finding a ${dto.serviceType} provider near you.`, 'booking_created', { bookingId: booking.id }).catch(() => {})
     // Notify matching providers in the background
     this.notifyProviders(dto.serviceType, booking.id, dto.address).catch(() => {})
     return booking
   }
 
-  async updateStatus(id: string, status: BookingStatus) {
+  async updateStatus(id: string, status: BookingStatus, user: RequestUser) {
+    const existing = await this.prisma.booking.findUnique({ where: { id } })
+    if (!existing) throw new NotFoundException(`Booking ${id} not found`)
+    this.assertParty(existing, user)
+
     const warrantyExpiresAt = status === 'completed'
       ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
       : undefined
@@ -170,7 +198,17 @@ export class BookingsService {
     ])
   }
 
-  async assignProvider(id: string, providerId: string) {
+  async assignProvider(id: string, providerId: string, user: RequestUser) {
+    const existing = await this.prisma.booking.findUnique({ where: { id } })
+    if (!existing) throw new NotFoundException(`Booking ${id} not found`)
+
+    const isAdmin           = user.role === 'admin'
+    const isOwningClient    = existing.clientId === user.sub
+    const isSelfAssigning   = user.role === 'provider' && providerId === user.sub && existing.providerId === null
+    if (!isAdmin && !isOwningClient && !isSelfAssigning) {
+      throw new ForbiddenException('Not allowed to assign this booking')
+    }
+
     const booking = await this.prisma.booking.update({
       where: { id },
       data:  { providerId, status: 'accepted' },

@@ -1,7 +1,10 @@
-import { Controller, Get, Patch, Param, Body } from '@nestjs/common'
+import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
+import { AdminGuard } from '../../common/guards/admin.guard'
 import { ClientsService, SubscriptionPlan } from './clients.service'
 
 @Controller('clients')
+@UseGuards(AuthGuard('jwt'), AdminGuard)
 export class ClientsController {
   constructor(private readonly svc: ClientsService) {}
 

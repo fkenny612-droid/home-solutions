@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 
@@ -16,6 +16,11 @@ export interface SendMessageDto {
   attachments?: ChatAttachment[]
 }
 
+export interface RequestUser {
+  sub:  string
+  role: string
+}
+
 @Injectable()
 export class ChatService {
   constructor(
@@ -23,21 +28,32 @@ export class ChatService {
     private notifications:  NotificationsService,
   ) {}
 
-  async getMessages(bookingId: string) {
+  private assertParty(booking: { clientId: string; providerId: string | null }, user: RequestUser) {
+    if (user.role === 'admin') return
+    if (booking.clientId === user.sub) return
+    if (booking.providerId && booking.providerId === user.sub) return
+    throw new ForbiddenException('Not a party to this booking')
+  }
+
+  async getMessages(bookingId: string, user: RequestUser) {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } })
     if (!booking) throw new NotFoundException('Booking not found')
+    this.assertParty(booking, user)
     return this.prisma.message.findMany({ where: { bookingId }, orderBy: { createdAt: 'asc' } })
   }
 
-  async sendMessage(bookingId: string, dto: SendMessageDto) {
+  async sendMessage(bookingId: string, dto: SendMessageDto, user: RequestUser) {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } })
     if (!booking) throw new NotFoundException('Booking not found')
+    this.assertParty(booking, user)
 
     const message = await this.prisma.message.create({
       data: {
         bookingId,
-        senderId:    dto.senderId,
-        senderRole:  dto.senderRole,
+        // senderId/senderRole come from the verified JWT, not the request body,
+        // so a caller can't spoof messages as someone else.
+        senderId:    user.sub,
+        senderRole:  user.role,
         senderName:  dto.senderName,
         text:        dto.text?.trim() ?? '',
         attachments: (dto.attachments ?? []) as any,
