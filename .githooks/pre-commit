@@ -1,0 +1,22 @@
+#!/bin/sh
+# Blocks commits that contain secrets (API keys, tokens, etc).
+# Installed via `pnpm install` (see root package.json "prepare" script),
+# or manually with: git config core.hooksPath .githooks
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "⚠️  gitleaks not installed — skipping secret scan for this commit."
+  echo "   Install it with: brew install gitleaks"
+  exit 0
+fi
+
+gitleaks protect --staged --redact --config "$(git rev-parse --show-toplevel)/.gitleaks.toml"
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo ""
+  echo "🚫 Commit blocked: gitleaks found what looks like a secret in your staged changes."
+  echo "   Remove it, or if this is a false positive, add an allowlist rule to .gitleaks.toml."
+  exit 1
+fi
+
+exit 0

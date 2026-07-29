@@ -1,0 +1,24 @@
+title = "home-solutions gitleaks config"
+
+[extend]
+useDefault = true
+
+# Default gitleaks rules don't cover Vercel's "vca_" token format — this bit
+# the repo once already (see commit history around 2026-07-29).
+[[rules]]
+id = "vercel-access-token"
+description = "Vercel App/Personal Access Token"
+regex = '''vca_[A-Za-z0-9]{20,}'''
+tags = ["key", "vercel"]
+
+[[rules]]
+id = "expo-access-token"
+description = "Expo Access Token"
+regex = '''(?i)expo[_-]?(access[_-]?)?token["'=:\s]+[A-Za-z0-9_-]{20,}'''
+tags = ["key", "expo"]
+
+[allowlist]
+description = "Files that legitimately contain example/placeholder values"
+paths = [
+  '''(.*?)(png|jpg|jpeg|gif|svg|ico|lock)$''',
+]

@@ -6,7 +6,8 @@
     "web": "cd apps/web && ./node_modules/.bin/next dev",
     "api": "cd apps/api && pnpm dev",
     "web:build": "cd apps/web && ./node_modules/.bin/next build",
-    "web:start": "cd apps/web && ./node_modules/.bin/next start"
+    "web:start": "cd apps/web && ./node_modules/.bin/next start",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "engines": {
     "node": ">=18"
