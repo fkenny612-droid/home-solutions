@@ -10,6 +10,8 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { AuthModule } from './modules/auth/auth.module'
 import { ChatModule } from './modules/chat/chat.module'
 import { LoyaltyModule } from './modules/loyalty/loyalty.module'
+import { ListingsModule } from './modules/listings/listings.module'
+import { PaymentMethodsModule } from './modules/payment-methods/payment-methods.module'
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { LoyaltyModule } from './modules/loyalty/loyalty.module'
     SubscriptionsModule,
     ChatModule,
     LoyaltyModule,
+    ListingsModule,
+    PaymentMethodsModule,
   ],
 })
 export class AppModule {}

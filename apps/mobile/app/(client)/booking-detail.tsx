@@ -1,11 +1,20 @@
 import { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import * as Location from 'expo-location'
 import { colors } from '../../constants/theme'
 import { api, Booking } from '../../lib/api'
 import { useAuth } from '../../context/auth'
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
 
 const REVIEW_TAGS = ['On time', 'Professional', 'Great work', 'Tidy', 'Friendly', 'Highly skilled', 'Good value']
 
@@ -46,6 +55,10 @@ export default function BookingDetail() {
   const [refreshing, setRefreshing] = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
+  const [providerKm,     setProviderKm]     = useState<number | null>(null)
+  const [clientCoords,   setClientCoords]   = useState<{ lat: number; lng: number } | null>(null)
+  const [photoIndex,     setPhotoIndex]     = useState<number | null>(null)
+
   const [hasReviewed,    setHasReviewed]    = useState(false)
   const [checkedReview,  setCheckedReview]  = useState(false)
   const [ratingOpen,     setRatingOpen]     = useState(false)
@@ -74,6 +87,31 @@ export default function BookingDetail() {
       .catch(() => {})
       .finally(() => setCheckedReview(true))
   }, [booking?.id, booking?.status, booking?.providerId])
+
+  // Get client location once for distance calc
+  useEffect(() => {
+    Location.requestForegroundPermissionsAsync().then(({ status }) => {
+      if (status !== 'granted') return
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then(loc => {
+        setClientCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude })
+      }).catch(() => {})
+    })
+  }, [])
+
+  // Poll provider location every 20s when en_route
+  useEffect(() => {
+    if (booking?.status !== 'en_route' || !booking.providerId) return
+    const fetchLocation = () => {
+      api.providers.get(booking.providerId!).then(p => {
+        if (p.lat != null && p.lng != null && clientCoords) {
+          setProviderKm(haversineKm(clientCoords.lat, clientCoords.lng, p.lat, p.lng))
+        }
+      }).catch(() => {})
+    }
+    fetchLocation()
+    const id = setInterval(fetchLocation, 20_000)
+    return () => clearInterval(id)
+  }, [booking?.status, booking?.providerId, clientCoords])
 
   useEffect(() => {
     if (checkedReview && booking?.status === 'completed' && booking.providerId && !hasReviewed && !autoPrompted) {
@@ -185,6 +223,26 @@ export default function BookingDetail() {
           </View>
         )}
 
+        {/* Live location card — en_route only */}
+        {booking.status === 'en_route' && (
+          <View style={s.locationCard}>
+            <View style={s.locationCardLeft}>
+              <View style={s.locationPulseWrap}>
+                <View style={s.locationPulse} />
+                <Ionicons name="car" size={20} color={colors.green} />
+              </View>
+              <View>
+                <Text style={s.locationTitle}>Provider on the way</Text>
+                {providerKm != null
+                  ? <Text style={s.locationSub}>{providerKm < 1 ? `${Math.round(providerKm * 1000)} m away` : `${providerKm.toFixed(1)} km away`} · ~{Math.max(1, Math.round(providerKm * 2))} min ETA</Text>
+                  : <Text style={s.locationSub}>Locating provider…</Text>
+                }
+              </View>
+            </View>
+            <View style={s.locationDot} />
+          </View>
+        )}
+
         {/* Details */}
         <View style={s.card}>
           <Text style={s.cardLabel}>BOOKING DETAILS</Text>
@@ -192,7 +250,7 @@ export default function BookingDetail() {
             { icon: 'location-outline',  label: 'Address',   value: booking.address },
             { icon: 'calendar-outline',  label: 'Booked',    value: new Date(booking.createdAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' }) },
             { icon: 'construct-outline', label: 'Service',   value: label },
-            { icon: 'person-outline',    label: 'Provider',  value: booking.providerId ? `Provider #${booking.providerId.slice(-6).toUpperCase()}` : 'Awaiting assignment' },
+            { icon: 'person-outline',    label: 'Provider',  value: booking.providerName ?? (booking.providerId ? `Provider #${booking.providerId.slice(-6).toUpperCase()}` : 'Awaiting assignment') },
           ].map(row => (
             <View key={row.label} style={s.detailRow}>
               <Ionicons name={row.icon as any} size={16} color={colors.gray400} style={{ marginTop: 1 }} />
@@ -261,6 +319,20 @@ export default function BookingDetail() {
           )
         )}
 
+        {/* Job photos gallery */}
+        {booking.images && booking.images.length > 0 && (
+          <View style={s.card}>
+            <Text style={s.cardLabel}>JOB PHOTOS</Text>
+            <View style={s.photoGrid}>
+              {booking.images.map((uri, i) => (
+                <TouchableOpacity key={i} onPress={() => setPhotoIndex(i)} activeOpacity={0.85}>
+                  <Image source={{ uri }} style={s.photoThumb} resizeMode="cover" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Notes */}
         {booking.notes && (
           <View style={s.card}>
@@ -274,7 +346,7 @@ export default function BookingDetail() {
           {canChat && (
             <TouchableOpacity
               style={s.actionBtn}
-              onPress={() => router.push({ pathname: '/(client)/chat', params: { bookingId: booking.id } })}
+              onPress={() => router.push({ pathname: '/(client)/conversation', params: { bookingId: booking.id } })}
             >
               <Ionicons name="chatbubble-outline" size={18} color={colors.white} />
               <Text style={s.actionBtnText}>Message provider</Text>
@@ -295,6 +367,29 @@ export default function BookingDetail() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Full-screen photo viewer */}
+      <Modal visible={photoIndex !== null} transparent animationType="fade" onRequestClose={() => setPhotoIndex(null)}>
+        <View style={s.photoModal}>
+          <TouchableOpacity style={s.photoModalClose} onPress={() => setPhotoIndex(null)}>
+            <Ionicons name="close" size={26} color={colors.white} />
+          </TouchableOpacity>
+          {photoIndex !== null && booking.images?.[photoIndex] && (
+            <Image source={{ uri: booking.images[photoIndex] }} style={s.photoFull} resizeMode="contain" />
+          )}
+          {booking.images && booking.images.length > 1 && (
+            <View style={s.photoNavRow}>
+              <TouchableOpacity onPress={() => setPhotoIndex(i => Math.max(0, (i ?? 0) - 1))} style={s.photoNavBtn}>
+                <Ionicons name="chevron-back" size={22} color={colors.white} />
+              </TouchableOpacity>
+              <Text style={s.photoCounter}>{(photoIndex ?? 0) + 1} / {booking.images.length}</Text>
+              <TouchableOpacity onPress={() => setPhotoIndex(i => Math.min((booking.images?.length ?? 1) - 1, (i ?? 0) + 1))} style={s.photoNavBtn}>
+                <Ionicons name="chevron-forward" size={22} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </Modal>
 
       {/* Rating modal */}
       <Modal visible={ratingOpen} animationType="slide" transparent onRequestClose={closeRating}>
@@ -430,4 +525,25 @@ const s = StyleSheet.create({
   skipBtnText:       { fontSize: 14, fontWeight: '600', color: colors.gray400 },
   submitBtn:         { flex: 2, backgroundColor: colors.gold, borderRadius: 10, padding: 13, alignItems: 'center' },
   submitBtnText:     { fontSize: 14, fontWeight: '700', color: colors.black },
+
+  // Location card
+  locationCard:      { backgroundColor: colors.greenBg, borderRadius: 14, marginHorizontal: 16, marginBottom: 0, marginTop: 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.green + '30' },
+  locationCardLeft:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  locationPulseWrap: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  locationPulse:     { position: 'absolute', width: 36, height: 36, borderRadius: 18, backgroundColor: colors.green + '25' },
+  locationTitle:     { fontSize: 13, fontWeight: '700', color: colors.green },
+  locationSub:       { fontSize: 11, color: colors.green + 'CC', marginTop: 2 },
+  locationDot:       { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.green },
+
+  // Photo gallery
+  photoGrid:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  photoThumb:        { width: 90, height: 90, borderRadius: 10, backgroundColor: colors.gray100 },
+
+  // Full-screen photo modal
+  photoModal:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', alignItems: 'center', justifyContent: 'center' },
+  photoModalClose:   { position: 'absolute', top: 56, right: 20, zIndex: 10, padding: 8 },
+  photoFull:         { width: '100%', height: '70%' },
+  photoNavRow:       { flexDirection: 'row', alignItems: 'center', gap: 24, marginTop: 20 },
+  photoNavBtn:       { padding: 12 },
+  photoCounter:      { fontSize: 14, color: colors.white, fontWeight: '600' },
 })

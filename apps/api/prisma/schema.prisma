@@ -21,6 +21,8 @@ model User {
   vatNumber           String?
   serviceArea         String?
   pushToken           String?
+  idVerified          Boolean  @default(false)
+  idVerifiedAt        DateTime?
   loyaltyPoints       Int      @default(0)
   referralCode        String?  @unique
   referredById        String?
@@ -229,4 +231,44 @@ model Booking {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   messages         Message[]
+}
+
+model SavedCard {
+  id          String   @id @default(uuid())
+  userId      String
+  brand       String
+  last4       String
+  expiry      String
+  holderName  String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Listing {
+  id           String   @id @default(uuid())
+  sellerId     String
+  sellerName   String
+  sellerPhone  String
+  sellerAvatar String?
+  category     String
+  subcategory String
+  title       String
+  description String
+  price       Float?
+  priceLabel  String
+  condition   String?
+  images      String[]
+  city        String
+  suburb      String
+  views       Int      @default(0)
+  urgent      Boolean  @default(false)
+  savedBy     String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([sellerId])
+  @@index([city])
 }

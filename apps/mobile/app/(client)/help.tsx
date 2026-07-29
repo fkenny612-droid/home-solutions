@@ -129,7 +129,7 @@ export default function HelpScreen() {
         </View>
 
         {/* Footer */}
-        <Text style={s.footer}>Easy-Fix (Pty) Ltd · Durban, KZN · v1.0.0</Text>
+        <Text style={s.footer}>Easyfix (Pty) Ltd · Durban, KZN · v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   )

@@ -38,7 +38,7 @@ export default function LoginScreen() {
           </View>
 
           <Text style={s.title}>Sign in</Text>
-          <Text style={s.sub}>Easy-Fix · Durban, KwaZulu-Natal</Text>
+          <Text style={s.sub}>Easyfix · Durban, KwaZulu-Natal</Text>
 
           <View style={s.form}>
             <Text style={s.label}>Phone number</Text>

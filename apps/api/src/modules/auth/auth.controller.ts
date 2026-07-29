@@ -86,4 +86,10 @@ export class AuthController {
   deleteAddress(@Req() req: any, @Param('id') id: string) {
     return this.svc.deleteAddress(req.user.sub, id)
   }
+
+  @Post('verify-id')
+  @UseGuards(AuthGuard('jwt'))
+  verifyId(@Req() req: any, @Body('idNumber') idNumber: string) {
+    return this.svc.verifyId(req.user.sub, idNumber)
+  }
 }

@@ -22,10 +22,12 @@ const NEXT_REWARD_POINTS = 500
 
 export default function ProfileTab() {
   const { user, logout, switchMode } = useAuth()
-  const [points, setPoints] = useState(0)
+  const [points,      setPoints]      = useState(0)
+  const [idVerified,  setIdVerified]  = useState(false)
 
   useEffect(() => {
     api.loyalty.balance().then(b => setPoints(b.points)).catch(() => {})
+    api.auth.me().then(me => setIdVerified(me.idVerified)).catch(() => {})
   }, [])
 
   const progress = Math.min(1, (points % NEXT_REWARD_POINTS) / NEXT_REWARD_POINTS)
@@ -58,8 +60,22 @@ export default function ProfileTab() {
         </TouchableOpacity>
         <Text style={s.name}>{fullName}</Text>
         <Text style={s.role}>Client account</Text>
-        <View style={s.premiumBadge}>
-          <Text style={s.premiumText}>PREMIUM HOME</Text>
+        <View style={s.badgeRow}>
+          <View style={s.premiumBadge}>
+            <Text style={s.premiumText}>PREMIUM HOME</Text>
+          </View>
+          {idVerified && (
+            <View style={s.verifiedBadge}>
+              <Ionicons name="shield-checkmark" size={11} color={colors.green} />
+              <Text style={s.verifiedText}>ID VERIFIED</Text>
+            </View>
+          )}
+          {!idVerified && (
+            <TouchableOpacity style={s.unverifiedBadge} onPress={() => router.push('/(client)/verify-id' as any)}>
+              <Ionicons name="shield-outline" size={11} color={colors.gray400} />
+              <Text style={s.unverifiedText}>Verify ID →</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -118,8 +134,13 @@ const s = StyleSheet.create({
   avatarText:    { fontSize: 24, fontWeight: '700', color: colors.gold },
   name:          { fontSize: 20, fontWeight: '700', color: colors.white, letterSpacing: -0.3 },
   role:          { fontSize: 12, color: colors.gray400, marginTop: 2, marginBottom: 10 },
+  badgeRow:      { flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' },
   premiumBadge:  { backgroundColor: colors.gold + '20', borderWidth: 1, borderColor: colors.gold + '60', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
   premiumText:   { fontSize: 9, color: colors.gold, fontWeight: '700', letterSpacing: 1 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.greenBg, borderWidth: 1, borderColor: colors.green + '40', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  verifiedText:  { fontSize: 9, color: colors.green, fontWeight: '700', letterSpacing: 0.8 },
+  unverifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.gray100, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  unverifiedText:  { fontSize: 9, color: colors.gray400, fontWeight: '600' },
 
   body:          { padding: 16 },
 

@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useFocusEffect } from 'expo-router'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Dimensions, FlatList, NativeSyntheticEvent, NativeScrollEvent,
-  TextInput, Keyboard, Platform, Modal,
+  TextInput, Keyboard, Platform, Modal, Share, Linking,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -12,6 +13,7 @@ import { useAuth } from '../../context/auth'
 import { SERVICES, SERVICE_CATEGORIES, EASY_HIRE_IDS, EASY_FIX_IDS } from '../../lib/serviceConfig'
 import { api } from '../../lib/api'
 import SliderButton from '../../components/SliderButton'
+import { LogoImage } from '../../components/Logo'
 
 const { width: SW } = Dimensions.get('window')
 
@@ -33,10 +35,15 @@ const PROMOS = [
   { id: '3', tag: 'EASY-HIRE',      headline: 'Tent hire\nfrom R1,500',     sub: 'Events sorted in minutes', gold: false },
 ]
 
-const RECENT = [
-  { emoji: '⚡', name: 'Electrical — DB board', meta: '15 May · Kevin M. · ★★★★★', amt: 'R 850' },
-  { emoji: '💧', name: 'Plumbing — Geyser',    meta: '2 May · Raj P. · ★★★★☆',   amt: 'R 2 200' },
-]
+const SERVICE_EMOJI: Record<string, string> = {
+  plumbing: '💧', electrical: '⚡', cleaning: '🧹', hvac: '❄️', gas: '🔥', handyman: '🔧',
+  tiling: '🪟', painting: '🎨', landscaping: '🌿', pool: '🏊', pest_control: '🐜',
+  locksmith: '🔑', carpentry: '🪚', solar: '☀️', security: '📷', paving: '🛤️',
+}
+
+function fmtService(s: string) {
+  return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
 
 function greeting() {
   const h = new Date().getHours()
@@ -72,6 +79,13 @@ export default function ClientHome() {
   const [filterOpen,   setFilterOpen]   = useState(false)
   const [minRating,    setMinRating]    = useState(0)
   const [maxPrice,     setMaxPrice]     = useState(0) // 0 = any
+  const [recentJobs,   setRecentJobs]   = useState<{ emoji: string; name: string; meta: string; amt: string; serviceType: string }[]>([])
+  const [serviceList,  setServiceList]  = useState<null | 'fix' | 'hire'>(null)
+  const [sliderKey,    setSliderKey]    = useState(0)
+
+  useFocusEffect(useCallback(() => {
+    setSliderKey(k => k + 1)
+  }, []))
 
   useEffect(() => {
     api.notifications.unreadCount().then(r => setUnreadCount(r.count)).catch(() => {})
@@ -79,6 +93,20 @@ export default function ClientHome() {
       api.notifications.unreadCount().then(r => setUnreadCount(r.count)).catch(() => {})
     }, 30000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    api.bookings.list('completed').then(bookings => {
+      const last3 = bookings.slice(0, 3)
+      setRecentJobs(last3.map(b => ({
+        emoji:       SERVICE_EMOJI[b.serviceType] ?? '🔧',
+        name:        fmtService(b.serviceType) + (b.address ? ` — ${b.address.split(',')[0]}` : ''),
+        meta:        new Date(b.createdAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) +
+                     (b.providerName ? ` · ${b.providerName}` : ''),
+        amt:         `R ${(b.finalAmount ?? b.quotedAmount).toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`,
+        serviceType: b.serviceType,
+      })))
+    }).catch(() => {})
   }, [])
   const promoRef  = useRef<FlatList>(null)
   const searchRef = useRef<TextInput>(null)
@@ -126,7 +154,7 @@ export default function ClientHome() {
       <View style={s.header}>
         <View style={s.headerTop}>
           <View>
-            <Text style={s.brand}>Easy-Fix</Text>
+            <LogoImage height={30} tint="white" />
             <Text style={s.greeting}>{greeting()}, {displayName.split(' ')[0]}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -284,25 +312,85 @@ export default function ClientHome() {
         </View>
       </Modal>
 
+      {/* ── Service list modal (Easyfix / Easy-Hire full list) ── */}
+      <Modal visible={serviceList !== null} animationType="slide" onRequestClose={() => setServiceList(null)}>
+        <View style={{ flex: 1, backgroundColor: colors.white, paddingTop: insets.top }}>
+          <View style={s.slHeader}>
+            <TouchableOpacity onPress={() => setServiceList(null)} style={s.slBack}>
+              <Ionicons name="arrow-back" size={22} color={colors.black} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={s.slTitle}>{serviceList === 'fix' ? 'Easyfix' : 'Easy-Hire'}</Text>
+              <Text style={s.slSub}>{serviceList === 'fix' ? 'Home repair & maintenance' : 'Equipment · Events · Transport'}</Text>
+            </View>
+            {serviceList === 'fix' ? (
+              <View style={[s.slBadge, { backgroundColor: colors.brand + '18', borderColor: colors.brand + '40' }]}>
+                <Text style={[s.slBadgeText, { color: colors.brand }]}>HOME SERVICES</Text>
+              </View>
+            ) : (
+              <View style={[s.slBadge, { backgroundColor: colors.gold + '18', borderColor: colors.gold + '40' }]}>
+                <Text style={[s.slBadgeText, { color: colors.gold }]}>HIRE</Text>
+              </View>
+            )}
+          </View>
+
+          <FlatList
+            data={SERVICES.filter(svc =>
+              serviceList === 'fix'
+                ? EASY_FIX_IDS.includes(svc.id)
+                : EASY_HIRE_IDS.includes(svc.id)
+            )}
+            keyExtractor={item => item.id}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+            ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.gray100, marginHorizontal: 16 }} />}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={s.slRow}
+                activeOpacity={0.75}
+                onPress={() => {
+                  setServiceList(null)
+                  router.push({ pathname: '/(client)/book', params: { serviceType: item.id } })
+                }}
+              >
+                <View style={s.slRowIcon}>
+                  <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.slRowLabel}>{item.label}</Text>
+                  <Text style={s.slRowPrice}>{item.priceLabel}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.gray200} />
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
+
       {/* ── Main scroll ── */}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
 
         {/* ── Emergency slider ── */}
         <View style={s.emergencyWrap}>
           <SliderButton
+            key={sliderKey}
             label="⚡  EMERGENCY CALLOUT"
-            sublabel="Slide to dispatch — technician in <15 min"
+            sublabel="Hold to dispatch — technician in <15 min"
             trackColor="#1A0000"
             thumbColor="#C0392B"
-            onConfirm={() => router.push({ pathname: '/(client)/book', params: { serviceType: 'emergency' } })}
+            onConfirm={() => router.push('/(client)/emergency' as any)}
           />
         </View>
 
         {/* ── Quick-book shortcuts (Uber ride-type row) ── */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Easy-Fix</Text>
-            <View style={s.brandTag}><Text style={s.brandTagText}>HOME SERVICES</Text></View>
+            <TouchableOpacity onPress={() => setServiceList('fix')} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={s.sectionTitle}>Easyfix</Text>
+              <View style={s.brandTag}><Text style={s.brandTagText}>HOME SERVICES</Text></View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setServiceList('fix')} style={{ marginLeft: 'auto' }}>
+              <Text style={s.sectionLink}>See all →</Text>
+            </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
             {fixServices.map(svc => (
@@ -325,10 +413,13 @@ export default function ClientHome() {
         {/* ── Equipment hire section ── */}
         <View style={s.hireSection}>
           <View style={s.hireSectionHeader}>
-            <View>
+            <TouchableOpacity onPress={() => setServiceList('hire')} activeOpacity={0.7}>
               <Text style={s.hireSectionTitle}>Easy-Hire</Text>
               <Text style={s.hireSectionSub}>Equipment · Events · Transport · Security</Text>
-            </View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setServiceList('hire')}>
+              <Text style={s.hireSeAll}>See all →</Text>
+            </TouchableOpacity>
           </View>
 
           {/* 2×2 grid of hire categories */}
@@ -394,30 +485,22 @@ export default function ClientHome() {
           </View>
         </View>
 
-        {/* ── Featured provider ── */}
+        {/* ── Why Easyfix ── */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Featured provider</Text>
-          <View style={s.featuredCard}>
-            <View style={s.featuredRow}>
-              <View style={s.featuredAvatar}>
-                <Text style={s.featuredInitials}>RP</Text>
+          <Text style={s.sectionTitle}>Why Easyfix?</Text>
+          <View style={s.whyGrid}>
+            {[
+              { emoji: '⚡', title: 'Fast dispatch',    sub: 'Technician confirmed in minutes' },
+              { emoji: '🛡️', title: 'Vetted providers', sub: 'KYC-verified, rated & insured'  },
+              { emoji: '💳', title: 'Pay on completion', sub: 'Funds held until job is done'   },
+              { emoji: '📋', title: '90-day warranty',  sub: 'Parts & labour guaranteed'       },
+            ].map(item => (
+              <View key={item.title} style={s.whyCard}>
+                <Text style={s.whyEmoji}>{item.emoji}</Text>
+                <Text style={s.whyTitle}>{item.title}</Text>
+                <Text style={s.whySub}>{item.sub}</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.featuredName}>Raj Pillay Plumbing</Text>
-                <Text style={s.featuredMeta}>Plumbing · Geyser specialist</Text>
-                <Text style={s.featuredArea}>📍 Nationwide · South Africa</Text>
-              </View>
-              <View style={s.ratingBox}>
-                <Text style={s.ratingVal}>★ 4.9</Text>
-                <Text style={s.ratingCount}>214</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={s.featuredBtn}
-              onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: 'plumbing' } })}
-            >
-              <Text style={s.featuredBtnText}>Book now →</Text>
-            </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -426,7 +509,7 @@ export default function ClientHome() {
           <Text style={s.sectionTitle}>How it works</Text>
           <View style={s.howRow}>
             {[
-              { n: '1', title: 'Pick a service', sub: 'Easy-Fix or Easy-Hire' },
+              { n: '1', title: 'Pick a service', sub: 'Easyfix or Easy-Hire' },
               { n: '2', title: 'Get a quote',    sub: 'Instant pricing' },
               { n: '3', title: 'Track & pay',    sub: 'Pay on completion' },
             ].map((h, i) => (
@@ -440,7 +523,14 @@ export default function ClientHome() {
         </View>
 
         {/* ── Refer strip ── */}
-        <TouchableOpacity style={s.referStrip} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={s.referStrip}
+          activeOpacity={0.85}
+          onPress={() => Share.share({
+            message: `Join me on Easyfix — the fastest way to find trusted home services in Durban! Use my code to get R100 off your first booking. Download: https://easy-fix.co.za`,
+            title:   'Easyfix — refer a friend',
+          })}
+        >
           <View style={{ flex: 1 }}>
             <Text style={s.referTitle}>Refer a friend, earn R100</Text>
             <Text style={s.referSub}>Both of you get rewarded</Text>
@@ -451,7 +541,7 @@ export default function ClientHome() {
         </TouchableOpacity>
 
         {/* ── Recent jobs ── */}
-        {RECENT.length > 0 && (
+        {recentJobs.length > 0 && (
           <View style={s.section}>
             <View style={s.sectionHeaderRow}>
               <Text style={s.sectionTitle}>Recent jobs</Text>
@@ -459,8 +549,13 @@ export default function ClientHome() {
                 <Text style={s.sectionLink}>View all →</Text>
               </TouchableOpacity>
             </View>
-            {RECENT.map((j, i) => (
-              <View key={i} style={s.recentRow}>
+            {recentJobs.map((j, i) => (
+              <TouchableOpacity
+                key={i}
+                style={s.recentRow}
+                onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: j.serviceType } })}
+                activeOpacity={0.75}
+              >
                 <View style={s.recentIcon}>
                   <Text style={{ fontSize: 18 }}>{j.emoji}</Text>
                 </View>
@@ -468,18 +563,25 @@ export default function ClientHome() {
                   <Text style={s.recentName}>{j.name}</Text>
                   <Text style={s.recentMeta}>{j.meta}</Text>
                 </View>
-                <Text style={s.recentAmt}>{j.amt}</Text>
-              </View>
+                <View style={s.recentRight}>
+                  <Text style={s.recentAmt}>{j.amt}</Text>
+                  <Text style={s.recentRebook}>Re-book →</Text>
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
 
         {/* ── Advertise ── */}
-        <View style={s.adStrip}>
-          <Text style={s.adTag}>ADVERTISE WITH EASY-FIX</Text>
+        <TouchableOpacity
+          style={s.adStrip}
+          activeOpacity={0.85}
+          onPress={() => Linking.openURL('mailto:hello@easyfix.co.za')}
+        >
+          <Text style={s.adTag}>ADVERTISE WITH EASYFIX</Text>
           <Text style={s.adText}>Reach 100,000+ homeowners nationwide</Text>
-          <Text style={s.adCta}>hello@easy-fix.co.za →</Text>
-        </View>
+          <Text style={s.adCta}>hello@easyfix.co.za →</Text>
+        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>
@@ -540,7 +642,7 @@ const s = StyleSheet.create({
 
   // Sections
   section:             { paddingHorizontal: 16, marginTop: 24 },
-  sectionHeader:       { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, paddingHorizontal: 16 },
+  sectionHeader:       { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, paddingHorizontal: 16, justifyContent: 'space-between' },
   sectionHeaderRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle:        { fontSize: 17, fontWeight: '700', color: colors.black, letterSpacing: -0.2 },
   sectionLink:         { fontSize: 13, color: colors.gold, fontWeight: '600' },
@@ -588,19 +690,12 @@ const s = StyleSheet.create({
   promoDot:            { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.gray200 },
   promoDotActive:      { backgroundColor: colors.gold, width: 14 },
 
-  // Featured provider
-  featuredCard:        { backgroundColor: colors.white, borderRadius: 14, padding: 16 },
-  featuredRow:         { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-  featuredAvatar:      { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.black, alignItems: 'center', justifyContent: 'center' },
-  featuredInitials:    { fontSize: 15, fontWeight: '700', color: colors.gold },
-  featuredName:        { fontSize: 14, fontWeight: '700', color: colors.black, marginBottom: 2 },
-  featuredMeta:        { fontSize: 11, color: colors.gray400 },
-  featuredArea:        { fontSize: 11, color: colors.gray400, marginTop: 4 },
-  ratingBox:           { alignItems: 'flex-end' },
-  ratingVal:           { fontSize: 14, fontWeight: '700', color: colors.gold },
-  ratingCount:         { fontSize: 10, color: colors.gray400, marginTop: 2 },
-  featuredBtn:         { backgroundColor: colors.black, borderRadius: 10, padding: 13, alignItems: 'center' },
-  featuredBtnText:     { fontSize: 13, fontWeight: '600', color: colors.white },
+  // Why Easyfix grid
+  whyGrid:             { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  whyCard:             { width: '47%', backgroundColor: colors.white, borderRadius: 14, padding: 14 },
+  whyEmoji:            { fontSize: 22, marginBottom: 8 },
+  whyTitle:            { fontSize: 13, fontWeight: '700', color: colors.black, marginBottom: 3 },
+  whySub:              { fontSize: 11, color: colors.gray400, lineHeight: 15 },
 
   // How it works
   howRow:              { flexDirection: 'row', gap: 8 },
@@ -622,13 +717,28 @@ const s = StyleSheet.create({
   recentIcon:          { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
   recentName:          { fontSize: 13, fontWeight: '600', color: colors.black },
   recentMeta:          { fontSize: 11, color: colors.gray400, marginTop: 2 },
+  recentRight:         { alignItems: 'flex-end', gap: 4 },
   recentAmt:           { fontSize: 13, fontWeight: '700', color: colors.black },
+  recentRebook:        { fontSize: 10, fontWeight: '600', color: colors.gold },
 
   // Ad strip
   adStrip:             { marginHorizontal: 16, marginTop: 24, backgroundColor: colors.black2, borderRadius: 14, padding: 18, alignItems: 'center', gap: 4 },
   adTag:               { fontSize: 9, color: colors.gold, fontWeight: '700', letterSpacing: 1.2 },
   adText:              { fontSize: 13, fontWeight: '500', color: colors.white, textAlign: 'center', marginTop: 2 },
   adCta:               { fontSize: 11, color: colors.gray400, marginTop: 4 },
+
+  // Service list modal
+  slHeader:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.gray100 },
+  slBack:        { padding: 4 },
+  slTitle:       { fontSize: 18, fontWeight: '700', color: colors.black, letterSpacing: -0.3 },
+  slSub:         { fontSize: 11, color: colors.gray400, marginTop: 1 },
+  slBadge:       { borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  slBadgeText:   { fontSize: 9, fontWeight: '700', letterSpacing: 0.8 },
+  slRow:         { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 15 },
+  slRowIcon:     { width: 46, height: 46, borderRadius: 12, backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center' },
+  slRowLabel:    { fontSize: 15, fontWeight: '600', color: colors.black },
+  slRowPrice:    { fontSize: 12, color: colors.gray400, marginTop: 2 },
+  hireSeAll:     { fontSize: 12, color: colors.gold, fontWeight: '600' },
 
   // Filter
   filterBtn:           { padding: 8, position: 'relative' },

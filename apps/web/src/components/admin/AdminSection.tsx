@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { STATS, BOOKINGS, PROVIDERS, SUBSCRIPTIONS, REVENUE_BARS } from '@/lib/mock-data'
 import { bookings as bookingsApi, providers as providersApi, subscriptions as subsApi } from '@/lib/api'
-import type { BookingStats, Provider } from '@/lib/api'
+import type { BookingStats, Provider, Booking } from '@/lib/api'
 
 type AdminModal = null | 'booking' | 'verify-provider' | 'payout' | 'new-booking' | 'report'
 
@@ -51,15 +51,22 @@ export default function AdminSection() {
   const [modal, setModal] = useState<AdminModal>(null)
   const [selectedBooking, setSelectedBooking] = useState(BOOKINGS[0])
 
-  // Live API state — falls back to mock data while loading or if API is unreachable
-  const [apiStats, setApiStats] = useState<BookingStats | null>(null)
+  const [apiStats,     setApiStats]     = useState<BookingStats | null>(null)
   const [apiProviders, setApiProviders] = useState<Provider[] | null>(null)
-  const [mrr, setMrr] = useState<{ total: number; basicHome: { count: number }; premiumHome: { count: number }; estateBiz: { count: number } } | null>(null)
+  const [apiBookings,  setApiBookings]  = useState<Booking[] | null>(null)
+  const [mrr,          setMrr]          = useState<{ total: number; basicHome: { count: number }; premiumHome: { count: number }; estateBiz: { count: number } } | null>(null)
 
   useEffect(() => {
     bookingsApi.stats().then(setApiStats).catch(() => {})
     providersApi.list('active').then(setApiProviders).catch(() => {})
+    bookingsApi.list().then(all => setApiBookings(all.slice(0, 10))).catch(() => {})
     subsApi.mrr().then(setMrr).catch(() => {})
+
+    const id = setInterval(() => {
+      bookingsApi.stats().then(setApiStats).catch(() => {})
+      bookingsApi.list().then(all => setApiBookings(all.slice(0, 10))).catch(() => {})
+    }, 30_000)
+    return () => clearInterval(id)
   }, [])
 
   const liveStats = apiStats
@@ -76,9 +83,15 @@ export default function AdminSection() {
         { label: 'Avg rating', val: STATS.avgRating, change: '↓ −0.1 this week', up: false },
       ]
 
+  const displayBookings = apiBookings ?? BOOKINGS
   const filteredBookings = activeTab === 'All'
-    ? BOOKINGS
-    : BOOKINGS.filter(b => b.status === activeTab.toLowerCase())
+    ? displayBookings
+    : displayBookings.filter((b: any) =>
+        activeTab === 'Live'      ? ['accepted','en_route','in_progress'].includes(b.status) :
+        activeTab === 'Pending'   ? b.status === 'pending' :
+        activeTab === 'Emergency' ? b.status === 'emergency' :
+        true
+      )
 
   return (
     <div style={{ padding: 32 }}>
@@ -97,7 +110,7 @@ export default function AdminSection() {
               <i className="ti ti-home-2" style={{ color: 'var(--navy)', fontSize: 16 }} />
             </div>
             <div>
-              <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 13, color: '#fff', lineHeight: 1.2 }}>Home Solutions</div>
+              <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 13, color: '#fff', lineHeight: 1.2 }}>Easyfix</div>
               <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Admin</div>
             </div>
           </div>
@@ -189,22 +202,33 @@ export default function AdminSection() {
                     >{t}</div>
                   ))}
                 </div>
-                {filteredBookings.map(b => (
-                  <div
-                    key={b.id}
-                    onClick={() => { setSelectedBooking(b); setModal('booking') }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--cream-mid)', cursor: 'pointer', transition: 'background 0.1s' }}
-                  >
-                    <div style={{ width: 30, height: 30, borderRadius: 8, background: b.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <i className={`ti ti-${b.icon}`} style={{ color: b.iconColor }} />
+                {filteredBookings.length === 0 && (
+                  <div style={{ padding: '24px 14px', textAlign: 'center', fontSize: 12, color: 'var(--text-light)' }}>No bookings in this category</div>
+                )}
+                {filteredBookings.map((b: any) => {
+                  const isLive = apiBookings !== null
+                  const service = isLive ? b.serviceType?.replace(/_/g, ' ') : b.service
+                  const location = isLive ? b.address : b.location
+                  const status = b.status
+                  const pillStatus = ['accepted','en_route','in_progress'].includes(status) ? 'live' : status
+                  const ago = isLive ? new Date(b.createdAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) : b.ago
+                  return (
+                    <div
+                      key={b.id}
+                      onClick={() => { setSelectedBooking(b); setModal('booking') }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--cream-mid)', cursor: 'pointer', transition: 'background 0.1s' }}
+                    >
+                      <div style={{ width: 30, height: 30, borderRadius: 8, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 15 }}>
+                        {isLive ? '🔧' : <i className={`ti ti-${b.icon}`} style={{ color: b.iconColor }} />}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', textTransform: 'capitalize' }}>{service} — {location}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 1 }}>#{b.id.slice(-6).toUpperCase()} · {ago}{!isLive && b.tech ? ` · ${b.tech}` : ''}</div>
+                      </div>
+                      <span className={`pill pill-${pillStatus}`} style={{ textTransform: 'capitalize' }}>{status.replace(/_/g, ' ')}</span>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{b.service} — {b.location}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 1 }}>{b.client} · {b.ago}{b.tech ? ` · ${b.tech}` : ''}</div>
-                    </div>
-                    <span className={`pill pill-${b.status}`} style={{ textTransform: 'capitalize' }}>{b.status}</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {/* Right column */}
@@ -244,17 +268,28 @@ export default function AdminSection() {
                     <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Top Providers</div>
                     <div style={{ fontSize: 10, color: 'var(--gold)', cursor: 'pointer' }}>Manage</div>
                   </div>
-                  {PROVIDERS.map(p => (
-                    <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: '1px solid var(--cream-mid)', cursor: 'pointer', transition: 'background 0.1s' }}>
-                      <div style={{ width: 30, height: 30, borderRadius: '50%', background: p.bgColor, color: p.textColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>{p.initials}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{p.name}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-light)' }}>{p.role} · {p.jobs} jobs</div>
+                  {(apiProviders ?? PROVIDERS).slice(0, 5).map((p: any) => {
+                    const isLive = apiProviders !== null
+                    const name     = isLive ? p.name : p.name
+                    const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                    const role     = isLive ? (p.skills?.[0] ?? 'Provider') : p.role
+                    const jobs     = isLive ? p.jobCount : p.jobs
+                    const rating   = isLive ? Math.round(p.rating) : p.rating
+                    const dotColor = isLive
+                      ? (p.status === 'active' ? '#3BB88F' : '#F59E0B')
+                      : (p.status === 'active' ? '#3BB88F' : p.status === 'emergency' ? '#E63946' : '#F59E0B')
+                    return (
+                      <div key={p.id ?? p.name} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: '1px solid var(--cream-mid)', cursor: 'pointer' }}>
+                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#DCF0E8', color: '#1A6842', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>{initials}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: 500 }}>{name}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-light)', textTransform: 'capitalize' }}>{role} · {jobs} jobs</div>
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--gold)' }}>{'★'.repeat(rating)}{'☆'.repeat(Math.max(0, 5 - rating))}</div>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, marginLeft: 8 }} />
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--gold)' }}>{'★'.repeat(p.rating)}{'☆'.repeat(5 - p.rating)}</div>
-                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: p.status === 'active' ? '#3BB88F' : p.status === 'emergency' ? '#E63946' : '#F59E0B', marginLeft: 8 }} />
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -268,7 +303,11 @@ export default function AdminSection() {
                   <div style={{ fontSize: 10, color: 'var(--gold)', cursor: 'pointer' }}>Details</div>
                 </div>
                 <div style={{ padding: 14 }}>
-                  {SUBSCRIPTIONS.map(s => (
+                  {(mrr ? [
+                    { label: 'Basic Home',        count: mrr.basicHome.count,   pct: Math.min(100, Math.round(mrr.basicHome.count / 20)),   color: '#CA8A04' },
+                    { label: 'Premium Home',       count: mrr.premiumHome.count, pct: Math.min(100, Math.round(mrr.premiumHome.count / 20)), color: '#2D8A6E' },
+                    { label: 'Estate / Biz',       count: mrr.estateBiz.count,   pct: Math.min(100, Math.round(mrr.estateBiz.count / 20)),   color: '#243447' },
+                  ] : SUBSCRIPTIONS).map(s => (
                     <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9, fontSize: 11 }}>
                       <div style={{ width: 90, color: 'var(--text-muted)', flexShrink: 0, fontSize: 10 }}>{s.label}</div>
                       <div style={{ flex: 1, height: 6, background: 'var(--cream-mid)', borderRadius: 20, overflow: 'hidden' }}>

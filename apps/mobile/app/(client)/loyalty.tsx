@@ -64,7 +64,7 @@ export default function LoyaltyScreen() {
   }
 
   const shareCode = (code: string, discountAmount: number) => {
-    Share.share({ message: `My Easy-Fix discount code: ${code} (R${discountAmount} off)` })
+    Share.share({ message: `My Easyfix discount code: ${code} (R${discountAmount} off)` })
   }
 
   const activeRedemptions = redemptions.filter(r => !r.used)

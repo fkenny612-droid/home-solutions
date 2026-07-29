@@ -23,7 +23,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
   // Android channel
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name:       'Easy-Fix',
+      name:       'Easyfix',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
     })

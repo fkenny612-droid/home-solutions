@@ -42,7 +42,7 @@ export default function ReceiptScreen() {
   const handleShare = () => {
     Share.share({
       message:
-        `Easy-Fix — Payment Receipt\n\n` +
+        `Easyfix — Payment Receipt\n\n` +
         `Service: ${label}\n` +
         `Reference: #${booking.id.slice(-8).toUpperCase()}\n` +
         `Date: ${formatDateTime(booking.createdAt)}\n` +
@@ -133,7 +133,7 @@ export default function ReceiptScreen() {
           )}
         </View>
 
-        <Text style={s.footer}>Easy-Fix (Pty) Ltd · Durban, KZN{'\n'}Payments processed by Peach Payments</Text>
+        <Text style={s.footer}>Easyfix (Pty) Ltd · Durban, KZN{'\n'}Payments processed by Peach Payments</Text>
 
         <TouchableOpacity style={s.shareCta} onPress={handleShare}>
           <Ionicons name="share-outline" size={16} color={colors.gold} />

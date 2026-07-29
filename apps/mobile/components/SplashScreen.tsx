@@ -89,7 +89,7 @@ export default function SplashScreen({ onDone }: Props) {
 
       {/* Brand name */}
       <Animated.Text style={[s.brandName, { transform: [{ translateY: nameY }], opacity: nameOpacity }]}>
-        Easy-Fix
+        Easyfix
       </Animated.Text>
 
       {/* Gold bar */}

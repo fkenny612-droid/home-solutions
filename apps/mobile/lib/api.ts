@@ -1,5 +1,5 @@
 /**
- * Easy-Fix — React Native API client
+ * Easyfix — React Native API client
  * Set API_BASE to your deployed API URL (Railway) once live.
  * In Expo Go on a physical device, use your machine's LAN IP.
  */
@@ -69,6 +69,8 @@ export interface Booking {
   transactionId: string | null
   warrantyExpiresAt: string | null
   notes: string | null
+  images: string[] | null
+  providerName: string | null
   createdAt: string
   updatedAt: string
 }
@@ -91,7 +93,9 @@ export const api = {
     updateProfile:   (data: { firstName?: string; lastName?: string; email?: string }) =>
       req<{ id: string; phone: string; role: string; firstName: string | null; lastName: string | null; email: string | null }>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
     me:              () =>
-      req<{ id: string; phone: string; role: string; firstName: string | null; lastName: string | null; email: string | null }>('/auth/me'),
+      req<{ id: string; phone: string; role: string; firstName: string | null; lastName: string | null; email: string | null; idVerified: boolean }>('/auth/me'),
+    verifyId:        (idNumber: string) =>
+      req<{ idVerified: boolean; age: number }>('/auth/verify-id', { method: 'POST', body: JSON.stringify({ idNumber }) }),
     getBankAccount:  () => req<BankAccount | null>('/auth/bank-account'),
     saveBankAccount: (data: Omit<BankAccount, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) =>
       req<BankAccount>('/auth/bank-account', { method: 'POST', body: JSON.stringify(data) }),
@@ -209,6 +213,31 @@ export const api = {
     redemptions: ()             => req<LoyaltyRedemption[]>('/loyalty/redemptions'),
     redeem:      (rewardId: string) => req<LoyaltyRedemption>('/loyalty/redeem', { method: 'POST', body: JSON.stringify({ rewardId }) }),
   },
+
+  listings: {
+    list:    (params?: { category?: ListingCategory; q?: string; city?: string }) => {
+      const p = new URLSearchParams()
+      if (params?.category) p.set('category', params.category)
+      if (params?.q)        p.set('q', params.q)
+      if (params?.city)     p.set('city', params.city)
+      return req<Listing[]>(`/listings${p.toString() ? `?${p}` : ''}`)
+    },
+    get:     (id: string)          => req<Listing>(`/listings/${id}`),
+    create:  (dto: Omit<Listing, 'id' | 'sellerId' | 'sellerName' | 'sellerPhone' | 'sellerAvatar' | 'createdAt' | 'views' | 'saved'>) =>
+      req<Listing>('/listings', { method: 'POST', body: JSON.stringify(dto) }),
+    update:  (id: string, dto: Partial<Listing>) =>
+      req<Listing>(`/listings/${id}`, { method: 'PATCH', body: JSON.stringify(dto) }),
+    delete:  (id: string)          => req<{ ok: boolean }>(`/listings/${id}`, { method: 'DELETE' }),
+    mine:    ()                    => req<Listing[]>('/listings/mine'),
+    save:    (id: string)          => req<{ saved: boolean }>(`/listings/${id}/save`, { method: 'POST' }),
+  },
+
+  paymentMethods: {
+    list:       ()                                                                       => req<SavedCard[]>('/payment-methods'),
+    add:        (dto: { brand: string; last4: string; expiry: string; holderName: string }) => req<SavedCard>('/payment-methods', { method: 'POST', body: JSON.stringify(dto) }),
+    setDefault: (id: string)                                                             => req<SavedCard>(`/payment-methods/${id}/default`, { method: 'PATCH' }),
+    remove:     (id: string)                                                             => req<{ success: boolean }>(`/payment-methods/${id}`, { method: 'DELETE' }),
+  },
 }
 
 export interface SubscriptionPlan {
@@ -308,6 +337,50 @@ export interface LoyaltyRedemption {
   code:           string
   used:           boolean
   createdAt:      string
+}
+
+export type ListingCategory = 'goods' | 'property' | 'jobs'
+
+export type ListingSubcategory =
+  // goods
+  | 'furniture' | 'appliances' | 'electronics' | 'tools' | 'clothing' | 'vehicles' | 'garden' | 'other_goods'
+  // property
+  | 'room_to_rent' | 'house_to_rent' | 'flat_to_rent' | 'property_for_sale' | 'commercial'
+  // jobs
+  | 'full_time' | 'part_time' | 'contract' | 'freelance' | 'domestic'
+
+export type ListingCondition = 'new' | 'like_new' | 'good' | 'fair' | 'for_parts'
+
+export interface Listing {
+  id:            string
+  sellerId:      string
+  sellerName:    string
+  sellerPhone:   string
+  sellerAvatar:  string | null
+  category:      ListingCategory
+  subcategory:   ListingSubcategory
+  title:         string
+  description:   string
+  price:         number | null          // null = negotiable / free / contact
+  priceLabel:    string                 // e.g. "R 1 500", "Negotiable", "Free"
+  condition:     ListingCondition | null
+  images:        string[]
+  city:          string
+  suburb:        string
+  views:         number
+  saved:         boolean
+  urgent:        boolean
+  createdAt:     string
+}
+
+export interface SavedCard {
+  id:         string
+  brand:      string
+  last4:      string
+  expiry:     string
+  holderName: string
+  isDefault:  boolean
+  createdAt:  string
 }
 
 export interface Message {

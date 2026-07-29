@@ -12,6 +12,12 @@ export const colors = {
   gray900:     '#1C1917',
   white:       '#FFFFFF',
 
+  // Brand green — from the Easyfix logo
+  brand:       '#1A5C1A',
+  brandLight:  '#2E7D2E',
+  brandDim:    '#144014',
+  brandBg:     '#F0F7F0',
+
   // Gold — richer ochre, used sparingly for primary CTAs and key highlights only
   gold:        '#CA8A04',
   goldLight:   '#EAB308',

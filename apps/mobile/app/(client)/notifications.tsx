@@ -50,7 +50,7 @@ export default function NotificationsScreen() {
     const bookingId = item.data?.bookingId
     if (!bookingId) return
     if (item.type === 'chat_message') {
-      router.push({ pathname: '/(client)/chat', params: { bookingId } })
+      router.push({ pathname: '/(client)/conversation', params: { bookingId } })
     } else {
       router.push({ pathname: '/(client)/bookings' })
     }

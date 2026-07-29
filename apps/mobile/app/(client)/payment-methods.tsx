@@ -1,24 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, KeyboardAvoidingView, Platform,
+  TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
-
-interface SavedCard {
-  id: string
-  brand: 'VISA' | 'MASTERCARD' | 'AMEX'
-  last4: string
-  expiry: string
-  isDefault: boolean
-}
-
-const MOCK_CARDS: SavedCard[] = [
-  { id: '1', brand: 'VISA', last4: '4242', expiry: '12/26', isDefault: true },
-]
+import { api, SavedCard } from '../../lib/api'
 
 const BRAND_COLOR: Record<string, string> = {
   VISA: '#1A1F71',
@@ -44,13 +33,21 @@ function fmtExpiry(val: string) {
 }
 
 export default function PaymentMethodsScreen() {
-  const [cards, setCards]       = useState<SavedCard[]>(MOCK_CARDS)
-  const [adding, setAdding]     = useState(false)
-  const [number, setNumber]     = useState('')
-  const [holder, setHolder]     = useState('')
-  const [expiry, setExpiry]     = useState('')
-  const [cvv,    setCvv]        = useState('')
-  const [saving, setSaving]     = useState(false)
+  const [cards,   setCards]   = useState<SavedCard[]>([])
+  const [loading, setLoading] = useState(true)
+  const [adding,  setAdding]  = useState(false)
+  const [number,  setNumber]  = useState('')
+  const [holder,  setHolder]  = useState('')
+  const [expiry,  setExpiry]  = useState('')
+  const [cvv,     setCvv]     = useState('')
+  const [saving,  setSaving]  = useState(false)
+
+  const load = useCallback(async () => {
+    try { setCards(await api.paymentMethods.list()) } catch {}
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const detectedBrand = (): 'VISA' | 'MASTERCARD' | 'AMEX' | null => {
     const d = number.replace(/\s/g, '')
@@ -62,30 +59,31 @@ export default function PaymentMethodsScreen() {
 
   const handleAdd = async () => {
     const raw = number.replace(/\s/g, '')
-    if (raw.length < 16) { Alert.alert('Invalid card', 'Please enter a valid 16-digit card number.'); return }
-    if (!holder.trim())  { Alert.alert('Invalid card', 'Please enter the cardholder name.'); return }
+    if (raw.length < 16)   { Alert.alert('Invalid card', 'Please enter a valid 16-digit card number.'); return }
+    if (!holder.trim())    { Alert.alert('Invalid card', 'Please enter the cardholder name.'); return }
     if (expiry.length < 5) { Alert.alert('Invalid card', 'Please enter a valid expiry (MM/YY).'); return }
-    if (cvv.length < 3)   { Alert.alert('Invalid card', 'Please enter the CVV.'); return }
+    if (cvv.length < 3)    { Alert.alert('Invalid card', 'Please enter the CVV.'); return }
 
     setSaving(true)
-    await new Promise(r => setTimeout(r, 800))
-    const brand = detectedBrand() ?? 'VISA'
-    const newCard: SavedCard = {
-      id: Date.now().toString(),
-      brand,
-      last4: raw.slice(-4),
-      expiry,
-      isDefault: cards.length === 0,
+    try {
+      const brand = detectedBrand() ?? 'VISA'
+      await api.paymentMethods.add({ brand, last4: raw.slice(-4), expiry, holderName: holder.trim() })
+      await load()
+      setAdding(false)
+      setNumber(''); setHolder(''); setExpiry(''); setCvv('')
+      Alert.alert('Card added', `${brand} •••• ${raw.slice(-4)} has been saved.`)
+    } catch {
+      Alert.alert('Error', 'Could not save card. Please try again.')
+    } finally {
+      setSaving(false)
     }
-    setCards(prev => [...prev, newCard])
-    setAdding(false)
-    setNumber(''); setHolder(''); setExpiry(''); setCvv('')
-    setSaving(false)
-    Alert.alert('Card added', `${brand} •••• ${newCard.last4} has been saved.`)
   }
 
-  const handleSetDefault = (id: string) => {
-    setCards(prev => prev.map(c => ({ ...c, isDefault: c.id === id })))
+  const handleSetDefault = async (id: string) => {
+    try {
+      await api.paymentMethods.setDefault(id)
+      setCards(prev => prev.map(c => ({ ...c, isDefault: c.id === id })))
+    } catch {}
   }
 
   const handleDelete = (card: SavedCard) => {
@@ -96,13 +94,32 @@ export default function PaymentMethodsScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove', style: 'destructive',
-          onPress: () => setCards(prev => prev.filter(c => c.id !== card.id)),
+          onPress: async () => {
+            try {
+              await api.paymentMethods.remove(card.id)
+              await load()
+            } catch {}
+          },
         },
       ]
     )
   }
 
   const brand = detectedBrand()
+
+  if (loading) return (
+    <SafeAreaView style={s.safe}>
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.white} />
+        </TouchableOpacity>
+        <Text style={s.title}>Payment methods</Text>
+      </View>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.gold} />
+      </View>
+    </SafeAreaView>
+  )
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -124,7 +141,7 @@ export default function PaymentMethodsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.cardNum}>{card.brand} •••• {card.last4}</Text>
-                <Text style={s.cardExp}>Expires {card.expiry}</Text>
+                <Text style={s.cardExp}>{card.holderName} · Expires {card.expiry}</Text>
               </View>
               {card.isDefault
                 ? <View style={s.defaultBadge}><Text style={s.defaultText}>DEFAULT</Text></View>

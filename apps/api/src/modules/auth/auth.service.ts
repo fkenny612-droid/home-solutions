@@ -37,7 +37,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials')
     }
     return {
-      accessToken: this.jwt.sign({ sub: user.id, role: user.role, phone: user.phone }),
+      accessToken: this.jwt.sign({ sub: user.id, role: user.role, phone: user.phone, name: [user.firstName, user.lastName].filter(Boolean).join(' ') }),
       user: { id: user.id, phone: user.phone, role: user.role, firstName: user.firstName, lastName: user.lastName },
     }
   }
@@ -96,7 +96,7 @@ export class AuthService {
     }
 
     return {
-      accessToken: this.jwt.sign({ sub: user.id, role: user.role, phone: user.phone }),
+      accessToken: this.jwt.sign({ sub: user.id, role: user.role, phone: user.phone, name: [user.firstName, user.lastName].filter(Boolean).join(' ') }),
       user: { id: user.id, phone: user.phone, role: user.role, firstName: user.firstName, lastName: user.lastName },
     }
   }
@@ -156,6 +156,39 @@ export class AuthService {
         ...(dto.email     !== undefined ? { email:     dto.email     } : {}),
       },
     })
-    return { id: user.id, phone: user.phone, role: user.role, firstName: user.firstName, lastName: user.lastName, email: user.email }
+    return { id: user.id, phone: user.phone, role: user.role, firstName: user.firstName, lastName: user.lastName, email: user.email, idVerified: user.idVerified }
+  }
+
+  async verifyId(userId: string, idNumber: string): Promise<{ idVerified: boolean; age: number }> {
+    // Validate format server-side as well (13 digits + Luhn)
+    const digits = idNumber.replace(/\s/g, '')
+    if (!/^\d{13}$/.test(digits)) throw new Error('Invalid ID format')
+
+    const yy  = parseInt(digits.slice(0, 2), 10)
+    const mm  = parseInt(digits.slice(2, 4), 10)
+    const dd  = parseInt(digits.slice(4, 6), 10)
+    const currentYY = new Date().getFullYear() % 100
+    const year = yy <= currentYY ? 2000 + yy : 1900 + yy
+    const dob  = new Date(year, mm - 1, dd)
+    if (isNaN(dob.getTime())) throw new Error('Invalid date in ID')
+
+    let sum = 0
+    for (let i = 0; i < 13; i++) {
+      let d = parseInt(digits[i], 10)
+      if (i % 2 !== 0) { d *= 2; if (d > 9) d -= 9 }
+      sum += d
+    }
+    if (sum % 10 !== 0) throw new Error('ID checksum failed')
+
+    const today = new Date()
+    let age = today.getFullYear() - dob.getFullYear()
+    if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--
+    if (age < 18) throw new Error('Must be 18 or older')
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data:  { idVerified: true, idVerifiedAt: new Date() },
+    })
+    return { idVerified: true, age }
   }
 }

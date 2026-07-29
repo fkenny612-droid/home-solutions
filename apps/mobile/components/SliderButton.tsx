@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import {
-  View, Text, StyleSheet, PanResponder, Animated,
-  Dimensions, Vibration,
+  View, Text, StyleSheet, TouchableWithoutFeedback,
+  Animated, Dimensions, Vibration,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
-const TRACK_PADDING = 4
-const THUMB_SIZE    = 48
+const HOLD_MS    = 900   // how long to hold before confirm
+const THUMB_SIZE = 56
+const PAD        = 4
 
 interface Props {
   label:       string
@@ -14,127 +15,200 @@ interface Props {
   onConfirm:   () => void
   trackColor?: string
   thumbColor?: string
-  labelColor?: string
 }
 
 export default function SliderButton({
   label,
   sublabel,
   onConfirm,
-  trackColor = '#3A0000',
+  trackColor = '#1A0000',
   thumbColor = '#C0392B',
-  labelColor = 'rgba(255,255,255,0.7)',
 }: Props) {
-  const trackWidth  = Dimensions.get('window').width - 32 // 16px margin each side
-  const maxSlide    = trackWidth - THUMB_SIZE - TRACK_PADDING * 2
+  const trackWidth = Dimensions.get('window').width - 32
 
-  const translateX  = useRef(new Animated.Value(0)).current
+  const progress   = useRef(new Animated.Value(0)).current
+  const thumbScale = useRef(new Animated.Value(1)).current
+  const anim       = useRef<Animated.CompositeAnimation | null>(null)
   const [confirmed, setConfirmed] = useState(false)
-  const [sliding,   setSliding]   = useState(false)
+  const [pressing,  setPressing]  = useState(false)
 
-  const labelOpacity = translateX.interpolate({
-    inputRange: [0, maxSlide * 0.4],
+  // Fill width: 0 → full track width
+  const fillWidth = progress.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [THUMB_SIZE + PAD * 2, trackWidth],
+    extrapolate: 'clamp',
+  })
+
+  // Thumb moves with fill
+  const thumbX = progress.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [0, trackWidth - THUMB_SIZE - PAD * 2],
+    extrapolate: 'clamp',
+  })
+
+  // Label fades as fill advances
+  const labelOpacity = progress.interpolate({
+    inputRange:  [0, 0.35],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   })
 
-  const fillWidth = translateX.interpolate({
-    inputRange: [0, maxSlide],
-    outputRange: [THUMB_SIZE + TRACK_PADDING * 2, trackWidth],
-    extrapolate: 'clamp',
-  })
+  // Pulse animation on the icon while pressing
+  const startPulse = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(thumbScale, { toValue: 1.12, duration: 300, useNativeDriver: false }),
+        Animated.timing(thumbScale, { toValue: 1,    duration: 300, useNativeDriver: false }),
+      ])
+    ).start()
+  }
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !confirmed,
-      onMoveShouldSetPanResponder:  () => !confirmed,
-      onPanResponderGrant: () => setSliding(true),
-      onPanResponderMove: (_, g) => {
-        const val = Math.max(0, Math.min(g.dx, maxSlide))
-        translateX.setValue(val)
-      },
-      onPanResponderRelease: (_, g) => {
-        setSliding(false)
-        if (g.dx >= maxSlide * 0.85) {
-          Animated.spring(translateX, { toValue: maxSlide, useNativeDriver: false }).start()
-          setConfirmed(true)
-          Vibration.vibrate(40)
-          setTimeout(onConfirm, 200)
-        } else {
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: false, tension: 80, friction: 8 }).start()
-        }
-      },
+  const stopPulse = () => {
+    thumbScale.stopAnimation()
+    Animated.spring(thumbScale, { toValue: 1, useNativeDriver: false }).start()
+  }
+
+  const onPressIn = () => {
+    if (confirmed) return
+    setPressing(true)
+    startPulse()
+    Vibration.vibrate(10)
+
+    anim.current = Animated.timing(progress, {
+      toValue:  1,
+      duration: HOLD_MS,
+      useNativeDriver: false,
     })
-  ).current
+
+    anim.current.start(({ finished }) => {
+      if (finished) {
+        setConfirmed(true)
+        stopPulse()
+        Vibration.vibrate([0, 60, 40, 80])
+        setTimeout(onConfirm, 300)
+      }
+    })
+  }
+
+  const onPressOut = () => {
+    if (confirmed) return
+    setPressing(false)
+    stopPulse()
+    anim.current?.stop()
+    Animated.spring(progress, {
+      toValue:  0,
+      tension:  80,
+      friction: 8,
+      useNativeDriver: false,
+    }).start()
+  }
 
   return (
-    <View style={[s.track, { backgroundColor: trackColor }]}>
-      {/* Red fill that expands as thumb slides */}
-      <Animated.View style={[s.fill, { width: fillWidth, backgroundColor: thumbColor + 'AA' }]} />
+    <TouchableWithoutFeedback onPressIn={onPressIn} onPressOut={onPressOut}>
+      <View style={[s.track, { backgroundColor: trackColor }]}>
 
-      {/* Label */}
-      <Animated.View style={[s.labelWrap, { opacity: labelOpacity }]}>
-        <Text style={[s.label, { color: labelColor }]}>{label}</Text>
-        {sublabel && <Text style={[s.sublabel, { color: labelColor }]}>{sublabel}</Text>}
-      </Animated.View>
+        {/* Animated fill */}
+        <Animated.View
+          style={[s.fill, { width: fillWidth, backgroundColor: thumbColor }]}
+        />
 
-      {/* Thumb */}
-      <Animated.View
-        style={[s.thumb, { backgroundColor: thumbColor, transform: [{ translateX }] }]}
-        {...panResponder.panHandlers}
-      >
-        {confirmed
-          ? <Ionicons name="checkmark" size={22} color="#fff" />
-          : <Ionicons name={sliding ? 'chevron-forward-outline' : 'chevron-forward'} size={22} color="#fff" />
-        }
-      </Animated.View>
-    </View>
+        {/* Label centred in track */}
+        <Animated.View style={[s.labelWrap, { opacity: labelOpacity }]}>
+          <Text style={s.label}>{label}</Text>
+          {sublabel && <Text style={s.sublabel}>{sublabel}</Text>}
+        </Animated.View>
+
+        {/* Thumb slides along */}
+        <Animated.View
+          style={[
+            s.thumb,
+            {
+              backgroundColor: confirmed ? '#27AE60' : thumbColor,
+              transform: [{ translateX: thumbX }, { scale: thumbScale }],
+            },
+          ]}
+        >
+          {confirmed ? (
+            <Ionicons name="checkmark" size={24} color="#fff" />
+          ) : (
+            <Ionicons
+              name={pressing ? 'flash' : 'chevron-forward'}
+              size={24}
+              color="#fff"
+            />
+          )}
+        </Animated.View>
+
+        {/* Hold hint — fades in when not pressing */}
+        {!confirmed && !pressing && (
+          <View style={s.hintWrap}>
+            <Text style={s.hint}>hold</Text>
+          </View>
+        )}
+      </View>
+    </TouchableWithoutFeedback>
   )
 }
 
+const TRACK_H = THUMB_SIZE + PAD * 2
+
 const s = StyleSheet.create({
   track: {
-    height:       THUMB_SIZE + TRACK_PADDING * 2,
-    borderRadius: (THUMB_SIZE + TRACK_PADDING * 2) / 2,
-    overflow:     'hidden',
+    height:         TRACK_H,
+    borderRadius:   TRACK_H / 2,
+    overflow:       'hidden',
     justifyContent: 'center',
-    position:     'relative',
+    position:       'relative',
   },
   fill: {
     position:     'absolute',
     left:         0,
     top:          0,
     bottom:       0,
-    borderRadius: (THUMB_SIZE + TRACK_PADDING * 2) / 2,
+    borderRadius: TRACK_H / 2,
+    opacity:      0.9,
   },
   labelWrap: {
-    position:   'absolute',
-    left:       THUMB_SIZE + 24,
-    right:      16,
-    alignItems: 'center',
+    position:       'absolute',
+    left:           THUMB_SIZE + 20,
+    right:          16,
+    alignItems:     'center',
+    justifyContent: 'center',
   },
   label: {
-    fontSize:   13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontSize:      13,
+    fontWeight:    '700',
+    color:         'rgba(255,255,255,0.85)',
+    letterSpacing: 0.5,
   },
   sublabel: {
     fontSize:  10,
-    marginTop: 1,
-    opacity:   0.7,
+    color:     'rgba(255,255,255,0.5)',
+    marginTop: 2,
   },
   thumb: {
     position:       'absolute',
-    left:           TRACK_PADDING,
+    left:           PAD,
     width:          THUMB_SIZE,
     height:         THUMB_SIZE,
     borderRadius:   THUMB_SIZE / 2,
     alignItems:     'center',
     justifyContent: 'center',
     shadowColor:    '#000',
-    shadowOffset:   { width: 0, height: 2 },
-    shadowOpacity:  0.3,
-    shadowRadius:   4,
-    elevation:      4,
+    shadowOffset:   { width: 0, height: 3 },
+    shadowOpacity:  0.4,
+    shadowRadius:   5,
+    elevation:      6,
+  },
+  hintWrap: {
+    position: 'absolute',
+    right:    20,
+  },
+  hint: {
+    fontSize:      10,
+    color:         'rgba(255,255,255,0.3)',
+    fontWeight:    '600',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
 })

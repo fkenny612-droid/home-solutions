@@ -32,15 +32,19 @@ const SERVICE_EMOJI: Record<string, string> = {
   security_guard_hire: '💂',
 }
 
+const ACTIVE_STATUSES  = ['pending', 'accepted', 'en_route', 'in_progress', 'emergency']
+const HISTORY_STATUSES = ['completed', 'cancelled']
+
 export default function BookingsTab() {
-  const [bookings,   setBookings]   = useState<Booking[]>([])
+  const [all,        setAll]        = useState<Booking[]>([])
+  const [tab,        setTab]        = useState<'active' | 'history'>('active')
   const [refreshing, setRefreshing] = useState(false)
   const [error,      setError]      = useState(false)
 
   const load = async () => {
     try {
       const data = await api.bookings.list()
-      setBookings(data.filter(b => !['completed', 'cancelled'].includes(b.status)))
+      setAll(data)
       setError(false)
     } catch {
       setError(true)
@@ -51,11 +55,31 @@ export default function BookingsTab() {
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false) }
 
+  const bookings = tab === 'active'
+    ? all.filter(b => ACTIVE_STATUSES.includes(b.status))
+    : all.filter(b => HISTORY_STATUSES.includes(b.status))
+
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <Text style={s.title}>Bookings</Text>
-        <Text style={s.sub}>{bookings.length} active</Text>
+        <Text style={s.sub}>{all.filter(b => ACTIVE_STATUSES.includes(b.status)).length} active</Text>
+      </View>
+
+      {/* Tab switcher */}
+      <View style={s.tabRow}>
+        <TouchableOpacity
+          style={[s.tabBtn, tab === 'active' && s.tabBtnActive]}
+          onPress={() => setTab('active')}
+        >
+          <Text style={[s.tabLabel, tab === 'active' && s.tabLabelActive]}>Active</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.tabBtn, tab === 'history' && s.tabBtnActive]}
+          onPress={() => setTab('history')}
+        >
+          <Text style={[s.tabLabel, tab === 'history' && s.tabLabelActive]}>History</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -70,11 +94,13 @@ export default function BookingsTab() {
 
         {!error && bookings.length === 0 && (
           <View style={s.empty}>
-            <Text style={s.emptyTitle}>No active bookings</Text>
-            <Text style={s.emptySub}>Book a service from the Home tab</Text>
-            <TouchableOpacity style={s.bookBtn} onPress={() => router.push('/(client)')}>
-              <Text style={s.bookBtnText}>Book a service</Text>
-            </TouchableOpacity>
+            <Text style={s.emptyTitle}>{tab === 'active' ? 'No active bookings' : 'No past bookings'}</Text>
+            <Text style={s.emptySub}>{tab === 'active' ? 'Book a service from the Home tab' : 'Completed and cancelled bookings appear here'}</Text>
+            {tab === 'active' && (
+              <TouchableOpacity style={s.bookBtn} onPress={() => router.push('/(client)')}>
+                <Text style={s.bookBtnText}>Book a service</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -125,7 +151,12 @@ export default function BookingsTab() {
 
 const s = StyleSheet.create({
   safe:        { flex: 1, backgroundColor: colors.gray50 },
-  header:      { backgroundColor: colors.black, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 },
+  header:      { backgroundColor: colors.black, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 },
+  tabRow:      { flexDirection: 'row', backgroundColor: colors.black, paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
+  tabBtn:      { flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  tabBtnActive:{ backgroundColor: colors.white },
+  tabLabel:    { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
+  tabLabelActive: { color: colors.black },
   title:       { fontSize: 24, fontWeight: '700', color: colors.white, letterSpacing: -0.3 },
   sub:         { fontSize: 12, color: colors.gray400, marginTop: 2 },
   body:        { padding: 16 },

@@ -13,7 +13,7 @@ export default function RoleSelector() {
         <View style={s.logoRow}>
           <LogoMark size={44} variant="dark" />
           <View>
-            <Text style={s.logoName}>Easy-Fix</Text>
+            <Text style={s.logoName}>Easyfix</Text>
             <Text style={s.logoSub}>Powered by Easy-Hire</Text>
           </View>
         </View>
@@ -25,7 +25,7 @@ export default function RoleSelector() {
         <View style={s.btnGroup}>
           <TouchableOpacity style={s.btnPrimary} onPress={() => router.push('/(client)')}>
             <Text style={s.btnPrimaryText}>I need a service</Text>
-            <Text style={s.btnPrimaryMeta}>Easy-Fix · Easy-Hire</Text>
+            <Text style={s.btnPrimaryMeta}>Easyfix · Easy-Hire</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.btnSecondary} onPress={() => router.push('/(provider)')}>

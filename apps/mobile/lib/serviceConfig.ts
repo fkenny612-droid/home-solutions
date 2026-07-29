@@ -737,7 +737,7 @@ export const EASY_FIX_IDS = [
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [
   {
-    label: 'Easy-Fix',
+    label: 'Easyfix',
     services: SERVICES.filter(s => EASY_FIX_IDS.includes(s.id)),
   },
   {

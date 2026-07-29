@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../context/auth'
 import { colors } from '../constants/theme'
 import { LogoMark } from '../components/Logo'
@@ -39,6 +40,8 @@ export default function RegisterScreen() {
   const [phone,     setPhone]     = useState('+27')
   const [password,  setPassword]  = useState('')
   const [confirm,   setConfirm]   = useState('')
+
+  const [showPassword, setShowPassword] = useState(false)
 
   const [companyName,         setCompanyName]         = useState('')
   const [companyRegistration, setCompanyRegistration] = useState('')
@@ -125,7 +128,7 @@ export default function RegisterScreen() {
           {step === 1 && (
             <>
               <Text style={s.title}>Create account</Text>
-              <Text style={s.sub}>How will you use Easy-Fix?</Text>
+              <Text style={s.sub}>How will you use Easyfix?</Text>
               <View style={s.roleRow}>
                 {([
                   { key: 'client',   label: 'I need a service',  desc: 'Book vetted tradespeople' },
@@ -175,15 +178,25 @@ export default function RegisterScreen() {
                 keyboardType="phone-pad" autoComplete="tel" />
 
               <Text style={[s.label, { marginTop: 14 }]}>Password</Text>
-              <TextInput style={s.input} value={password} onChangeText={setPassword}
-                placeholder="Min. 6 characters" placeholderTextColor={colors.gray400}
-                secureTextEntry autoComplete="new-password" />
+              <View style={s.passwordRow}>
+                <TextInput style={s.passwordInput} value={password} onChangeText={setPassword}
+                  placeholder="Min. 6 characters" placeholderTextColor={colors.gray400}
+                  secureTextEntry={!showPassword} autoComplete="new-password" />
+                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={s.eyeBtn}>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.gray400} />
+                </TouchableOpacity>
+              </View>
 
               <Text style={[s.label, { marginTop: 14 }]}>Confirm password</Text>
-              <TextInput style={s.input} value={confirm} onChangeText={setConfirm}
-                placeholder="Repeat password" placeholderTextColor={colors.gray400}
-                secureTextEntry returnKeyType={role === 'provider' ? 'next' : 'done'}
-                onSubmitEditing={role === 'provider' ? undefined : handleNext} />
+              <View style={s.passwordRow}>
+                <TextInput style={s.passwordInput} value={confirm} onChangeText={setConfirm}
+                  placeholder="Repeat password" placeholderTextColor={colors.gray400}
+                  secureTextEntry={!showPassword} returnKeyType={role === 'provider' ? 'next' : 'done'}
+                  onSubmitEditing={role === 'provider' ? undefined : handleNext} />
+                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={s.eyeBtn}>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.gray400} />
+                </TouchableOpacity>
+              </View>
 
               <Text style={[s.label, { marginTop: 14 }]}>Referral code <Text style={s.optional}>(optional)</Text></Text>
               <TextInput style={s.input} value={referralCode} onChangeText={t => setReferralCode(t.toUpperCase())}
@@ -255,6 +268,16 @@ export default function RegisterScreen() {
             </View>
           )}
 
+          {step === 3 && (
+            <Text style={s.legal}>
+              By creating an account you agree to our{' '}
+              <Text style={s.legalLink} onPress={() => Linking.openURL('https://easyfix.co.za/terms')}>Terms of Service</Text>
+              {' '}and{' '}
+              <Text style={s.legalLink} onPress={() => Linking.openURL('https://easyfix.co.za/privacy')}>Privacy Policy</Text>
+              . Your data is protected under POPIA.
+            </Text>
+          )}
+
           <View style={{ height: 32 }} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -281,6 +304,9 @@ const s = StyleSheet.create({
   label:           { fontSize: 11, fontWeight: '600', color: colors.gray600, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
   optional:        { fontWeight: '400', textTransform: 'none', letterSpacing: 0 },
   input:           { backgroundColor: colors.gray50, borderRadius: 10, padding: 14, fontSize: 15, color: colors.black, borderWidth: 1, borderColor: colors.gray100 },
+  passwordRow:     { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.gray50, borderRadius: 10, borderWidth: 1, borderColor: colors.gray100 },
+  passwordInput:   { flex: 1, padding: 14, fontSize: 15, color: colors.black },
+  eyeBtn:          { paddingHorizontal: 14, paddingVertical: 14 },
   areaChip:        { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.gray200, backgroundColor: colors.gray50, marginRight: 8 },
   areaChipSel:     { borderColor: colors.black, backgroundColor: colors.black },
   areaChipText:    { fontSize: 13, color: colors.gray600 },
@@ -294,4 +320,6 @@ const s = StyleSheet.create({
   footer:          { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
   footerText:      { fontSize: 14, color: colors.gray400 },
   footerLink:      { fontSize: 14, color: colors.black, fontWeight: '600' },
+  legal:           { fontSize: 11, color: colors.gray400, textAlign: 'center', lineHeight: 17, marginTop: 16, paddingHorizontal: 8 },
+  legalLink:       { color: colors.brand, fontWeight: '600' },
 })

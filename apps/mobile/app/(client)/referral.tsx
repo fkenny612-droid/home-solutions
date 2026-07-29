@@ -28,7 +28,7 @@ export default function ReferralScreen() {
   const handleShare = () => {
     if (!code) return
     Share.share({
-      message: `Join Easy-Fix and get trusted home service providers in Durban! Use my referral code ${code} when you sign up. 🏠🔧`,
+      message: `Join Easyfix and get trusted home service providers in Durban! Use my referral code ${code} when you sign up. 🏠🔧`,
     })
   }
 

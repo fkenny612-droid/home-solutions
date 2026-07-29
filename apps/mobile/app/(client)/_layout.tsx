@@ -8,10 +8,11 @@ import { api } from '../../lib/api'
 type IconName = React.ComponentProps<typeof Ionicons>['name']
 
 const CLIENT_TABS: { name: string; label: string; icon: IconName; iconActive: IconName }[] = [
-  { name: 'index',    label: 'Home',     icon: 'home-outline',     iconActive: 'home'     },
-  { name: 'bookings', label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' },
-  { name: 'history',  label: 'History',  icon: 'time-outline',     iconActive: 'time'     },
-  { name: 'profile',  label: 'Profile',  icon: 'person-outline',   iconActive: 'person'   },
+  { name: 'index',    label: 'Home',      icon: 'home-outline',     iconActive: 'home'     },
+  { name: 'bookings', label: 'Bookings',  icon: 'calendar-outline', iconActive: 'calendar' },
+  { name: 'market',   label: 'Market',    icon: 'storefront-outline',   iconActive: 'storefront'   },
+  { name: 'chat',     label: 'Chat',      icon: 'chatbubbles-outline',  iconActive: 'chatbubbles'  },
+  { name: 'profile',  label: 'Profile',   icon: 'person-outline',       iconActive: 'person'       },
 ]
 
 function BadgeIcon({ name, color, size, count }: { name: IconName; color: string; size: number; count: number }) {
@@ -77,7 +78,8 @@ export default function ClientLayout() {
       {/* Hide these screens from the tab bar — accessible via navigation only */}
       <Tabs.Screen name="addresses"       options={{ href: null }} />
       <Tabs.Screen name="book"            options={{ href: null }} />
-      <Tabs.Screen name="chat"            options={{ href: null }} />
+      <Tabs.Screen name="history"          options={{ href: null }} />
+      <Tabs.Screen name="conversation"     options={{ href: null }} />
       <Tabs.Screen name="subscription"    options={{ href: null }} />
       <Tabs.Screen name="notifications"   options={{ href: null }} />
       <Tabs.Screen name="booking-detail"  options={{ href: null }} />
@@ -89,6 +91,10 @@ export default function ClientLayout() {
       <Tabs.Screen name="loyalty"         options={{ href: null }} />
       <Tabs.Screen name="referral"          options={{ href: null }} />
       <Tabs.Screen name="provider-profile"  options={{ href: null }} />
+      <Tabs.Screen name="emergency"       options={{ href: null }} />
+      <Tabs.Screen name="listing-detail" options={{ href: null }} />
+      <Tabs.Screen name="post-listing"   options={{ href: null }} />
+      <Tabs.Screen name="verify-id"      options={{ href: null }} />
     </Tabs>
   )
 }
