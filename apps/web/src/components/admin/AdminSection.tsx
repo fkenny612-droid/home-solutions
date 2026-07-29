@@ -51,6 +51,10 @@ export default function AdminSection() {
   const [modal, setModal] = useState<AdminModal>(null)
   const [selectedBooking, setSelectedBooking] = useState(BOOKINGS[0])
 
+  // This section renders on the public marketing homepage and never authenticates,
+  // so the live-data calls below always 401 (bookings/providers require a JWT) and
+  // this always falls back to the static demo numbers from '@/lib/mock-data' — by
+  // design, so anonymous visitors never see real customer data here.
   const [apiStats,     setApiStats]     = useState<BookingStats | null>(null)
   const [apiProviders, setApiProviders] = useState<Provider[] | null>(null)
   const [apiBookings,  setApiBookings]  = useState<Booking[] | null>(null)

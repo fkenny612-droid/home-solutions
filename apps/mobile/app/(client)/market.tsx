@@ -159,9 +159,10 @@ export default function MarketScreen() {
   const [activeCat,  setActiveCat]  = useState<ListingCategory | 'all'>('all')
   const [query,      setQuery]      = useState('')
   const [searching,  setSearching]  = useState(false)
-  const [listings,   setListings]   = useState<Listing[]>(MOCK)
+  const [listings,   setListings]   = useState<Listing[]>(__DEV__ ? MOCK : [])
   const [loading,    setLoading]    = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [loadError,  setLoadError]  = useState(false)
   const searchRef = useRef<TextInput>(null)
 
   const load = useCallback(async (isRefresh = false) => {
@@ -172,8 +173,15 @@ export default function MarketScreen() {
         q: query || undefined,
       })
       setListings(data)
+      setLoadError(false)
     } catch {
-      setListings(MOCK.filter(m => activeCat === 'all' || m.category === activeCat))
+      if (__DEV__) {
+        // Dev convenience only — never show fabricated listings to real users in production
+        setListings(MOCK.filter(m => activeCat === 'all' || m.category === activeCat))
+      } else {
+        setListings([])
+        setLoadError(true)
+      }
     } finally {
       setLoading(false); setRefreshing(false)
     }
@@ -281,14 +289,25 @@ export default function MarketScreen() {
           contentContainerStyle={filtered.length === 0 ? s.emptyWrap : { padding: 16, paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.gold} />}
           ListEmptyComponent={
-            <View style={s.empty}>
-              <Text style={s.emptyEmoji}>🛒</Text>
-              <Text style={s.emptyTitle}>No listings found</Text>
-              <Text style={s.emptySub}>Be the first to post in this category</Text>
-              <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/(client)/post-listing' as any)}>
-                <Text style={s.emptyBtnText}>Post a listing →</Text>
-              </TouchableOpacity>
-            </View>
+            loadError ? (
+              <View style={s.empty}>
+                <Text style={s.emptyEmoji}>⚠️</Text>
+                <Text style={s.emptyTitle}>Could not load listings</Text>
+                <Text style={s.emptySub}>Check your connection and try again</Text>
+                <TouchableOpacity style={s.emptyBtn} onPress={() => load()}>
+                  <Text style={s.emptyBtnText}>Retry →</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={s.empty}>
+                <Text style={s.emptyEmoji}>🛒</Text>
+                <Text style={s.emptyTitle}>No listings found</Text>
+                <Text style={s.emptySub}>Be the first to post in this category</Text>
+                <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/(client)/post-listing' as any)}>
+                  <Text style={s.emptyBtnText}>Post a listing →</Text>
+                </TouchableOpacity>
+              </View>
+            )
           }
           renderItem={({ item }) => (
             <ListingCard

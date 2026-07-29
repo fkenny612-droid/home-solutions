@@ -46,9 +46,11 @@ export default function ListingDetailScreen() {
       setListing(l)
       setSaved(l.saved)
     } catch {
-      // Fall back to mock
-      const m = MOCK_MAP[id]
-      if (m) { setListing(m); setSaved(m.saved) }
+      // Dev convenience only — never show a fabricated listing to real users in production
+      if (__DEV__) {
+        const m = MOCK_MAP[id]
+        if (m) { setListing(m); setSaved(m.saved) }
+      }
     } finally { setLoading(false) }
   }, [id])
 
