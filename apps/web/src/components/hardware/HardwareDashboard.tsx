@@ -98,7 +98,7 @@ export default function HardwareDashboard() {
 
       {/* Overview */}
       {tab === 'overview' && (
-        <div className="hw-section">
+        <div className="hw-section screen-enter">
           <h3 className="hw-section-title">Recent orders</h3>
           {orders.slice(0, 5).map(order => (
             <div key={order.id} className="hw-order-card">
@@ -123,7 +123,7 @@ export default function HardwareDashboard() {
 
       {/* Products */}
       {tab === 'products' && (
-        <div className="hw-section">
+        <div className="hw-section screen-enter">
           <div className="hw-section-header">
             <h3 className="hw-section-title">Product catalogue</h3>
             <button className="hw-btn-primary" onClick={() => setShowAdd(v => !v)}>
@@ -185,7 +185,7 @@ export default function HardwareDashboard() {
 
       {/* Orders */}
       {tab === 'orders' && (
-        <div className="hw-section">
+        <div className="hw-section screen-enter">
           <h3 className="hw-section-title">All material orders</h3>
           {orders.map(order => (
             <div key={order.id} className="hw-order-detail">

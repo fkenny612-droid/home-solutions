@@ -82,37 +82,39 @@ export default function ClientAppSection() {
       </div>
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <PhoneFrame label="iOS / Android">
-          {view === 'home' && <HomeView onService={(id) => goto('providers', id)} />}
-          {view === 'providers' && (
-            <ProvidersView
-              title={PROVIDER_TITLE[serviceType] || 'Providers near you'}
-              selected={selectedProv}
-              onSelect={setSelectedProv}
-              onBack={() => goto('home')}
-              onNext={() => goto('quote')}
-            />
-          )}
-          {view === 'quote' && <QuoteView onBack={() => goto('providers')} onApprove={() => goto('tracking')} />}
-          {view === 'tracking' && (
-            <TrackingView
-              techPos={techPos}
-              eta={Math.round(eta)}
-              onBack={() => goto('providers')}
-              onChat={() => goto('chat')}
-              onComplete={() => goto('rating')}
-            />
-          )}
-          {view === 'chat' && <ChatView onBack={() => goto('tracking')} />}
-          {view === 'rating' && (
-            <RatingView
-              rating={rating}
-              tags={ratingTags}
-              onRating={setRating}
-              onTagToggle={toggleTag}
-              onSubmit={() => goto('done')}
-            />
-          )}
-          {view === 'done' && <DoneView onHome={() => goto('home')} />}
+          <div key={view} className="screen-enter">
+            {view === 'home' && <HomeView onService={(id) => goto('providers', id)} />}
+            {view === 'providers' && (
+              <ProvidersView
+                title={PROVIDER_TITLE[serviceType] || 'Providers near you'}
+                selected={selectedProv}
+                onSelect={setSelectedProv}
+                onBack={() => goto('home')}
+                onNext={() => goto('quote')}
+              />
+            )}
+            {view === 'quote' && <QuoteView onBack={() => goto('providers')} onApprove={() => goto('tracking')} />}
+            {view === 'tracking' && (
+              <TrackingView
+                techPos={techPos}
+                eta={Math.round(eta)}
+                onBack={() => goto('providers')}
+                onChat={() => goto('chat')}
+                onComplete={() => goto('rating')}
+              />
+            )}
+            {view === 'chat' && <ChatView onBack={() => goto('tracking')} />}
+            {view === 'rating' && (
+              <RatingView
+                rating={rating}
+                tags={ratingTags}
+                onRating={setRating}
+                onTagToggle={toggleTag}
+                onSubmit={() => goto('done')}
+              />
+            )}
+            {view === 'done' && <DoneView onHome={() => goto('home')} />}
+          </div>
         </PhoneFrame>
       </div>
     </div>

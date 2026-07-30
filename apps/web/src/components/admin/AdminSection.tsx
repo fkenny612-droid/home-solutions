@@ -49,7 +49,13 @@ export default function AdminSection() {
   const [activeNav, setActiveNav] = useState('Dashboard')
   const [activeTab, setActiveTab] = useState('All')
   const [modal, setModal] = useState<AdminModal>(null)
+  const [modalClosing, setModalClosing] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState(BOOKINGS[0])
+
+  const closeModal = () => {
+    setModalClosing(true)
+    setTimeout(() => { setModal(null); setModalClosing(false) }, 150)
+  }
 
   // This section renders on the public marketing homepage and never authenticates,
   // so the live-data calls below always 401 (bookings/providers require a JWT) and
@@ -381,14 +387,14 @@ export default function AdminSection() {
 
       {/* Booking modal */}
       {modal === 'booking' && selectedBooking && (
-        <div onClick={(e) => e.target === e.currentTarget && setModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 22, width: 380, maxWidth: '90vw' }}>
+        <div onClick={(e) => e.target === e.currentTarget && closeModal()} className={`modal-overlay-anim ${modalClosing ? 'closing' : ''}`}>
+          <div className="modal-panel-anim" style={{ background: '#fff', borderRadius: 16, padding: 22, width: 380, maxWidth: '90vw' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 17, color: 'var(--navy)', marginBottom: 4 }}>Booking {selectedBooking.id}</div>
                 <span className={`pill pill-${selectedBooking.status}`} style={{ textTransform: 'capitalize' }}>{selectedBooking.status}</span>
               </div>
-              <span onClick={() => setModal(null)} style={{ cursor: 'pointer', color: 'var(--text-light)', fontSize: 18, lineHeight: 1 }}>
+              <span onClick={closeModal} className="press" style={{ cursor: 'pointer', color: 'var(--text-light)', fontSize: 18, lineHeight: 1 }}>
                 <i className="ti ti-x" />
               </span>
             </div>
@@ -407,9 +413,9 @@ export default function AdminSection() {
               </div>
             ))}
             <div style={{ display: 'flex', gap: 7, marginTop: 16 }}>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: '1px solid var(--cream-mid)', background: '#fff', color: 'var(--text)' }}>Message client</button>
-              <button style={{ flex: 1, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: 'none', background: '#DCF0E8', color: '#1A6842' }}>Mark complete</button>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: 'none', background: '#FEE2E2', color: 'var(--red)' }}>Cancel</button>
+              <button onClick={closeModal} className="press" style={{ flex: 1, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: '1px solid var(--cream-mid)', background: '#fff', color: 'var(--text)' }}>Message client</button>
+              <button className="press" style={{ flex: 1, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: 'none', background: '#DCF0E8', color: '#1A6842' }}>Mark complete</button>
+              <button onClick={closeModal} className="press" style={{ flex: 1, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: 'none', background: '#FEE2E2', color: 'var(--red)' }}>Cancel</button>
             </div>
           </div>
         </div>
@@ -417,16 +423,16 @@ export default function AdminSection() {
 
       {/* Action modals */}
       {modal && modal !== 'booking' && MODAL_CONTENT[modal] && (
-        <div onClick={(e) => e.target === e.currentTarget && setModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 22, width: 380, maxWidth: '90vw' }}>
+        <div onClick={(e) => e.target === e.currentTarget && closeModal()} className={`modal-overlay-anim ${modalClosing ? 'closing' : ''}`}>
+          <div className="modal-panel-anim" style={{ background: '#fff', borderRadius: 16, padding: 22, width: 380, maxWidth: '90vw' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 17, color: 'var(--navy)' }}>{MODAL_CONTENT[modal].title}</div>
-              <span onClick={() => setModal(null)} style={{ cursor: 'pointer', color: 'var(--text-light)', fontSize: 18 }}><i className="ti ti-x" /></span>
+              <span onClick={closeModal} className="press" style={{ cursor: 'pointer', color: 'var(--text-light)', fontSize: 18 }}><i className="ti ti-x" /></span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{MODAL_CONTENT[modal].body}</div>
             <div style={{ display: 'flex', gap: 7, marginTop: 16 }}>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: '1px solid var(--cream-mid)', background: '#fff', color: 'var(--text)' }}>Cancel</button>
-              <button onClick={() => setModal(null)} style={{ flex: 2, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: 'none', background: 'var(--gold)', color: 'var(--navy)' }}>
+              <button onClick={closeModal} className="press" style={{ flex: 1, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: '1px solid var(--cream-mid)', background: '#fff', color: 'var(--text)' }}>Cancel</button>
+              <button onClick={closeModal} className="press" style={{ flex: 2, padding: 9, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", border: 'none', background: 'var(--gold)', color: 'var(--navy)' }}>
                 <i className="ti ti-check" style={{ marginRight: 5 }} />Confirm
               </button>
             </div>
