@@ -67,7 +67,7 @@ export default function LoginScreen() {
 
             {error ? <Text style={s.error}>{error}</Text> : null}
 
-            <TouchableOpacity style={s.btn} onPress={handleLogin} disabled={loading}>
+            <TouchableOpacity activeOpacity={0.8} style={s.btn} onPress={handleLogin} disabled={loading}>
               {loading
                 ? <ActivityIndicator color={colors.white} />
                 : <Text style={s.btnText}>Continue</Text>}
@@ -76,10 +76,10 @@ export default function LoginScreen() {
             {/* Quick test logins */}
             <View style={s.quickRow}>
               <Text style={s.quickLabel}>Test:</Text>
-              <TouchableOpacity onPress={() => { setPhone('+27821234567'); setPassword('pass123') }}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => { setPhone('+27821234567'); setPassword('pass123') }}>
                 <Text style={s.quickBtn}>Client</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setPhone('+27831234567'); setPassword('pass123') }}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => { setPhone('+27831234567'); setPassword('pass123') }}>
                 <Text style={s.quickBtn}>Provider</Text>
               </TouchableOpacity>
             </View>
@@ -87,7 +87,7 @@ export default function LoginScreen() {
 
           <View style={s.footer}>
             <Text style={s.footerText}>No account? </Text>
-            <TouchableOpacity onPress={() => router.push('/register')}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/register')}>
               <Text style={s.footerLink}>Register →</Text>
             </TouchableOpacity>
           </View>

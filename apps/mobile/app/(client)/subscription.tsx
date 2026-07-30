@@ -83,7 +83,7 @@ export default function ClientSubscription() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Subscription</Text>
@@ -101,7 +101,7 @@ export default function ClientSubscription() {
                 <Text style={s.activePlanLabel}>Current plan</Text>
                 <Text style={s.activePlanName}>{active.plan?.name ?? active.planId}</Text>
               </View>
-              <TouchableOpacity onPress={handleCancel}>
+              <TouchableOpacity activeOpacity={0.8} onPress={handleCancel}>
                 <Text style={s.cancelLink}>Cancel</Text>
               </TouchableOpacity>
             </View>

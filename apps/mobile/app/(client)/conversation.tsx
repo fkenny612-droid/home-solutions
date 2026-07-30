@@ -145,7 +145,7 @@ export default function ChatScreen() {
               att.type === 'image' ? (
                 <Image key={i} source={{ uri: att.url }} style={s.attachImg} resizeMode="cover" />
               ) : (
-                <TouchableOpacity key={i} style={[s.filePill, isMe && s.filePillMe]} onPress={() => Linking.openURL(att.url)}>
+                <TouchableOpacity activeOpacity={0.8} key={i} style={[s.filePill, isMe && s.filePillMe]} onPress={() => Linking.openURL(att.url)}>
                   <Ionicons name="document-outline" size={18} color={isMe ? 'rgba(255,255,255,0.8)' : colors.gray600} />
                   <Text style={[s.filePillName, isMe && s.filePillNameMe]} numberOfLines={1}>{att.fileName}</Text>
                 </TouchableOpacity>
@@ -167,7 +167,7 @@ export default function ChatScreen() {
     <SafeAreaView style={s.safe}>
       {/* ── Header ── */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.white} />
         </TouchableOpacity>
         <View style={s.headerAvatar}>
@@ -177,7 +177,7 @@ export default function ChatScreen() {
           <Text style={s.headerName}>{providerName ?? 'Provider'}</Text>
           <Text style={s.headerSub}>Booking #{bookingId?.slice(-6).toUpperCase()}</Text>
         </View>
-        <TouchableOpacity onPress={pickFile} style={s.headerFileBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={pickFile} style={s.headerFileBtn}>
           <Ionicons name="attach" size={20} color={colors.gray400} />
         </TouchableOpacity>
       </View>
@@ -217,7 +217,7 @@ export default function ChatScreen() {
                     <ActivityIndicator color="#fff" size="small" />
                   </View>
                 ) : (
-                  <TouchableOpacity style={s.pendingRemove} onPress={() => removePending(p.localUri)}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.pendingRemove} onPress={() => removePending(p.localUri)}>
                     <Ionicons name="close" size={10} color="#fff" />
                   </TouchableOpacity>
                 )}

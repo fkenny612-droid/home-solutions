@@ -35,7 +35,7 @@ export default function ReferralScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Refer a friend</Text>
@@ -49,7 +49,7 @@ export default function ReferralScreen() {
             <View style={s.codeCard}>
               <Text style={s.codeLabel}>YOUR REFERRAL CODE</Text>
               <Text style={s.codeVal}>{code ?? '—'}</Text>
-              <TouchableOpacity style={s.shareBtn} onPress={handleShare}>
+              <TouchableOpacity activeOpacity={0.8} style={s.shareBtn} onPress={handleShare}>
                 <Ionicons name="share-social-outline" size={16} color={colors.black} />
                 <Text style={s.shareBtnText}>Share with friends</Text>
               </TouchableOpacity>
@@ -82,7 +82,7 @@ export default function ReferralScreen() {
               ))}
             </View>
 
-            <TouchableOpacity style={s.loyaltyLink} onPress={() => router.push('/(client)/loyalty')}>
+            <TouchableOpacity activeOpacity={0.8} style={s.loyaltyLink} onPress={() => router.push('/(client)/loyalty')}>
               <Ionicons name="star-outline" size={16} color={colors.gray600} />
               <Text style={s.loyaltyLinkText}>View your loyalty points & rewards</Text>
               <Ionicons name="chevron-forward" size={14} color={colors.gray300} />

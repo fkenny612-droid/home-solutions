@@ -92,10 +92,10 @@ export default function ListingDetailScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Floating header */}
       <View style={[s.floatHeader, { top: insets.top + 8 }]}>
-        <TouchableOpacity style={s.floatBtn} onPress={() => router.back()}>
+        <TouchableOpacity activeOpacity={0.8} style={s.floatBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={colors.black} />
         </TouchableOpacity>
-        <TouchableOpacity style={[s.floatBtn, saved && s.floatBtnSaved]} onPress={toggleSave}>
+        <TouchableOpacity activeOpacity={0.8} style={[s.floatBtn, saved && s.floatBtnSaved]} onPress={toggleSave}>
           <Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? colors.red : colors.black} />
         </TouchableOpacity>
       </View>
@@ -207,11 +207,11 @@ export default function ListingDetailScreen() {
 
       {/* Sticky contact bar */}
       <View style={s.contactBar}>
-        <TouchableOpacity style={s.waBtn} onPress={handleWhatsApp}>
+        <TouchableOpacity activeOpacity={0.8} style={s.waBtn} onPress={handleWhatsApp}>
           <Ionicons name="logo-whatsapp" size={20} color={colors.white} />
           <Text style={s.waBtnText}>WhatsApp</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.callBtn} onPress={handleCall}>
+        <TouchableOpacity activeOpacity={0.8} style={s.callBtn} onPress={handleCall}>
           <Ionicons name="call-outline" size={20} color={colors.white} />
           <Text style={s.callBtnText}>Call</Text>
         </TouchableOpacity>
@@ -220,7 +220,7 @@ export default function ListingDetailScreen() {
       {/* Lightbox */}
       <Modal visible={lightbox} transparent animationType="fade" onRequestClose={() => setLightbox(false)}>
         <View style={s.lightbox}>
-          <TouchableOpacity style={s.lbClose} onPress={() => setLightbox(false)}>
+          <TouchableOpacity activeOpacity={0.8} style={s.lbClose} onPress={() => setLightbox(false)}>
             <Ionicons name="close" size={26} color={colors.white} />
           </TouchableOpacity>
           <Image source={{ uri: listing.images[imgIdx] }} style={s.lbImg} resizeMode="contain" />

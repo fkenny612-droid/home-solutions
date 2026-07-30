@@ -72,7 +72,7 @@ export default function ProviderHelpScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Help & support</Text>
@@ -82,7 +82,7 @@ export default function ProviderHelpScreen() {
 
         <Text style={s.sectionLabel}>CONTACT US</Text>
         <View style={s.contactRow}>
-          <TouchableOpacity style={[s.contactCard, { borderColor: '#25D366' }]} onPress={openWhatsApp}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: '#25D366' }]} onPress={openWhatsApp}>
             <View style={[s.contactIcon, { backgroundColor: '#25D36615' }]}>
               <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
             </View>
@@ -90,7 +90,7 @@ export default function ProviderHelpScreen() {
             <Text style={s.contactSub}>Fastest reply</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[s.contactCard, { borderColor: colors.gold }]} onPress={openCall}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gold }]} onPress={openCall}>
             <View style={[s.contactIcon, { backgroundColor: colors.gold + '15' }]}>
               <Ionicons name="call-outline" size={22} color={colors.gold} />
             </View>
@@ -98,7 +98,7 @@ export default function ProviderHelpScreen() {
             <Text style={s.contactSub}>081 000 0000</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[s.contactCard, { borderColor: colors.gray200 }]} onPress={openEmail}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gray200 }]} onPress={openEmail}>
             <View style={[s.contactIcon, { backgroundColor: colors.gray50 }]}>
               <Ionicons name="mail-outline" size={22} color={colors.gray400} />
             </View>

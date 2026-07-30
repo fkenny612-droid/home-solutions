@@ -134,7 +134,7 @@ export default function RegisterScreen() {
                   { key: 'client',   label: 'I need a service',  desc: 'Book vetted tradespeople' },
                   { key: 'provider', label: "I'm a tradesperson", desc: 'Earn by completing jobs'  },
                 ] as { key: Role; label: string; desc: string }[]).map(r => (
-                  <TouchableOpacity
+                  <TouchableOpacity activeOpacity={0.8}
                     key={r.key}
                     style={[s.roleCard, role === r.key && s.roleCardSel]}
                     onPress={() => setRole(r.key)}
@@ -182,7 +182,7 @@ export default function RegisterScreen() {
                 <TextInput style={s.passwordInput} value={password} onChangeText={setPassword}
                   placeholder="Min. 6 characters" placeholderTextColor={colors.gray400}
                   secureTextEntry={!showPassword} autoComplete="new-password" />
-                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={s.eyeBtn}>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setShowPassword(v => !v)} style={s.eyeBtn}>
                   <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.gray400} />
                 </TouchableOpacity>
               </View>
@@ -193,7 +193,7 @@ export default function RegisterScreen() {
                   placeholder="Repeat password" placeholderTextColor={colors.gray400}
                   secureTextEntry={!showPassword} returnKeyType={role === 'provider' ? 'next' : 'done'}
                   onSubmitEditing={role === 'provider' ? undefined : handleNext} />
-                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={s.eyeBtn}>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setShowPassword(v => !v)} style={s.eyeBtn}>
                   <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.gray400} />
                 </TouchableOpacity>
               </View>
@@ -228,7 +228,7 @@ export default function RegisterScreen() {
               <Text style={[s.label, { marginTop: 14 }]}>Primary service area</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4, marginBottom: 4 }}>
                 {KZN_AREAS.map(area => (
-                  <TouchableOpacity
+                  <TouchableOpacity activeOpacity={0.8}
                     key={area}
                     style={[s.areaChip, serviceArea === area && s.areaChipSel]}
                     onPress={() => setServiceArea(area)}
@@ -243,7 +243,7 @@ export default function RegisterScreen() {
 
           {error ? <Text style={s.error}>{error}</Text> : null}
 
-          <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={handleNext} disabled={loading}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.btn, loading && { opacity: 0.6 }]} onPress={handleNext} disabled={loading}>
             {loading
               ? <ActivityIndicator color={colors.white} />
               : <Text style={s.btnText}>
@@ -254,7 +254,7 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           {step > 1 && (
-            <TouchableOpacity style={s.back} onPress={() => { setError(''); setStep(s => (s - 1) as Step) }}>
+            <TouchableOpacity activeOpacity={0.8} style={s.back} onPress={() => { setError(''); setStep(s => (s - 1) as Step) }}>
               <Text style={s.backText}>← Back</Text>
             </TouchableOpacity>
           )}
@@ -262,7 +262,7 @@ export default function RegisterScreen() {
           {step === 1 && (
             <View style={s.footer}>
               <Text style={s.footerText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.back()}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()}>
                 <Text style={s.footerLink}>Sign in →</Text>
               </TouchableOpacity>
             </View>

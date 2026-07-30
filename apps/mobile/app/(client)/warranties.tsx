@@ -75,7 +75,7 @@ export default function WarrantiesScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Active Warranties</Text>
@@ -104,7 +104,7 @@ export default function WarrantiesScreen() {
               <Ionicons name="shield-outline" size={52} color={colors.gray200} />
               <Text style={s.emptyTitle}>No active warranties</Text>
               <Text style={s.emptySub}>Completed jobs include a 90-day warranty. Book a service to get started.</Text>
-              <TouchableOpacity style={s.emptyBtn} onPress={() => router.replace('/(client)')}>
+              <TouchableOpacity activeOpacity={0.8} style={s.emptyBtn} onPress={() => router.replace('/(client)')}>
                 <Text style={s.emptyBtnText}>Browse services</Text>
               </TouchableOpacity>
             </View>
@@ -140,7 +140,7 @@ export default function WarrantiesScreen() {
                   <Text style={s.meta}>Expires {formatDate(b.warrantyExpiresAt!)}</Text>
                 </View>
 
-                <TouchableOpacity
+                <TouchableOpacity activeOpacity={0.8}
                   style={s.claimBtn}
                   onPress={() => router.push({ pathname: '/(client)/booking-detail', params: { id: b.id } })}
                 >

@@ -161,7 +161,7 @@ export default function ClientHome() {
             <View style={s.premiumPill}>
               <Text style={s.premiumText}>PREMIUM</Text>
             </View>
-            <TouchableOpacity onPress={() => router.push('/(client)/notifications')} style={s.bellBtn}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(client)/notifications')} style={s.bellBtn}>
               <Ionicons name="notifications-outline" size={22} color={colors.white} />
               {unreadCount > 0 && (
                 <View style={s.bellBadge}>
@@ -202,16 +202,16 @@ export default function ClientHome() {
                   autoCapitalize="none"
                 />
                 {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <TouchableOpacity activeOpacity={0.8} onPress={() => setSearchQuery('')}>
                     <Text style={s.searchClearText}>✕</Text>
                   </TouchableOpacity>
                 )}
               </View>
-              <TouchableOpacity onPress={() => setFilterOpen(true)} style={s.filterBtn}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setFilterOpen(true)} style={s.filterBtn}>
                 <Ionicons name="options-outline" size={18} color={activeFilters > 0 ? colors.gold : colors.gray600} />
                 {activeFilters > 0 && <View style={s.filterDot} />}
               </TouchableOpacity>
-              <TouchableOpacity onPress={closeSearch} style={s.searchCancel}>
+              <TouchableOpacity activeOpacity={0.8} onPress={closeSearch} style={s.searchCancel}>
                 <Text style={s.searchCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -222,14 +222,14 @@ export default function ClientHome() {
                   <Text style={s.searchSuggestLabel}>QUICK PICKS</Text>
                   <View style={s.chipsRow}>
                     {['Plumbing', 'Tent Hire', 'Generator', 'Electrical', 'Cleaning', 'Bakkie'].map(t => (
-                      <TouchableOpacity key={t} style={s.chip} onPress={() => setSearchQuery(t)}>
+                      <TouchableOpacity activeOpacity={0.8} key={t} style={s.chip} onPress={() => setSearchQuery(t)}>
                         <Text style={s.chipText}>{t}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                   <Text style={[s.searchSuggestLabel, { marginTop: 20 }]}>BROWSE</Text>
                   {SERVICE_CATEGORIES.map(cat => (
-                    <TouchableOpacity key={cat.label} style={s.catRow} onPress={() => setSearchQuery(cat.label)}>
+                    <TouchableOpacity activeOpacity={0.8} key={cat.label} style={s.catRow} onPress={() => setSearchQuery(cat.label)}>
                       <Text style={s.catRowText}>{cat.label}</Text>
                       <Text style={s.catRowCount}>{cat.services.length} services</Text>
                       <Text style={s.catRowArrow}>›</Text>
@@ -248,7 +248,7 @@ export default function ClientHome() {
                 keyExtractor={item => item.id}
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
-                  <TouchableOpacity style={s.resultRow} onPress={() => pickResult(item.id)}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.resultRow} onPress={() => pickResult(item.id)}>
                     <View style={s.resultIcon}>
                       <Text style={{ fontSize: 18 }}>{item.emoji}</Text>
                     </View>
@@ -274,7 +274,7 @@ export default function ClientHome() {
           <Text style={s.filterLabel}>Minimum rating</Text>
           <View style={s.filterRow}>
             {[0, 3, 4, 4.5, 5].map(r => (
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 key={r}
                 style={[s.filterChip, minRating === r && s.filterChipActive]}
                 onPress={() => setMinRating(r)}
@@ -289,7 +289,7 @@ export default function ClientHome() {
           <Text style={[s.filterLabel, { marginTop: 16 }]}>Max quote (once-off)</Text>
           <View style={s.filterRow}>
             {[0, 500, 1000, 2500, 5000].map(p => (
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 key={p}
                 style={[s.filterChip, maxPrice === p && s.filterChipActive]}
                 onPress={() => setMaxPrice(p)}
@@ -302,10 +302,10 @@ export default function ClientHome() {
           </View>
 
           <View style={s.filterActions}>
-            <TouchableOpacity style={s.filterReset} onPress={() => { setMinRating(0); setMaxPrice(0) }}>
+            <TouchableOpacity activeOpacity={0.8} style={s.filterReset} onPress={() => { setMinRating(0); setMaxPrice(0) }}>
               <Text style={s.filterResetText}>Reset</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.filterApply} onPress={() => setFilterOpen(false)}>
+            <TouchableOpacity activeOpacity={0.8} style={s.filterApply} onPress={() => setFilterOpen(false)}>
               <Text style={s.filterApplyText}>Apply{activeFilters > 0 ? ` (${activeFilters})` : ''}</Text>
             </TouchableOpacity>
           </View>
@@ -316,7 +316,7 @@ export default function ClientHome() {
       <Modal visible={serviceList !== null} animationType="slide" onRequestClose={() => setServiceList(null)}>
         <View style={{ flex: 1, backgroundColor: colors.white, paddingTop: insets.top }}>
           <View style={s.slHeader}>
-            <TouchableOpacity onPress={() => setServiceList(null)} style={s.slBack}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setServiceList(null)} style={s.slBack}>
               <Ionicons name="arrow-back" size={22} color={colors.black} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
@@ -388,7 +388,7 @@ export default function ClientHome() {
               <Text style={s.sectionTitle}>Easyfix</Text>
               <View style={s.brandTag}><Text style={s.brandTagText}>HOME SERVICES</Text></View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setServiceList('fix')} style={{ marginLeft: 'auto' }}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setServiceList('fix')} style={{ marginLeft: 'auto' }}>
               <Text style={s.sectionLink}>See all →</Text>
             </TouchableOpacity>
           </View>
@@ -417,7 +417,7 @@ export default function ClientHome() {
               <Text style={s.hireSectionTitle}>Easy-Hire</Text>
               <Text style={s.hireSectionSub}>Equipment · Events · Transport · Security</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setServiceList('hire')}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setServiceList('hire')}>
               <Text style={s.hireSeAll}>See all →</Text>
             </TouchableOpacity>
           </View>
@@ -441,7 +441,7 @@ export default function ClientHome() {
           {/* Hire promos row */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingBottom: 4 }}>
             {SERVICES.filter(s => EASY_HIRE_IDS.includes(s.id)).slice(0, 8).map(svc => (
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 key={svc.id}
                 style={s.hireItemChip}
                 onPress={() => router.push({ pathname: '/(client)/book', params: { serviceType: svc.id } })}
@@ -545,7 +545,7 @@ export default function ClientHome() {
           <View style={s.section}>
             <View style={s.sectionHeaderRow}>
               <Text style={s.sectionTitle}>Recent jobs</Text>
-              <TouchableOpacity onPress={() => router.push('/(client)/history' as any)}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(client)/history' as any)}>
                 <Text style={s.sectionLink}>View all →</Text>
               </TouchableOpacity>
             </View>

@@ -101,7 +101,7 @@ export default function EmergencyScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>⚡ Emergency callout</Text>
@@ -136,7 +136,7 @@ export default function EmergencyScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
+          <TouchableOpacity activeOpacity={0.8}
             style={s.callBtn}
             onPress={() => Linking.openURL('tel:+27800123456')}
           >
@@ -145,7 +145,7 @@ export default function EmergencyScreen() {
           </TouchableOpacity>
 
           {bookingId && (
-            <TouchableOpacity style={s.trackBtn} onPress={() => router.replace(`/(client)/booking-detail?id=${bookingId}` as any)}>
+            <TouchableOpacity activeOpacity={0.8} style={s.trackBtn} onPress={() => router.replace(`/(client)/booking-detail?id=${bookingId}` as any)}>
               <Text style={s.trackBtnText}>Track booking →</Text>
             </TouchableOpacity>
           )}
@@ -161,7 +161,7 @@ export default function EmergencyScreen() {
           <Text style={s.sectionLabel}>WHAT DO YOU NEED?</Text>
           <View style={s.serviceGrid}>
             {SERVICES.map(svc => (
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 key={svc.value}
                 style={[s.serviceCard, service.value === svc.value && s.serviceCardActive]}
                 onPress={() => setService(svc)}
@@ -198,7 +198,7 @@ export default function EmergencyScreen() {
           <CardInput onChange={setCard} />
           <Text style={s.holdNote}>R{EMERGENCY_RATE} held now · released when job is complete</Text>
 
-          <TouchableOpacity
+          <TouchableOpacity activeOpacity={0.8}
             style={[s.dispatchBtn, (!card || loading) && { opacity: 0.5 }]}
             onPress={handleDispatch}
             disabled={!card || loading}
@@ -212,7 +212,7 @@ export default function EmergencyScreen() {
             }
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.callAlt} onPress={() => Linking.openURL('tel:+27800123456')}>
+          <TouchableOpacity activeOpacity={0.8} style={s.callAlt} onPress={() => Linking.openURL('tel:+27800123456')}>
             <Ionicons name="call-outline" size={16} color={colors.gray400} />
             <Text style={s.callAltText}>Or call us: 081 000 0000</Text>
           </TouchableOpacity>

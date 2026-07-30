@@ -57,7 +57,7 @@ export default function BankAccountScreen() {
   if (loading) return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Bank Account</Text>
@@ -69,7 +69,7 @@ export default function BankAccountScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Bank Account</Text>
@@ -98,7 +98,7 @@ export default function BankAccountScreen() {
 
               <View style={[s.field, s.fieldBorder]}>
                 <Text style={s.label}>Bank</Text>
-                <TouchableOpacity style={s.picker} onPress={() => setShowBanks(p => !p)}>
+                <TouchableOpacity activeOpacity={0.8} style={s.picker} onPress={() => setShowBanks(p => !p)}>
                   <Text style={[s.pickerText, !bankName && s.pickerPlaceholder]}>
                     {bankName || 'Select your bank'}
                   </Text>
@@ -107,7 +107,7 @@ export default function BankAccountScreen() {
                 {showBanks && (
                   <View style={s.dropdown}>
                     {BANKS.map(b => (
-                      <TouchableOpacity
+                      <TouchableOpacity activeOpacity={0.8}
                         key={b}
                         style={[s.dropdownItem, b === bankName && s.dropdownItemActive]}
                         onPress={() => { setBankName(b); setShowBanks(false) }}
@@ -146,7 +146,7 @@ export default function BankAccountScreen() {
                 const val = t.toLowerCase().split(' ')[0]
                 const active = accountType === val
                 return (
-                  <TouchableOpacity
+                  <TouchableOpacity activeOpacity={0.8}
                     key={i}
                     style={[s.typeBtn, active && s.typeBtnActive]}
                     onPress={() => setAccountType(val)}
@@ -158,7 +158,7 @@ export default function BankAccountScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
             {saving ? <ActivityIndicator color={colors.black} /> : <Text style={s.saveBtnText}>Save bank details</Text>}
           </TouchableOpacity>
 

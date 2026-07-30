@@ -222,7 +222,7 @@ export default function BookScreen() {
       {step === 'details' && (
         <>
           <View style={s.header}>
-            <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
               <Text style={s.backArrow}>←</Text>
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
@@ -239,7 +239,7 @@ export default function BookScreen() {
                 {q.type === 'select' && (
                   <View style={s.optGrid}>
                     {q.options?.map(opt => (
-                      <TouchableOpacity
+                      <TouchableOpacity activeOpacity={0.8}
                         key={opt.value}
                         style={[s.optChip, answers[q.key] === opt.value && s.optChipSel]}
                         onPress={() => setAnswers(prev => ({ ...prev, [q.key]: opt.value }))}
@@ -259,14 +259,14 @@ export default function BookScreen() {
 
                 {q.type === 'counter' && (
                   <View style={s.counterRow}>
-                    <TouchableOpacity
+                    <TouchableOpacity activeOpacity={0.8}
                       style={s.counterBtn}
                       onPress={() => setAnswers(prev => ({ ...prev, [q.key]: Math.max(q.min ?? 0, (prev[q.key] ?? q.default ?? 1) - 1) }))}
                     >
                       <Text style={s.counterBtnText}>−</Text>
                     </TouchableOpacity>
                     <Text style={s.counterVal}>{answers[q.key] ?? q.default ?? 1} {q.unit}</Text>
-                    <TouchableOpacity
+                    <TouchableOpacity activeOpacity={0.8}
                       style={s.counterBtn}
                       onPress={() => setAnswers(prev => ({ ...prev, [q.key]: Math.min(q.max ?? 99, (prev[q.key] ?? q.default ?? 1) + 1) }))}
                     >
@@ -297,7 +297,7 @@ export default function BookScreen() {
               {photos.map((url, i) => (
                 <View key={i} style={s.photoThumb}>
                   <Image source={{ uri: url }} style={s.photoImg} />
-                  <TouchableOpacity style={s.photoRemove} onPress={() => setPhotos(p => p.filter((_, j) => j !== i))}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.photoRemove} onPress={() => setPhotos(p => p.filter((_, j) => j !== i))}>
                     <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>✕</Text>
                   </TouchableOpacity>
                 </View>
@@ -337,7 +337,7 @@ export default function BookScreen() {
           </ScrollView>
 
           <View style={s.ctaBar}>
-            <TouchableOpacity style={[s.ctaBtn, !address.trim() && { opacity: 0.5 }]} onPress={() => { if (!address.trim()) { Alert.alert('Address required', 'Please enter the service address.'); return } setStep('providers') }}>
+            <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, !address.trim() && { opacity: 0.5 }]} onPress={() => { if (!address.trim()) { Alert.alert('Address required', 'Please enter the service address.'); return } setStep('providers') }}>
               <Text style={s.ctaBtnText}>Find providers →</Text>
             </TouchableOpacity>
           </View>
@@ -348,7 +348,7 @@ export default function BookScreen() {
       {step === 'providers' && (
         <>
           <View style={s.header}>
-            <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
               <Text style={s.backArrow}>←</Text>
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
@@ -356,13 +356,13 @@ export default function BookScreen() {
               <Text style={s.headerSub}>{providers.length} provider{providers.length !== 1 ? 's' : ''} available near you</Text>
             </View>
             <View style={s.viewToggle}>
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 style={[s.viewToggleBtn, providerView === 'list' && s.viewToggleBtnActive]}
                 onPress={() => setProviderView('list')}
               >
                 <Ionicons name="list" size={15} color={providerView === 'list' ? colors.black : colors.textLight} />
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 style={[s.viewToggleBtn, providerView === 'map' && s.viewToggleBtnActive]}
                 onPress={() => setProviderView('map')}
               >
@@ -389,7 +389,7 @@ export default function BookScreen() {
               const distLabel = p.distanceKm != null ? `${p.distanceKm} km` : null
               const etaLabel  = p.etaMinutes != null ? `~${p.etaMinutes} min` : null
               return (
-                <TouchableOpacity key={p.id} style={[s.provCard, selectedProv === i && s.provCardSel]} onPress={() => setSelected(i)}>
+                <TouchableOpacity activeOpacity={0.8} key={p.id} style={[s.provCard, selectedProv === i && s.provCardSel]} onPress={() => setSelected(i)}>
                   <View style={s.provTop}>
                     <View style={[s.avatar, { backgroundColor: ac.bg }]}>
                       <Text style={[s.avatarText, { color: ac.fg }]}>{p.name.split(' ').map(w => w[0]).join('')}</Text>
@@ -421,7 +421,7 @@ export default function BookScreen() {
                       <Ionicons name="construct-outline" size={12} color={colors.gray400} />
                       <Text style={s.provMetaText}>{p.jobCount} jobs</Text>
                     </View>
-                    <TouchableOpacity
+                    <TouchableOpacity activeOpacity={0.8}
                       onPress={e => { e.stopPropagation?.(); router.push(`/(client)/provider-profile?id=${p.id}` as any) }}
                       style={s.provMetaItem}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -435,7 +435,7 @@ export default function BookScreen() {
           </ScrollView>
           )}
           <View style={s.ctaBar}>
-            <TouchableOpacity style={s.ctaBtn} onPress={() => setStep('quote')}>
+            <TouchableOpacity activeOpacity={0.8} style={s.ctaBtn} onPress={() => setStep('quote')}>
               <Text style={s.ctaBtnText}>Request quote from {prov?.name.split(' ')[0]}</Text>
             </TouchableOpacity>
           </View>
@@ -446,7 +446,7 @@ export default function BookScreen() {
       {step === 'quote' && (
         <>
           <View style={s.header}>
-            <TouchableOpacity onPress={() => setStep('providers')} style={s.backBtn}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setStep('providers')} style={s.backBtn}>
               <Text style={s.backArrow}>←</Text>
             </TouchableOpacity>
             <Text style={s.headerTitle}>Review quote</Text>
@@ -478,7 +478,7 @@ export default function BookScreen() {
             </View>
 
             {hasSub === false && (
-              <TouchableOpacity style={s.upgradePrompt} onPress={() => router.push('/(client)/subscription')}>
+              <TouchableOpacity activeOpacity={0.8} style={s.upgradePrompt} onPress={() => router.push('/(client)/subscription')}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.upgradeTitle}>🌟 Upgrade to Premium</Text>
                   <Text style={s.upgradeSub}>Get a 90-day warranty, priority providers & discounts on every job</Text>
@@ -496,7 +496,7 @@ export default function BookScreen() {
                 {redemptions.map(r => {
                   const active = appliedCode?.id === r.id
                   return (
-                    <TouchableOpacity key={r.id} style={[s.loyaltyChip, active && s.loyaltyChipActive]} onPress={() => setAppliedCode(active ? null : r)}>
+                    <TouchableOpacity activeOpacity={0.8} key={r.id} style={[s.loyaltyChip, active && s.loyaltyChipActive]} onPress={() => setAppliedCode(active ? null : r)}>
                       <Text style={[s.loyaltyChipText, active && s.loyaltyChipTextActive]}>{r.code} — R{r.discountAmount} off</Text>
                       {active && <Ionicons name="checkmark-circle" size={16} color={colors.gold} />}
                     </TouchableOpacity>
@@ -515,12 +515,12 @@ export default function BookScreen() {
             <Text style={s.holdNote}>💳 Payment held securely by Peach Payments until job is complete.</Text>
           </ScrollView>
           <View style={s.ctaBar}>
-            <TouchableOpacity style={[s.ctaBtn, (loading || !card) && { opacity: 0.5 }]} onPress={handleApprove} disabled={loading || !card}>
+            <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, (loading || !card) && { opacity: 0.5 }]} onPress={handleApprove} disabled={loading || !card}>
               {loading
                 ? <ActivityIndicator color={colors.navy} />
                 : <Text style={s.ctaBtnText}>{card ? `Approve & pay R ${Math.max(0, Math.round((estimate.min + estimate.max) / 2) - (appliedCode?.discountAmount ?? 0)).toLocaleString()}` : 'Enter card details'}</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={s.ctaBtnSec} onPress={() => setStep('providers')} disabled={loading}>
+            <TouchableOpacity activeOpacity={0.8} style={s.ctaBtnSec} onPress={() => setStep('providers')} disabled={loading}>
               <Text style={s.ctaBtnSecText}>Request different provider</Text>
             </TouchableOpacity>
           </View>
@@ -578,7 +578,7 @@ export default function BookScreen() {
             </View>
           </ScrollView>
           <View style={s.ctaBar}>
-            <TouchableOpacity style={[s.ctaBtn, { backgroundColor: colors.accent }, loading && { opacity: 0.7 }]} onPress={handleComplete} disabled={loading}>
+            <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, { backgroundColor: colors.accent }, loading && { opacity: 0.7 }]} onPress={handleComplete} disabled={loading}>
               {loading
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={[s.ctaBtnText, { color: '#fff' }]}>Mark job complete</Text>}
@@ -602,7 +602,7 @@ export default function BookScreen() {
 
             <View style={s.starsRow}>
               {[1,2,3,4,5].map(n => (
-                <TouchableOpacity key={n} onPress={() => setRating(n)}>
+                <TouchableOpacity activeOpacity={0.8} key={n} onPress={() => setRating(n)}>
                   <Text style={[s.star, { color: rating >= n ? colors.gold : colors.creamMid }]}>★</Text>
                 </TouchableOpacity>
               ))}
@@ -610,7 +610,7 @@ export default function BookScreen() {
 
             <View style={s.ratingTags}>
               {['Punctual','Professional','Clean work','Friendly','Great value'].map(tag => (
-                <TouchableOpacity key={tag} style={[s.rtag, tags.includes(tag) && s.rtagSel]} onPress={() => setTags(p => p.includes(tag) ? p.filter(t => t !== tag) : [...p, tag])}>
+                <TouchableOpacity activeOpacity={0.8} key={tag} style={[s.rtag, tags.includes(tag) && s.rtagSel]} onPress={() => setTags(p => p.includes(tag) ? p.filter(t => t !== tag) : [...p, tag])}>
                   <Text style={[s.rtagText, tags.includes(tag) && s.rtagTextSel]}>{tag}</Text>
                 </TouchableOpacity>
               ))}
@@ -621,7 +621,7 @@ export default function BookScreen() {
             </View>
           </ScrollView>
           <View style={s.ctaBar}>
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               style={[s.ctaBtn, ratingLoading && { opacity: 0.7 }]}
               disabled={ratingLoading}
               onPress={async () => {
@@ -651,7 +651,7 @@ export default function BookScreen() {
             <Text style={s.pointsVal}>+50 pts</Text>
             <Text style={s.pointsSubLabel}>Total: 340 · Next reward at 500</Text>
           </View>
-          <TouchableOpacity style={[s.ctaBtn, { width: '100%' }]} onPress={() => router.replace('/(client)')}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, { width: '100%' }]} onPress={() => router.replace('/(client)')}>
             <Text style={s.ctaBtnText}>Back to home</Text>
           </TouchableOpacity>
         </View>
@@ -698,7 +698,7 @@ function ProviderRadar({ providers, selectedIndex, onSelect }: {
           const y = RADAR_RADIUS + r * Math.sin(angle) - 18
           const isSel = i === selectedIndex
           return (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               key={p.id}
               style={[s.radarPin, isSel && s.radarPinSel, { left: x, top: y }]}
               onPress={() => onSelect(i)}

@@ -60,7 +60,7 @@ export default function EditProfile() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Edit profile</Text>
@@ -68,7 +68,7 @@ export default function EditProfile() {
 
       <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
         {/* Avatar */}
-        <TouchableOpacity style={s.avatarWrap} onPress={pickAvatar} disabled={uploading}>
+        <TouchableOpacity activeOpacity={0.8} style={s.avatarWrap} onPress={pickAvatar} disabled={uploading}>
           <View style={s.avatar}>
             {uploading
               ? <ActivityIndicator color={colors.gold} />
@@ -127,7 +127,7 @@ export default function EditProfile() {
           <Text style={s.phoneText}>Phone number ({user?.phone}) cannot be changed</Text>
         </View>
 
-        <TouchableOpacity
+        <TouchableOpacity activeOpacity={0.8}
           style={[s.saveBtn, saving && { opacity: 0.6 }]}
           onPress={handleSave}
           disabled={saving}

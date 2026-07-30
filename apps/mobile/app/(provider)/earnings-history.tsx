@@ -61,7 +61,7 @@ export default function EarningsHistoryScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Earnings history</Text>
@@ -90,7 +90,7 @@ export default function EarningsHistoryScreen() {
                     <Text style={s.summarySub}>{jobs.length} jobs · {Math.round(COMMISSION_PCT * 100)}% fee</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={s.upgradePrompt} onPress={() => router.push('/(provider)/subscription')}>
+                <TouchableOpacity activeOpacity={0.8} style={s.upgradePrompt} onPress={() => router.push('/(provider)/subscription')}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.upgradeTitle}>💎 Lower your commission</Text>
                     <Text style={s.upgradeSub}>Pro plan: 10% · Elite plan: 7% — keep more of every job</Text>

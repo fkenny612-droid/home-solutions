@@ -207,7 +207,7 @@ export default function MarketScreen() {
             <Text style={s.brand}>Marketplace</Text>
             <Text style={s.sub}>Durban & surrounds</Text>
           </View>
-          <TouchableOpacity
+          <TouchableOpacity activeOpacity={0.8}
             style={s.postBtn}
             onPress={() => router.push('/(client)/post-listing' as any)}
           >
@@ -234,13 +234,13 @@ export default function MarketScreen() {
               onBlur={() => setSearching(false)}
             />
             {query.length > 0 && (
-              <TouchableOpacity onPress={() => { setQuery(''); }}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => { setQuery(''); }}>
                 <Ionicons name="close-circle" size={16} color={colors.gray300} />
               </TouchableOpacity>
             )}
           </View>
           {searching && (
-            <TouchableOpacity onPress={() => { setQuery(''); setSearching(false); Keyboard.dismiss() }} style={s.cancelBtn}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => { setQuery(''); setSearching(false); Keyboard.dismiss() }} style={s.cancelBtn}>
               <Text style={s.cancelText}>Cancel</Text>
             </TouchableOpacity>
           )}
@@ -251,7 +251,7 @@ export default function MarketScreen() {
       <View style={s.catsWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.cats}>
           {CATS.map(c => (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               key={c.id}
               style={[s.catPill, activeCat === c.id && s.catPillActive]}
               onPress={() => setActiveCat(c.id as any)}
@@ -268,7 +268,7 @@ export default function MarketScreen() {
         <View style={s.subCatsWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.subCats}>
             {SUB_LABELS[activeCat].map(sc => (
-              <TouchableOpacity key={sc.label} style={s.subChip} onPress={() => setQuery(sc.label)}>
+              <TouchableOpacity activeOpacity={0.8} key={sc.label} style={s.subChip} onPress={() => setQuery(sc.label)}>
                 <Text style={s.subChipEmoji}>{sc.emoji}</Text>
                 <Text style={s.subChipText}>{sc.label}</Text>
               </TouchableOpacity>
@@ -294,7 +294,7 @@ export default function MarketScreen() {
                 <Text style={s.emptyEmoji}>⚠️</Text>
                 <Text style={s.emptyTitle}>Could not load listings</Text>
                 <Text style={s.emptySub}>Check your connection and try again</Text>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => load()}>
+                <TouchableOpacity activeOpacity={0.8} style={s.emptyBtn} onPress={() => load()}>
                   <Text style={s.emptyBtnText}>Retry →</Text>
                 </TouchableOpacity>
               </View>
@@ -303,7 +303,7 @@ export default function MarketScreen() {
                 <Text style={s.emptyEmoji}>🛒</Text>
                 <Text style={s.emptyTitle}>No listings found</Text>
                 <Text style={s.emptySub}>Be the first to post in this category</Text>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/(client)/post-listing' as any)}>
+                <TouchableOpacity activeOpacity={0.8} style={s.emptyBtn} onPress={() => router.push('/(client)/post-listing' as any)}>
                   <Text style={s.emptyBtnText}>Post a listing →</Text>
                 </TouchableOpacity>
               </View>

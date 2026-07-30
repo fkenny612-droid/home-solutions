@@ -79,7 +79,7 @@ export default function LoyaltyScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Loyalty rewards</Text>
@@ -102,7 +102,7 @@ export default function LoyaltyScreen() {
               <View style={s.codesSection}>
                 <Text style={s.sectionLabel}>YOUR ACTIVE CODES</Text>
                 {activeRedemptions.map(r => (
-                  <TouchableOpacity key={r.id} style={s.codeCard} onPress={() => shareCode(r.code, r.discountAmount)}>
+                  <TouchableOpacity activeOpacity={0.8} key={r.id} style={s.codeCard} onPress={() => shareCode(r.code, r.discountAmount)}>
                     <View style={{ flex: 1 }}>
                       <Text style={s.codeText}>{r.code}</Text>
                       <Text style={s.codeSub}>R{r.discountAmount} off · redeemed {formatDate(r.createdAt)}</Text>
@@ -144,7 +144,7 @@ export default function LoyaltyScreen() {
                 <Text style={s.rewardDesc}>{item.description}</Text>
                 <Text style={s.rewardCost}>{item.pointsCost.toLocaleString('en-ZA')} pts</Text>
               </View>
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 style={[s.redeemBtn, !canAfford && s.redeemBtnDisabled]}
                 onPress={() => handleRedeem(item)}
                 disabled={!canAfford || redeemingId === item.id}

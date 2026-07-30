@@ -83,7 +83,7 @@ export default function ProviderSubscription() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Provider Plan</Text>
@@ -114,7 +114,7 @@ export default function ProviderSubscription() {
                 <Text style={s.activePlanName}>{active.plan?.name ?? active.planId}</Text>
               </View>
               {active.planId !== 'starter' && (
-                <TouchableOpacity onPress={handleCancel}>
+                <TouchableOpacity activeOpacity={0.8} onPress={handleCancel}>
                   <Text style={s.cancelLink}>Cancel</Text>
                 </TouchableOpacity>
               )}

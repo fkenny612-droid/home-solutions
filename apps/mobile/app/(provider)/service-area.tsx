@@ -141,7 +141,7 @@ function Dropdown({
   return (
     <View style={d.wrap}>
       <Text style={d.label}>{label}</Text>
-      <TouchableOpacity style={d.picker} onPress={() => setOpen(p => !p)}>
+      <TouchableOpacity activeOpacity={0.8} style={d.picker} onPress={() => setOpen(p => !p)}>
         <Text style={[d.pickerText, !value && d.placeholder]}>
           {value || placeholder}
         </Text>
@@ -150,7 +150,7 @@ function Dropdown({
       {open && (
         <View style={d.list}>
           {options.map(opt => (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               key={opt}
               style={[d.item, opt === value && d.itemActive]}
               onPress={() => { onSelect(opt); setOpen(false) }}
@@ -231,7 +231,7 @@ export default function ServiceAreaScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Service Area</Text>
@@ -283,7 +283,7 @@ export default function ServiceAreaScreen() {
                   {suburbs.map(area => {
                     const on = selected.includes(area)
                     return (
-                      <TouchableOpacity
+                      <TouchableOpacity activeOpacity={0.8}
                         key={area}
                         style={[s.chip, on && s.chipOn]}
                         onPress={() => toggleSuburb(area)}
@@ -309,7 +309,7 @@ export default function ServiceAreaScreen() {
                   onSubmitEditing={addCustom}
                   returnKeyType="done"
                 />
-                <TouchableOpacity style={s.addBtn} onPress={addCustom}>
+                <TouchableOpacity activeOpacity={0.8} style={s.addBtn} onPress={addCustom}>
                   <Ionicons name="add" size={20} color={colors.white} />
                 </TouchableOpacity>
               </View>
@@ -321,7 +321,7 @@ export default function ServiceAreaScreen() {
                 <Text style={s.sectionLabel}>SELECTED AREAS ({selected.length})</Text>
                 <View style={s.chipRow}>
                   {selected.map(area => (
-                    <TouchableOpacity key={area} style={s.chipSelected} onPress={() => remove(area)}>
+                    <TouchableOpacity activeOpacity={0.8} key={area} style={s.chipSelected} onPress={() => remove(area)}>
                       <Text style={s.chipSelectedText}>{area}</Text>
                       <Ionicons name="close" size={12} color={colors.black} />
                     </TouchableOpacity>
@@ -330,7 +330,7 @@ export default function ServiceAreaScreen() {
               </View>
             )}
 
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               style={[s.saveBtn, saving && { opacity: 0.6 }]}
               onPress={handleSave}
               disabled={saving}

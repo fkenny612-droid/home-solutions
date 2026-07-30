@@ -56,11 +56,11 @@ export default function ReceiptScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Receipt</Text>
-        <TouchableOpacity onPress={handleShare} style={s.shareBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={handleShare} style={s.shareBtn}>
           <Ionicons name="share-outline" size={20} color={colors.white} />
         </TouchableOpacity>
       </View>
@@ -135,7 +135,7 @@ export default function ReceiptScreen() {
 
         <Text style={s.footer}>Easyfix (Pty) Ltd · Durban, KZN{'\n'}Payments processed by Peach Payments</Text>
 
-        <TouchableOpacity style={s.shareCta} onPress={handleShare}>
+        <TouchableOpacity activeOpacity={0.8} style={s.shareCta} onPress={handleShare}>
           <Ionicons name="share-outline" size={16} color={colors.gold} />
           <Text style={s.shareCtaText}>Share receipt</Text>
         </TouchableOpacity>

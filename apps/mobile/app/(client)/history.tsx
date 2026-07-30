@@ -83,7 +83,7 @@ export default function HistoryTab() {
       {/* Filter tabs */}
       <View style={s.tabs}>
         {FILTERS.map((f, i) => (
-          <TouchableOpacity key={i} style={[s.tab, filter === i && s.tabActive]} onPress={() => setFilter(i)}>
+          <TouchableOpacity activeOpacity={0.8} key={i} style={[s.tab, filter === i && s.tabActive]} onPress={() => setFilter(i)}>
             <Text style={[s.tabText, filter === i && s.tabTextActive]}>{f.label}</Text>
           </TouchableOpacity>
         ))}

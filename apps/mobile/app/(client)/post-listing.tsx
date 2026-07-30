@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Image,
+  Animated, Easing,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -107,6 +108,16 @@ export default function PostListingScreen() {
   const [urgent,      setUrgent]      = useState(false)
   const [submitting,  setSubmitting]  = useState(false)
 
+  const urgentAnim = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    Animated.timing(urgentAnim, {
+      toValue: urgent ? 1 : 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+  }, [urgent])
+
   const showCondition = category === 'goods'
 
   const pickImage = async () => {
@@ -202,7 +213,7 @@ export default function PostListingScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Post a listing</Text>
@@ -216,7 +227,7 @@ export default function PostListingScreen() {
             <Label>CATEGORY</Label>
             <View style={f.chipRow}>
               {CATEGORIES.map(c => (
-                <TouchableOpacity
+                <TouchableOpacity activeOpacity={0.8}
                   key={c.id}
                   style={[f.chip, category === c.id && f.chipActive]}
                   onPress={() => {
@@ -233,7 +244,7 @@ export default function PostListingScreen() {
             <Label>SUBCATEGORY</Label>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
               {SUBCATEGORIES[category].map(sc => (
-                <TouchableOpacity
+                <TouchableOpacity activeOpacity={0.8}
                   key={sc.id}
                   style={[f.subChip, subcategory === sc.id && f.subChipActive]}
                   onPress={() => setSubcategory(sc.id)}
@@ -248,7 +259,7 @@ export default function PostListingScreen() {
           <SectionCard>
             <Label>PHOTOS ({images.length}/8)</Label>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-              <TouchableOpacity style={f.addPhoto} onPress={pickImage}>
+              <TouchableOpacity activeOpacity={0.8} style={f.addPhoto} onPress={pickImage}>
                 <Ionicons name="camera-outline" size={24} color={colors.gray400} />
                 <Text style={f.addPhotoText}>Add photo</Text>
               </TouchableOpacity>
@@ -260,7 +271,7 @@ export default function PostListingScreen() {
                       <ActivityIndicator color={colors.white} size="small" />
                     </View>
                   )}
-                  <TouchableOpacity style={f.removePhoto} onPress={() => removeImage(i)}>
+                  <TouchableOpacity activeOpacity={0.8} style={f.removePhoto} onPress={() => removeImage(i)}>
                     <Ionicons name="close-circle" size={20} color={colors.white} />
                   </TouchableOpacity>
                 </View>
@@ -328,7 +339,7 @@ export default function PostListingScreen() {
                 </View>
               </View>
               <View style={f.priceToggles}>
-                <TouchableOpacity style={f.toggle} onPress={() => setNegotiable(n => !n)}>
+                <TouchableOpacity activeOpacity={0.8} style={f.toggle} onPress={() => setNegotiable(n => !n)}>
                   <View style={[f.toggleBox, negotiable && f.toggleBoxOn]}>
                     {negotiable && <Ionicons name="checkmark" size={12} color={colors.white} />}
                   </View>
@@ -349,13 +360,13 @@ export default function PostListingScreen() {
                 editable={!negotiable && !free}
               />
               <View style={f.priceToggles}>
-                <TouchableOpacity style={f.toggle} onPress={() => { setNegotiable(n => !n); setFree(false) }}>
+                <TouchableOpacity activeOpacity={0.8} style={f.toggle} onPress={() => { setNegotiable(n => !n); setFree(false) }}>
                   <View style={[f.toggleBox, negotiable && f.toggleBoxOn]}>
                     {negotiable && <Ionicons name="checkmark" size={12} color={colors.white} />}
                   </View>
                   <Text style={f.toggleLabel}>Negotiable</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={f.toggle} onPress={() => { setFree(n => !n); setNegotiable(false) }}>
+                <TouchableOpacity activeOpacity={0.8} style={f.toggle} onPress={() => { setFree(n => !n); setNegotiable(false) }}>
                   <View style={[f.toggleBox, free && f.toggleBoxOn]}>
                     {free && <Ionicons name="checkmark" size={12} color={colors.white} />}
                   </View>
@@ -371,7 +382,7 @@ export default function PostListingScreen() {
               <Label>CONDITION</Label>
               <View style={f.chipRow}>
                 {CONDITIONS.map(c => (
-                  <TouchableOpacity
+                  <TouchableOpacity activeOpacity={0.8}
                     key={c.id}
                     style={[f.condChip, condition === c.id && f.condChipActive]}
                     onPress={() => setCondition(c.id)}
@@ -388,7 +399,7 @@ export default function PostListingScreen() {
             <Label>SUBURB</Label>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {DURBAN_SUBURBS.map(sub => (
-                <TouchableOpacity
+                <TouchableOpacity activeOpacity={0.8}
                   key={sub}
                   style={[f.subChip, suburb === sub && f.subChipActive]}
                   onPress={() => setSuburb(sub)}
@@ -401,13 +412,18 @@ export default function PostListingScreen() {
 
           {/* Urgent toggle */}
           <SectionCard>
-            <TouchableOpacity style={f.urgentRow} onPress={() => setUrgent(u => !u)}>
+            <TouchableOpacity activeOpacity={0.8} style={f.urgentRow} onPress={() => setUrgent(u => !u)}>
               <View style={{ flex: 1 }}>
                 <Text style={f.urgentTitle}>Mark as urgent</Text>
                 <Text style={f.urgentSub}>Gets a red URGENT badge — use sparingly</Text>
               </View>
               <View style={[f.urgentSwitch, urgent && f.urgentSwitchOn]}>
-                <View style={[f.urgentThumb, urgent && f.urgentThumbOn]} />
+                <Animated.View
+                  style={[
+                    f.urgentThumb,
+                    { transform: [{ translateX: urgentAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 18] }) }] },
+                  ]}
+                />
               </View>
             </TouchableOpacity>
           </SectionCard>
@@ -419,7 +435,7 @@ export default function PostListingScreen() {
           </View>
 
           {/* Submit */}
-          <TouchableOpacity
+          <TouchableOpacity activeOpacity={0.8}
             style={[s.submitBtn, (submitting || imagesUploading) && { opacity: 0.5 }]}
             onPress={handleSubmit}
             disabled={submitting || imagesUploading}
@@ -487,7 +503,6 @@ const f = StyleSheet.create({
   urgentSwitch:    { width: 44, height: 26, borderRadius: 13, backgroundColor: colors.gray200, padding: 2, justifyContent: 'center' },
   urgentSwitchOn:  { backgroundColor: colors.black },
   urgentThumb:     { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.white },
-  urgentThumbOn:   { alignSelf: 'flex-end' },
 })
 
 // ─── Screen styles ────────────────────────────────────────────────────────────

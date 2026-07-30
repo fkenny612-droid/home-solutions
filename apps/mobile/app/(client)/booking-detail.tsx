@@ -185,7 +185,7 @@ export default function BookingDetail() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -290,7 +290,7 @@ export default function BookingDetail() {
             </View>
           )}
           {isComplete && booking.paymentReleased && (
-            <TouchableOpacity style={s.receiptLink} onPress={() => router.push({ pathname: '/(client)/receipt', params: { id: booking.id } })}>
+            <TouchableOpacity activeOpacity={0.8} style={s.receiptLink} onPress={() => router.push({ pathname: '/(client)/receipt', params: { id: booking.id } })}>
               <Ionicons name="receipt-outline" size={14} color={colors.gray600} />
               <Text style={s.receiptLinkText}>View receipt</Text>
             </TouchableOpacity>
@@ -307,7 +307,7 @@ export default function BookingDetail() {
               </View>
             </View>
           ) : (
-            <TouchableOpacity style={s.rateCard} onPress={() => setRatingOpen(true)}>
+            <TouchableOpacity activeOpacity={0.8} style={s.rateCard} onPress={() => setRatingOpen(true)}>
               <View style={{ flex: 1 }}>
                 <Text style={s.rateTitle}>How was your service?</Text>
                 <Text style={s.rateSub}>Rate this job to help other clients</Text>
@@ -344,7 +344,7 @@ export default function BookingDetail() {
         {/* Actions */}
         <View style={s.actions}>
           {canChat && (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               style={s.actionBtn}
               onPress={() => router.push({ pathname: '/(client)/conversation', params: { bookingId: booking.id } })}
             >
@@ -353,7 +353,7 @@ export default function BookingDetail() {
             </TouchableOpacity>
           )}
           {canCancel && (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               style={[s.actionBtnSec, cancelling && { opacity: 0.5 }]}
               onPress={handleCancel}
               disabled={cancelling}
@@ -371,7 +371,7 @@ export default function BookingDetail() {
       {/* Full-screen photo viewer */}
       <Modal visible={photoIndex !== null} transparent animationType="fade" onRequestClose={() => setPhotoIndex(null)}>
         <View style={s.photoModal}>
-          <TouchableOpacity style={s.photoModalClose} onPress={() => setPhotoIndex(null)}>
+          <TouchableOpacity activeOpacity={0.8} style={s.photoModalClose} onPress={() => setPhotoIndex(null)}>
             <Ionicons name="close" size={26} color={colors.white} />
           </TouchableOpacity>
           {photoIndex !== null && booking.images?.[photoIndex] && (
@@ -379,11 +379,11 @@ export default function BookingDetail() {
           )}
           {booking.images && booking.images.length > 1 && (
             <View style={s.photoNavRow}>
-              <TouchableOpacity onPress={() => setPhotoIndex(i => Math.max(0, (i ?? 0) - 1))} style={s.photoNavBtn}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setPhotoIndex(i => Math.max(0, (i ?? 0) - 1))} style={s.photoNavBtn}>
                 <Ionicons name="chevron-back" size={22} color={colors.white} />
               </TouchableOpacity>
               <Text style={s.photoCounter}>{(photoIndex ?? 0) + 1} / {booking.images.length}</Text>
-              <TouchableOpacity onPress={() => setPhotoIndex(i => Math.min((booking.images?.length ?? 1) - 1, (i ?? 0) + 1))} style={s.photoNavBtn}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setPhotoIndex(i => Math.min((booking.images?.length ?? 1) - 1, (i ?? 0) + 1))} style={s.photoNavBtn}>
                 <Ionicons name="chevron-forward" size={22} color={colors.white} />
               </TouchableOpacity>
             </View>
@@ -401,7 +401,7 @@ export default function BookingDetail() {
 
             <View style={s.starsRow}>
               {[1, 2, 3, 4, 5].map(n => (
-                <TouchableOpacity key={n} onPress={() => setStars(n)} style={{ padding: 4 }}>
+                <TouchableOpacity activeOpacity={0.8} key={n} onPress={() => setStars(n)} style={{ padding: 4 }}>
                   <Ionicons name={n <= stars ? 'star' : 'star-outline'} size={34} color={colors.gold} />
                 </TouchableOpacity>
               ))}
@@ -411,7 +411,7 @@ export default function BookingDetail() {
               {REVIEW_TAGS.map(tag => {
                 const active = selectedTags.includes(tag)
                 return (
-                  <TouchableOpacity
+                  <TouchableOpacity activeOpacity={0.8}
                     key={tag}
                     style={[s.tagChip, active && s.tagChipActive]}
                     onPress={() => toggleTag(tag)}
@@ -433,10 +433,10 @@ export default function BookingDetail() {
             />
 
             <View style={s.modalBtns}>
-              <TouchableOpacity style={s.skipBtn} onPress={closeRating}>
+              <TouchableOpacity activeOpacity={0.8} style={s.skipBtn} onPress={closeRating}>
                 <Text style={s.skipBtnText}>Not now</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 style={[s.submitBtn, (submittingReview || stars === 0) && { opacity: 0.5 }]}
                 onPress={submitReview}
                 disabled={submittingReview || stars === 0}

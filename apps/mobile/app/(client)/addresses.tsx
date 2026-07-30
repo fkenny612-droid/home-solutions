@@ -64,11 +64,11 @@ export default function SavedAddresses() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Saved Addresses</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setAdding(true)}>
+        <TouchableOpacity activeOpacity={0.8} style={s.addBtn} onPress={() => setAdding(true)}>
           <Ionicons name="add" size={22} color={colors.white} />
         </TouchableOpacity>
       </View>
@@ -107,12 +107,12 @@ export default function SavedAddresses() {
                   </View>
                   <Text style={s.cardAddress}>{addr.address}</Text>
                   {!addr.isDefault && (
-                    <TouchableOpacity onPress={() => handleSetDefault(addr.id)}>
+                    <TouchableOpacity activeOpacity={0.8} onPress={() => handleSetDefault(addr.id)}>
                       <Text style={s.setDefaultLink}>Set as default</Text>
                     </TouchableOpacity>
                   )}
                 </View>
-                <TouchableOpacity onPress={() => handleDelete(addr.id)} style={s.deleteBtn}>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => handleDelete(addr.id)} style={s.deleteBtn}>
                   <Ionicons name="trash-outline" size={18} color={colors.gray400} />
                 </TouchableOpacity>
               </View>
@@ -137,10 +137,10 @@ export default function SavedAddresses() {
                   multiline
                 />
                 <View style={s.formButtons}>
-                  <TouchableOpacity style={s.cancelBtn} onPress={() => { setAdding(false); setLabel(''); setAddress('') }}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.cancelBtn} onPress={() => { setAdding(false); setLabel(''); setAddress('') }}>
                     <Text style={s.cancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleAdd} disabled={saving}>
+                  <TouchableOpacity activeOpacity={0.8} style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleAdd} disabled={saving}>
                     {saving ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={s.saveBtnText}>Save</Text>}
                   </TouchableOpacity>
                 </View>

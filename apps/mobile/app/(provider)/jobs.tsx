@@ -123,10 +123,10 @@ export default function ProviderJobs() {
                 </View>
 
                 <View style={s.jobActions}>
-                  <TouchableOpacity style={s.declineBtn} onPress={() => declineJob(j.id)}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.declineBtn} onPress={() => declineJob(j.id)}>
                     <Text style={s.declineBtnText}>Decline</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.acceptBtn} onPress={() => acceptJob(j.id)}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.acceptBtn} onPress={() => acceptJob(j.id)}>
                     <Text style={s.acceptBtnText}>Accept →</Text>
                   </TouchableOpacity>
                 </View>
@@ -179,23 +179,23 @@ function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'e
       </View>
 
       <View style={s.cardActions}>
-        <TouchableOpacity style={s.actionBtn} onPress={() => Linking.openURL('tel:+27821234567')}>
+        <TouchableOpacity activeOpacity={0.8} style={s.actionBtn} onPress={() => Linking.openURL('tel:+27821234567')}>
           <Text style={s.actionBtnText}>Call</Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        <TouchableOpacity activeOpacity={0.8}
           style={s.actionBtn}
           onPress={() => router.push({ pathname: '/(client)/conversation', params: { bookingId: job.id, providerName: 'Client' } } as any)}
         >
           <Text style={s.actionBtnText}>Chat</Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        <TouchableOpacity activeOpacity={0.8}
           style={s.actionBtn}
           onPress={() => router.push({ pathname: '/(provider)/materials', params: { bookingId: job.id, serviceType: job.serviceType } } as any)}
         >
           <Text style={s.actionBtnText}>Materials</Text>
         </TouchableOpacity>
         {next && (
-          <TouchableOpacity style={[s.actionBtn, s.actionPrimary]} onPress={() => onUpdateStatus(next.next)}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.actionBtn, s.actionPrimary]} onPress={() => onUpdateStatus(next.next)}>
             <Text style={s.actionPrimaryText}>{next.label}</Text>
           </TouchableOpacity>
         )}

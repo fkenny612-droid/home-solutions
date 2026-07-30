@@ -48,14 +48,14 @@ export default function ProviderEditProfile() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Edit profile</Text>
       </View>
 
       <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity style={s.avatarWrap} onPress={pickAvatar} disabled={uploading}>
+        <TouchableOpacity activeOpacity={0.8} style={s.avatarWrap} onPress={pickAvatar} disabled={uploading}>
           <View style={s.avatar}>
             {uploading ? <ActivityIndicator color={colors.gold} /> : <Text style={s.avatarText}>{initials}</Text>}
           </View>
@@ -85,7 +85,7 @@ export default function ProviderEditProfile() {
           <Text style={s.phoneText}>Phone number ({user?.phone}) cannot be changed</Text>
         </View>
 
-        <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
+        <TouchableOpacity activeOpacity={0.8} style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
           {saving ? <ActivityIndicator color={colors.black} /> : <Text style={s.saveBtnText}>Save changes</Text>}
         </TouchableOpacity>
       </ScrollView>

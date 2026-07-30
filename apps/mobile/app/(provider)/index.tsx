@@ -63,7 +63,7 @@ export default function ProviderEarnings() {
             <Text style={s.headerName}>{firstName}</Text>
           </View>
           {/* Bell */}
-          <TouchableOpacity onPress={() => router.push('/(provider)/notifications')} style={s.bellBtn}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(provider)/notifications')} style={s.bellBtn}>
             <Ionicons name="notifications-outline" size={22} color={colors.white} />
             {unreadCount > 0 && (
               <View style={s.bellBadge}>
@@ -72,7 +72,7 @@ export default function ProviderEarnings() {
             )}
           </TouchableOpacity>
           {/* Online toggle */}
-          <TouchableOpacity style={[s.onlineToggle, !online && s.offlineToggle]} onPress={() => setOnline(p => !p)}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.onlineToggle, !online && s.offlineToggle]} onPress={() => setOnline(p => !p)}>
             <View style={[s.toggleThumb, !online && s.toggleThumbOff]} />
             <Text style={[s.onlineLabel, !online && s.offlineLabel]}>{online ? 'Online' : 'Offline'}</Text>
           </TouchableOpacity>
@@ -122,7 +122,7 @@ export default function ProviderEarnings() {
         {/* Recent jobs */}
         <View style={s.sectionHeaderRow}>
           <Text style={s.sectionLabel}>RECENT JOBS</Text>
-          <TouchableOpacity onPress={() => router.push('/(provider)/earnings-history')}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(provider)/earnings-history')}>
             <Text style={s.seeAllText}>See all →</Text>
           </TouchableOpacity>
         </View>
@@ -130,7 +130,7 @@ export default function ProviderEarnings() {
           {recentJobs.length === 0 ? (
             <Text style={s.noJobsText}>No completed jobs yet</Text>
           ) : recentJobs.map((j, i) => (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               key={j.id}
               style={[s.jobRow, i < recentJobs.length - 1 && s.jobRowBorder]}
               onPress={() => router.push('/(provider)/earnings-history')}
@@ -148,12 +148,12 @@ export default function ProviderEarnings() {
         </View>
 
         {/* Withdraw */}
-        <TouchableOpacity style={s.withdrawBtn}>
+        <TouchableOpacity activeOpacity={0.8} style={s.withdrawBtn}>
           <Text style={s.withdrawText}>Withdraw R {earnings.available.toLocaleString()} via Peach Payments</Text>
         </TouchableOpacity>
         <Text style={s.withdrawSub}>Transfers within 1–2 business days</Text>
 
-        <TouchableOpacity style={s.logoutRow} onPress={async () => { await logout(); router.replace('/login') }}>
+        <TouchableOpacity activeOpacity={0.8} style={s.logoutRow} onPress={async () => { await logout(); router.replace('/login') }}>
           <Text style={s.logoutText}>Sign out</Text>
         </TouchableOpacity>
 

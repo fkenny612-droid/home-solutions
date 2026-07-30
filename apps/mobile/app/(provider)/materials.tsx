@@ -118,14 +118,14 @@ export default function MaterialsScreen() {
     <SafeAreaView style={s.safe}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Text style={s.backArrow}>←</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>Order materials</Text>
           <Text style={s.sub}>Job #{bookingId?.slice(-6).toUpperCase() ?? '—'}</Text>
         </View>
-        <TouchableOpacity style={s.cartBtn} onPress={() => setTab(t => t === 'cart' ? 'browse' : 'cart')}>
+        <TouchableOpacity activeOpacity={0.8} style={s.cartBtn} onPress={() => setTab(t => t === 'cart' ? 'browse' : 'cart')}>
           <Text style={s.cartEmoji}>🛒</Text>
           {cart.length > 0 && <View style={s.cartBadge}><Text style={s.cartBadgeText}>{cartCount}</Text></View>}
         </TouchableOpacity>
@@ -136,7 +136,7 @@ export default function MaterialsScreen() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14 }}>
           <Text style={s.sectionLabel}>Select a hardware store</Text>
           {stores.map(store => (
-            <TouchableOpacity key={store.id} style={s.storeCard} onPress={() => setSelectedStore(store)}>
+            <TouchableOpacity activeOpacity={0.8} key={store.id} style={s.storeCard} onPress={() => setSelectedStore(store)}>
               <View style={s.storeIcon}><Text style={{ fontSize: 22 }}>🏪</Text></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.storeName}>{store.name}</Text>
@@ -154,7 +154,7 @@ export default function MaterialsScreen() {
         <>
           {/* Store + search */}
           <View style={s.storeBar}>
-            <TouchableOpacity onPress={() => setSelectedStore(null)} style={s.changeStore}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setSelectedStore(null)} style={s.changeStore}>
               <Text style={s.changeStoreText}>🏪 {selectedStore.name} ›</Text>
             </TouchableOpacity>
           </View>
@@ -173,7 +173,7 @@ export default function MaterialsScreen() {
           {/* Categories */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catScroll} contentContainerStyle={{ paddingHorizontal: 14, gap: 8, paddingVertical: 8 }}>
             {CATEGORIES.map(c => (
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 key={c.id}
                 style={[s.catChip, category === c.id && s.catChipSel]}
                 onPress={() => setCategory(c.id)}
@@ -205,16 +205,16 @@ export default function MaterialsScreen() {
                       <Text style={s.productPrice}>R{item.price.toFixed(2)}</Text>
                       {inCart ? (
                         <View style={s.qtyRow}>
-                          <TouchableOpacity style={s.qtyBtn} onPress={() => updateQty(item.id, inCart.quantity - 1)}>
+                          <TouchableOpacity activeOpacity={0.8} style={s.qtyBtn} onPress={() => updateQty(item.id, inCart.quantity - 1)}>
                             <Text style={s.qtyBtnText}>−</Text>
                           </TouchableOpacity>
                           <Text style={s.qtyVal}>{inCart.quantity}</Text>
-                          <TouchableOpacity style={s.qtyBtn} onPress={() => updateQty(item.id, inCart.quantity + 1)}>
+                          <TouchableOpacity activeOpacity={0.8} style={s.qtyBtn} onPress={() => updateQty(item.id, inCart.quantity + 1)}>
                             <Text style={s.qtyBtnText}>+</Text>
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        <TouchableOpacity style={s.addBtn} onPress={() => addToCart(item)}>
+                        <TouchableOpacity activeOpacity={0.8} style={s.addBtn} onPress={() => addToCart(item)}>
                           <Text style={s.addBtnText}>Add</Text>
                         </TouchableOpacity>
                       )}
@@ -242,7 +242,7 @@ export default function MaterialsScreen() {
             <View style={[s.center, { marginTop: 40 }]}>
               <Text style={s.emptyEmoji}>🛒</Text>
               <Text style={s.emptyText}>Your cart is empty</Text>
-              <TouchableOpacity onPress={() => setTab('browse')} style={s.browseBtn}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setTab('browse')} style={s.browseBtn}>
                 <Text style={s.browseBtnText}>Browse products →</Text>
               </TouchableOpacity>
             </View>
@@ -255,11 +255,11 @@ export default function MaterialsScreen() {
                     <Text style={s.cartItemMeta}>R{item.unitPrice.toFixed(2)} per {item.unit}</Text>
                   </View>
                   <View style={s.qtyRow}>
-                    <TouchableOpacity style={s.qtyBtn} onPress={() => updateQty(item.productId, item.quantity - 1)}>
+                    <TouchableOpacity activeOpacity={0.8} style={s.qtyBtn} onPress={() => updateQty(item.productId, item.quantity - 1)}>
                       <Text style={s.qtyBtnText}>−</Text>
                     </TouchableOpacity>
                     <Text style={s.qtyVal}>{item.quantity}</Text>
-                    <TouchableOpacity style={s.qtyBtn} onPress={() => updateQty(item.productId, item.quantity + 1)}>
+                    <TouchableOpacity activeOpacity={0.8} style={s.qtyBtn} onPress={() => updateQty(item.productId, item.quantity + 1)}>
                       <Text style={s.qtyBtnText}>+</Text>
                     </TouchableOpacity>
                   </View>
@@ -283,7 +283,7 @@ export default function MaterialsScreen() {
                 numberOfLines={3}
               />
 
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 style={[s.submitBtn, submitting && { opacity: 0.7 }]}
                 onPress={submitOrder}
                 disabled={submitting}

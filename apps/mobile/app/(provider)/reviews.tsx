@@ -69,7 +69,7 @@ export default function ProviderReviews() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.back}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.back}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>My Reviews</Text>

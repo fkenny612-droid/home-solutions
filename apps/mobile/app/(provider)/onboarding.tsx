@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Image,
+  ActivityIndicator, Alert, Image, LayoutAnimation, UIManager, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
@@ -17,6 +17,10 @@ import { useAuth } from '../../context/auth'
 import { uploadToCloudinary } from '../../lib/cloudinary'
 import { api } from '../../lib/api'
 import { SERVICES } from '../../lib/serviceConfig'
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DocType = 'id' | 'company_reg' | 'bank_letter' | 'trade_cert'
@@ -195,7 +199,7 @@ function HireServiceInventory({
         return (
           <View key={opt.value} style={[inv.row, i < options.length - 1 && inv.rowBorder, !avail && checked && inv.rowUnavail]}>
             {/* Checkbox — add / remove item */}
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               style={[inv.checkbox, checked && (avail ? inv.checkboxChecked : inv.checkboxUnavail)]}
               onPress={() => onQtyChange(serviceId, opt.value, checked ? 0 : 1)}
             >
@@ -215,7 +219,7 @@ function HireServiceInventory({
             {/* Quantity stepper — visible when checked */}
             {checked && (
               <View style={[inv.stepper, !avail && inv.stepperUnavail]}>
-                <TouchableOpacity
+                <TouchableOpacity activeOpacity={0.8}
                   style={[inv.stepBtn, qty <= 1 && inv.stepBtnDisabled]}
                   onPress={() => onQtyChange(serviceId, opt.value, Math.max(1, qty - 1))}
                   disabled={qty <= 1}
@@ -223,7 +227,7 @@ function HireServiceInventory({
                   <Text style={inv.stepBtnText}>−</Text>
                 </TouchableOpacity>
                 <Text style={inv.stepQty}>{qty}</Text>
-                <TouchableOpacity
+                <TouchableOpacity activeOpacity={0.8}
                   style={inv.stepBtn}
                   onPress={() => onQtyChange(serviceId, opt.value, qty + 1)}
                 >
@@ -390,6 +394,7 @@ export default function ProviderOnboarding() {
 
       const { url } = await uploadToCloudinary(uri, fileName, mimeType)
       await api.providers.saveDocument(user.id, key, fileName, url)
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
       setDocs(prev => ({ ...prev, [key]: { uploaded: true, uploading: false, fileName, fileUrl: url } }))
     } catch {
       Alert.alert('Upload failed', 'Please check your connection and try again.')
@@ -470,7 +475,7 @@ export default function ProviderOnboarding() {
         {DOCS.filter(d => !d.optional).map(doc => {
           const d = docs[doc.key]
           return (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               key={doc.key}
               style={[s.uploadBox, d.uploaded && s.uploadDone]}
               onPress={() => pickAndUpload(doc)}
@@ -503,7 +508,7 @@ export default function ProviderOnboarding() {
         {DOCS.filter(d => d.optional).map(doc => {
           const d = docs[doc.key]
           return (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               key={doc.key}
               style={[s.uploadBox, s.uploadBoxOptional, d.uploaded && s.uploadDone]}
               onPress={() => pickAndUpload(doc)}
@@ -543,7 +548,7 @@ export default function ProviderOnboarding() {
                 const sel    = skills.includes(sk.id)
                 const isHire = HIRE_SERVICE_IDS.has(sk.id)
                 return (
-                  <TouchableOpacity
+                  <TouchableOpacity activeOpacity={0.8}
                     key={sk.id}
                     style={[s.skillChip, sel && s.skillChipSel, isHire && sel && s.skillChipHire]}
                     onPress={() => toggleSkill(sk.id)}
@@ -625,7 +630,7 @@ export default function ProviderOnboarding() {
                   )}
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity style={s.photoAddBtn} onPress={addHirePhoto}>
+              <TouchableOpacity activeOpacity={0.8} style={s.photoAddBtn} onPress={addHirePhoto}>
                 <Text style={s.photoAddIcon}>+</Text>
                 <Text style={s.photoAddLabel}>Add photo</Text>
               </TouchableOpacity>
@@ -650,7 +655,7 @@ export default function ProviderOnboarding() {
           ] as { key: keyof typeof avail; label: string }[]).map((a, i) => (
             <View key={a.key} style={[s.availRow, i < 3 && s.availRowBorder]}>
               <Text style={s.availLabel}>{a.label}</Text>
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 style={[s.toggle, !avail[a.key] && s.toggleOff]}
                 onPress={() => setAvail(p => ({ ...p, [a.key]: !p[a.key] }))}
               >
@@ -667,7 +672,7 @@ export default function ProviderOnboarding() {
           </View>
         ) : isComplete ? (
           <>
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               style={[s.submitBtn, submitting && { opacity: 0.6 }]}
               disabled={submitting}
               onPress={async () => {

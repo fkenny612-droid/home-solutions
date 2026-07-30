@@ -23,12 +23,12 @@ export default function RoleSelector() {
         <Text style={s.sub}>Vetted tradespeople. Live tracking.{'\n'}90-day warranty. Peach Payments.</Text>
 
         <View style={s.btnGroup}>
-          <TouchableOpacity style={s.btnPrimary} onPress={() => router.push('/(client)')}>
+          <TouchableOpacity activeOpacity={0.8} style={s.btnPrimary} onPress={() => router.push('/(client)')}>
             <Text style={s.btnPrimaryText}>I need a service</Text>
             <Text style={s.btnPrimaryMeta}>Easyfix · Easy-Hire</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.btnSecondary} onPress={() => router.push('/(provider)')}>
+          <TouchableOpacity activeOpacity={0.8} style={s.btnSecondary} onPress={() => router.push('/(provider)')}>
             <Text style={s.btnSecondaryText}>I'm a tradesperson</Text>
             <Text style={s.btnSecondaryMeta}>Provider app</Text>
           </TouchableOpacity>

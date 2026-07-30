@@ -68,13 +68,13 @@ export default function BookingsTab() {
 
       {/* Tab switcher */}
       <View style={s.tabRow}>
-        <TouchableOpacity
+        <TouchableOpacity activeOpacity={0.8}
           style={[s.tabBtn, tab === 'active' && s.tabBtnActive]}
           onPress={() => setTab('active')}
         >
           <Text style={[s.tabLabel, tab === 'active' && s.tabLabelActive]}>Active</Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        <TouchableOpacity activeOpacity={0.8}
           style={[s.tabBtn, tab === 'history' && s.tabBtnActive]}
           onPress={() => setTab('history')}
         >
@@ -97,7 +97,7 @@ export default function BookingsTab() {
             <Text style={s.emptyTitle}>{tab === 'active' ? 'No active bookings' : 'No past bookings'}</Text>
             <Text style={s.emptySub}>{tab === 'active' ? 'Book a service from the Home tab' : 'Completed and cancelled bookings appear here'}</Text>
             {tab === 'active' && (
-              <TouchableOpacity style={s.bookBtn} onPress={() => router.push('/(client)')}>
+              <TouchableOpacity activeOpacity={0.8} style={s.bookBtn} onPress={() => router.push('/(client)')}>
                 <Text style={s.bookBtnText}>Book a service</Text>
               </TouchableOpacity>
             )}

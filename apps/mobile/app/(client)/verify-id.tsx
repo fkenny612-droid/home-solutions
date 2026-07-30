@@ -132,7 +132,7 @@ export default function VerifyIdScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Identity verification</Text>
@@ -221,7 +221,7 @@ export default function VerifyIdScreen() {
           </TouchableOpacity>
 
           {/* Submit */}
-          <TouchableOpacity
+          <TouchableOpacity activeOpacity={0.8}
             style={[s.submitBtn, !canSubmit && s.submitBtnDisabled]}
             onPress={handleSubmit}
             disabled={!canSubmit}

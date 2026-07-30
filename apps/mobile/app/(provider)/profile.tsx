@@ -101,7 +101,7 @@ export default function ProviderProfile() {
         <View style={s.balanceCard}>
           <Text style={s.balanceLabel}>Available to withdraw</Text>
           <Text style={s.balanceAmt}>R {balance.toLocaleString('en-ZA')}</Text>
-          <TouchableOpacity style={[s.withdrawBtn, (withdrawing || balance <= 0) && { opacity: 0.5 }]} onPress={handleWithdraw} disabled={withdrawing || balance <= 0}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.withdrawBtn, (withdrawing || balance <= 0) && { opacity: 0.5 }]} onPress={handleWithdraw} disabled={withdrawing || balance <= 0}>
             {withdrawing
               ? <ActivityIndicator color={colors.navy} />
               : <Text style={s.withdrawText}>💳  Withdraw via Peach Payments</Text>}
@@ -109,7 +109,7 @@ export default function ProviderProfile() {
         </View>
 
         {MENU.map((item, i) => (
-          <TouchableOpacity
+          <TouchableOpacity activeOpacity={0.8}
             key={i}
             style={s.menuItem}
             onPress={() => (item as any).route && router.push((item as any).route)}
@@ -123,12 +123,12 @@ export default function ProviderProfile() {
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity style={s.switchBtn} onPress={handleSwitchToClient}>
+        <TouchableOpacity activeOpacity={0.8} style={s.switchBtn} onPress={handleSwitchToClient}>
           <Ionicons name="swap-horizontal-outline" size={16} color={colors.gold} />
           <Text style={s.switchText}>Switch to client mode</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.signout} onPress={handleLogout}>
+        <TouchableOpacity activeOpacity={0.8} style={s.signout} onPress={handleLogout}>
           <Text style={s.signoutText}>Sign out</Text>
         </TouchableOpacity>
         <View style={{ height: 24 }} />

@@ -110,7 +110,7 @@ export default function PaymentMethodsScreen() {
   if (loading) return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Payment methods</Text>
@@ -124,7 +124,7 @@ export default function PaymentMethodsScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Payment methods</Text>
@@ -146,12 +146,12 @@ export default function PaymentMethodsScreen() {
               {card.isDefault
                 ? <View style={s.defaultBadge}><Text style={s.defaultText}>DEFAULT</Text></View>
                 : (
-                  <TouchableOpacity onPress={() => handleSetDefault(card.id)} style={s.setDefaultBtn}>
+                  <TouchableOpacity activeOpacity={0.8} onPress={() => handleSetDefault(card.id)} style={s.setDefaultBtn}>
                     <Text style={s.setDefaultText}>Set default</Text>
                   </TouchableOpacity>
                 )
               }
-              <TouchableOpacity onPress={() => handleDelete(card)} style={s.deleteBtn}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => handleDelete(card)} style={s.deleteBtn}>
                 <Ionicons name="trash-outline" size={16} color={colors.red} />
               </TouchableOpacity>
             </View>
@@ -236,16 +236,16 @@ export default function PaymentMethodsScreen() {
               </View>
 
               <View style={s.formBtns}>
-                <TouchableOpacity style={s.cancelFormBtn} onPress={() => setAdding(false)}>
+                <TouchableOpacity activeOpacity={0.8} style={s.cancelFormBtn} onPress={() => setAdding(false)}>
                   <Text style={s.cancelFormText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleAdd} disabled={saving}>
+                <TouchableOpacity activeOpacity={0.8} style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleAdd} disabled={saving}>
                   <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save card'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            <TouchableOpacity style={s.addBtn} onPress={() => setAdding(true)}>
+            <TouchableOpacity activeOpacity={0.8} style={s.addBtn} onPress={() => setAdding(true)}>
               <Ionicons name="add-circle-outline" size={18} color={colors.gold} />
               <Text style={s.addBtnText}>Add new card</Text>
             </TouchableOpacity>

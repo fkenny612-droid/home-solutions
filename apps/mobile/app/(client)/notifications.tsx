@@ -65,12 +65,12 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.back}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={s.back}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={s.title}>Notifications</Text>
         {items.length > 0 && (
-          <TouchableOpacity onPress={() => api.notifications.markRead().then(() => load())}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => api.notifications.markRead().then(() => load())}>
             <Text style={s.markAll}>Mark all read</Text>
           </TouchableOpacity>
         )}

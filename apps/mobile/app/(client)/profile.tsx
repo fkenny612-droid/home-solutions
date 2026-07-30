@@ -52,7 +52,7 @@ export default function ProfileTab() {
     <SafeAreaView style={s.safe}>
       {/* ── Profile header ── */}
       <View style={s.header}>
-        <TouchableOpacity style={s.avatar} onPress={() => router.push('/(client)/edit-profile')}>
+        <TouchableOpacity activeOpacity={0.8} style={s.avatar} onPress={() => router.push('/(client)/edit-profile')}>
           <Text style={s.avatarText}>{initials.toUpperCase()}</Text>
           <View style={s.avatarEditBadge}>
             <Ionicons name="pencil" size={10} color={colors.black} />
@@ -71,7 +71,7 @@ export default function ProfileTab() {
             </View>
           )}
           {!idVerified && (
-            <TouchableOpacity style={s.unverifiedBadge} onPress={() => router.push('/(client)/verify-id' as any)}>
+            <TouchableOpacity activeOpacity={0.8} style={s.unverifiedBadge} onPress={() => router.push('/(client)/verify-id' as any)}>
               <Ionicons name="shield-outline" size={11} color={colors.gray400} />
               <Text style={s.unverifiedText}>Verify ID →</Text>
             </TouchableOpacity>
@@ -81,7 +81,7 @@ export default function ProfileTab() {
 
       <ScrollView style={s.body}>
         {/* Loyalty */}
-        <TouchableOpacity style={s.loyaltyBox} onPress={() => router.push('/(client)/loyalty')}>
+        <TouchableOpacity activeOpacity={0.8} style={s.loyaltyBox} onPress={() => router.push('/(client)/loyalty')}>
           <View style={s.loyaltyTop}>
             <Text style={s.loyaltyLabel}>Loyalty points</Text>
             <Text style={s.loyaltyVal}>{points.toLocaleString('en-ZA')} pts</Text>
@@ -95,7 +95,7 @@ export default function ProfileTab() {
         {/* Menu */}
         <View style={s.menuSection}>
           {MENU.map((item, i) => (
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               key={i}
               style={[s.menuItem, i < MENU.length - 1 && s.menuItemBorder]}
               onPress={() => (item as any).route && router.push((item as any).route)}
@@ -110,13 +110,13 @@ export default function ProfileTab() {
         </View>
 
         {user?.role === 'provider' && (
-          <TouchableOpacity style={s.switchBtn} onPress={handleSwitchToProvider}>
+          <TouchableOpacity activeOpacity={0.8} style={s.switchBtn} onPress={handleSwitchToProvider}>
             <Ionicons name="swap-horizontal-outline" size={16} color={colors.black} />
             <Text style={s.switchText}>Switch to provider mode</Text>
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={s.signout} onPress={handleLogout}>
+        <TouchableOpacity activeOpacity={0.8} style={s.signout} onPress={handleLogout}>
           <Text style={s.signoutText}>Sign out</Text>
         </TouchableOpacity>
 
