@@ -2,12 +2,17 @@ import { useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
+  LayoutAnimation, UIManager,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { api } from '../../lib/api'
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 
 const BANKS = [
   'ABSA', 'FNB', 'Nedbank', 'Standard Bank', 'Capitec', 'African Bank',
@@ -98,7 +103,7 @@ export default function BankAccountScreen() {
 
               <View style={[s.field, s.fieldBorder]}>
                 <Text style={s.label}>Bank</Text>
-                <TouchableOpacity activeOpacity={0.8} style={s.picker} onPress={() => setShowBanks(p => !p)}>
+                <TouchableOpacity activeOpacity={0.8} style={s.picker} onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowBanks(p => !p) }}>
                   <Text style={[s.pickerText, !bankName && s.pickerPlaceholder]}>
                     {bankName || 'Select your bank'}
                   </Text>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform,
+  LayoutAnimation, UIManager,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -9,6 +10,10 @@ import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
 import { api } from '../../lib/api'
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 
 // ── South Africa: provinces → cities → suburbs ──────────────────────────────
 const SA: Record<string, Record<string, string[]>> = {
@@ -141,7 +146,7 @@ function Dropdown({
   return (
     <View style={d.wrap}>
       <Text style={d.label}>{label}</Text>
-      <TouchableOpacity activeOpacity={0.8} style={d.picker} onPress={() => setOpen(p => !p)}>
+      <TouchableOpacity activeOpacity={0.8} style={d.picker} onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpen(p => !p) }}>
         <Text style={[d.pickerText, !value && d.placeholder]}>
           {value || placeholder}
         </Text>
