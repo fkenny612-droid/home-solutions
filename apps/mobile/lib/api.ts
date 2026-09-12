@@ -7,14 +7,37 @@ const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'https://railway-up-deploy-p
 
 let _token: string | null = null
 
+// Thrown by req() on any failure. `status` is 0 for a network-level failure
+// (couldn't reach the server at all) and the HTTP status code otherwise, so
+// callers can tell "server said no" apart from "couldn't reach the server."
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(_token ? { Authorization: `Bearer ${_token}` } : {}),
     ...(options?.headers as Record<string, string> ?? {}),
   }
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
-  if (!res.ok) throw new Error(`API ${res.status}`)
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  } catch {
+    throw new ApiError('Network request failed', 0)
+  }
+  if (!res.ok) {
+    let message = `API ${res.status}`
+    try {
+      const body = await res.json()
+      if (body?.message) message = Array.isArray(body.message) ? body.message[0] : body.message
+    } catch {}
+    throw new ApiError(message, res.status)
+  }
   return res.json()
 }
 

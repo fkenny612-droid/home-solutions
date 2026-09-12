@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useAuth } from '../context/auth'
+import { ApiError } from '../lib/api'
 import { colors } from '../constants/theme'
 import { LogoMark } from '../components/Logo'
 
@@ -20,8 +21,12 @@ export default function LoginScreen() {
     try {
       const user = await login(phone.trim(), password)
       router.replace(user.role === 'provider' ? '/(provider)' : '/(client)')
-    } catch {
-      setError('Incorrect phone number or password')
+    } catch (e) {
+      setError(
+        e instanceof ApiError && (e.status === 0 || e.status >= 500)
+          ? "Can't reach the server right now. Please try again in a moment."
+          : 'Incorrect phone number or password'
+      )
     } finally {
       setLoading(false)
     }
@@ -76,10 +81,10 @@ export default function LoginScreen() {
             {/* Quick test logins */}
             <View style={s.quickRow}>
               <Text style={s.quickLabel}>Test:</Text>
-              <TouchableOpacity activeOpacity={0.8} onPress={() => { setPhone('+27821234567'); setPassword('pass123') }}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => { setError(''); setPhone('+27821234567'); setPassword('pass123') }}>
                 <Text style={s.quickBtn}>Client</Text>
               </TouchableOpacity>
-              <TouchableOpacity activeOpacity={0.8} onPress={() => { setPhone('+27831234567'); setPassword('pass123') }}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => { setError(''); setPhone('+27831234567'); setPassword('pass123') }}>
                 <Text style={s.quickBtn}>Provider</Text>
               </TouchableOpacity>
             </View>

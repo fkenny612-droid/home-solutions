@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../context/auth'
+import { ApiError } from '../lib/api'
 import { colors } from '../constants/theme'
 import { LogoMark } from '../components/Logo'
 
@@ -98,6 +99,7 @@ export default function RegisterScreen() {
       router.replace(user.role === 'provider' ? '/(provider)' : '/(client)')
     } catch (e: any) {
       setError(
+        e instanceof ApiError && (e.status === 0 || e.status >= 500) ? "Can't reach the server right now. Please try again in a moment." :
         e.message?.includes('Phone') ? 'Phone number already registered' :
         e.message?.includes('Email') ? 'Email already registered' :
         'Registration failed — please try again'
