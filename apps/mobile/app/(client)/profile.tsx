@@ -5,13 +5,13 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
-import { api } from '../../lib/api'
+import { api, ActiveSubscription } from '../../lib/api'
 
 const MENU = [
   { label: 'Edit profile',      sub: 'Name, email & photo',          route: '/(client)/edit-profile'  },
   { label: 'Subscription',      sub: 'View & manage your plan',      route: '/(client)/subscription'  },
-  { label: 'Payment methods',   sub: 'Visa •••• 4242',                route: '/(client)/payment-methods' },
-  { label: 'Active warranties', sub: '2 warranties · expiring Jul 2026', route: '/(client)/warranties'      },
+  { label: 'Payment methods',   sub: 'Manage your saved cards',       route: '/(client)/payment-methods' },
+  { label: 'Active warranties', sub: 'View your job coverage',        route: '/(client)/warranties'      },
   { label: 'Saved addresses',   sub: 'Manage your saved locations',   route: '/(client)/addresses'          },
   { label: 'Refer a friend',    sub: 'Share your code, earn points',  route: '/(client)/referral'           },
   { label: 'Notifications',     sub: 'Push, SMS enabled',             route: '/(client)/notifications'      },
@@ -22,12 +22,14 @@ const NEXT_REWARD_POINTS = 500
 
 export default function ProfileTab() {
   const { user, logout, switchMode } = useAuth()
-  const [points,      setPoints]      = useState(0)
-  const [idVerified,  setIdVerified]  = useState(false)
+  const [points,       setPoints]       = useState(0)
+  const [idVerified,   setIdVerified]   = useState(false)
+  const [subscription, setSubscription] = useState<ActiveSubscription | null>(null)
 
   useEffect(() => {
     api.loyalty.balance().then(b => setPoints(b.points)).catch(() => {})
     api.auth.me().then(me => setIdVerified(me.idVerified)).catch(() => {})
+    api.subscriptions.my().then(setSubscription).catch(() => {})
   }, [])
 
   const progress = Math.min(1, (points % NEXT_REWARD_POINTS) / NEXT_REWARD_POINTS)
@@ -61,9 +63,11 @@ export default function ProfileTab() {
         <Text style={s.name}>{fullName}</Text>
         <Text style={s.role}>Client account</Text>
         <View style={s.badgeRow}>
-          <View style={s.premiumBadge}>
-            <Text style={s.premiumText}>PREMIUM HOME</Text>
-          </View>
+          {subscription?.plan && (
+            <View style={s.premiumBadge}>
+              <Text style={s.premiumText}>{subscription.plan.name.toUpperCase()}</Text>
+            </View>
+          )}
           {idVerified && (
             <View style={s.verifiedBadge}>
               <Ionicons name="shield-checkmark" size={11} color={colors.green} />
