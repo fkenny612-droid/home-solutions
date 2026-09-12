@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  FlatList, KeyboardAvoidingView, Platform, StyleSheet,
-  Text, TextInput, TouchableOpacity, View, Image,
-  Alert, ActivityIndicator, Linking,
-} from 'react-native'
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, Image, ActivityIndicator, Linking } from 'react-native'
+import { Alert } from '../../lib/alert'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'

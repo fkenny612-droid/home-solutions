@@ -5,10 +5,8 @@
  * - Hire inventory: item picker (which variants + quantities) + photos (min 3)
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Image, LayoutAnimation, UIManager, Platform,
-} from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, LayoutAnimation, UIManager, Platform } from 'react-native'
+import { Alert } from '../../lib/alert'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'

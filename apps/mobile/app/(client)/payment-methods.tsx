@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator,
-} from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native'
+import { Alert } from '../../lib/alert'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'

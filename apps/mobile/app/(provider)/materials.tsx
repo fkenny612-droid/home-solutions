@@ -4,10 +4,8 @@
  * Navigated to from the Jobs screen with bookingId param.
  */
 import { useState, useEffect } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, TextInput, Alert, FlatList,
-} from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, FlatList } from 'react-native'
+import { Alert } from '../../lib/alert'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { colors } from '../../constants/theme'
