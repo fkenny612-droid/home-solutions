@@ -2,7 +2,7 @@
  * AuthContext — JWT auth with SecureStore persistence + push token registration
  */
 import { createContext, useContext, useEffect, useState } from 'react'
-import * as SecureStore from 'expo-secure-store'
+import { secureStorage } from '../lib/secureStorage'
 import { api } from '../lib/api'
 import { registerForPushNotifications } from '../lib/notifications'
 
@@ -41,8 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ;(async () => {
       try {
         const [t, u] = await Promise.all([
-          SecureStore.getItemAsync(TOKEN_KEY),
-          SecureStore.getItemAsync(USER_KEY),
+          secureStorage.getItemAsync(TOKEN_KEY),
+          secureStorage.getItemAsync(USER_KEY),
         ])
         if (t && u) {
           const parsed = JSON.parse(u) as AuthUser
@@ -60,8 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const persist = async (token: string, user: AuthUser) => {
     await Promise.all([
-      SecureStore.setItemAsync(TOKEN_KEY, token),
-      SecureStore.setItemAsync(USER_KEY, JSON.stringify(user)),
+      secureStorage.setItemAsync(TOKEN_KEY, token),
+      secureStorage.setItemAsync(USER_KEY, JSON.stringify(user)),
     ])
     api.setToken(token)
     setToken(token)
@@ -92,8 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await Promise.all([
-      SecureStore.deleteItemAsync(TOKEN_KEY),
-      SecureStore.deleteItemAsync(USER_KEY),
+      secureStorage.deleteItemAsync(TOKEN_KEY),
+      secureStorage.deleteItemAsync(USER_KEY),
     ])
     api.setToken(null)
     setToken(null)
