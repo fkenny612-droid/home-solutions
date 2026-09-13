@@ -101,7 +101,7 @@ export class ProvidersService {
     return {
       available:  p.earningsBalance,
       thisMonth:  Math.round(p.earningsBalance * 5.87),
-      total:      p.jobCount * 1200,
+      total:      p.jobCount,
     }
   }
 

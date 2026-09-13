@@ -32,6 +32,7 @@ export default function ProviderEarnings() {
   const [earnings,    setEarnings]    = useState({ available: 4840, thisMonth: 28440, total: 892 })
   const [unreadCount, setUnreadCount] = useState(0)
   const [recentJobs,  setRecentJobs]  = useState<Booking[]>([])
+  const [weeklyCompleted, setWeeklyCompleted] = useState<number | null>(null)
 
   useEffect(() => {
     if (user?.id) {
@@ -40,8 +41,9 @@ export default function ProviderEarnings() {
         const mine = all
           .filter(b => b.providerId === user.id)
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 3)
-        setRecentJobs(mine)
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+        setWeeklyCompleted(mine.filter(b => new Date(b.updatedAt).getTime() >= sevenDaysAgo).length)
+        setRecentJobs(mine.slice(0, 3))
       }).catch(() => {})
     }
     api.notifications.unreadCount().then(r => setUnreadCount(r.count)).catch(() => {})
@@ -82,7 +84,9 @@ export default function ProviderEarnings() {
         <View style={s.balanceCard}>
           <Text style={s.balanceLabel}>AVAILABLE TO WITHDRAW</Text>
           <Text style={s.balanceAmt}>R {earnings.available.toLocaleString()}</Text>
-          <Text style={s.balanceSub}>7 completed jobs this week</Text>
+          <Text style={s.balanceSub}>
+            {weeklyCompleted === null ? ' ' : `${weeklyCompleted} completed job${weeklyCompleted === 1 ? '' : 's'} this week`}
+          </Text>
         </View>
 
         <View style={s.statRow}>
