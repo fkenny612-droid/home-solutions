@@ -19,27 +19,35 @@ export class BookingsService {
   ) {}
 
   /** Clients see only their own bookings, providers see their assigned + open pending jobs, admins see all. */
-  findAll(user: RequestUser, status?: BookingStatus, serviceType?: ServiceType) {
+  async findAll(user: RequestUser, status?: BookingStatus, serviceType?: ServiceType) {
     const scope =
       user.role === 'admin'    ? {} :
       user.role === 'provider' ? { OR: [{ providerId: user.sub }, { providerId: null, status: 'pending' }] } :
       /* client */                { clientId: user.sub }
 
-    return this.prisma.booking.findMany({
+    const bookings = await this.prisma.booking.findMany({
       where: {
         ...scope,
         ...(status      ? { status }      : {}),
         ...(serviceType ? { serviceType } : {}),
       },
       orderBy: { createdAt: 'desc' },
+      include: { provider: true },
     })
+    return bookings.map(this.withProviderName)
   }
 
   async findOne(id: string, user: RequestUser) {
-    const booking = await this.prisma.booking.findUnique({ where: { id } })
+    const booking = await this.prisma.booking.findUnique({ where: { id }, include: { provider: true } })
     if (!booking) throw new NotFoundException(`Booking ${id} not found`)
     this.assertParty(booking, user)
-    return booking
+    return this.withProviderName(booking)
+  }
+
+  /** Flattens the joined provider relation into a plain providerName field, matching the client's expected shape. */
+  private withProviderName<T extends { provider?: { name: string } | null }>(booking: T) {
+    const { provider, ...rest } = booking
+    return { ...rest, providerName: provider?.name ?? null }
   }
 
   /** Caller must be the client, the assigned provider, or an admin. */
