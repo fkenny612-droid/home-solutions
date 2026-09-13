@@ -15,19 +15,19 @@ export class SubscriptionsController {
   @Get('my')
   @UseGuards(AuthGuard('jwt'))
   getMy(@Req() req: any) {
-    return this.svc.getMy(req.user.id, req.user.role)
+    return this.svc.getMy(req.user.sub, req.user.role)
   }
 
   @Post('subscribe')
   @UseGuards(AuthGuard('jwt'))
   subscribe(@Req() req: any, @Body() body: { planId: string; peachTokenId?: string }) {
-    return this.svc.subscribe(req.user.id, req.user.role, body.planId, body.peachTokenId)
+    return this.svc.subscribe(req.user.sub, req.user.role, body.planId, body.peachTokenId)
   }
 
   @Delete('cancel')
   @UseGuards(AuthGuard('jwt'))
   cancel(@Req() req: any) {
-    return this.svc.cancel(req.user.id, req.user.role)
+    return this.svc.cancel(req.user.sub, req.user.role)
   }
 
   @Get('mrr')
