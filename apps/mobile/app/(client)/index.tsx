@@ -11,7 +11,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
 import { SERVICES, SERVICE_CATEGORIES, EASY_HIRE_IDS, EASY_FIX_IDS } from '../../lib/serviceConfig'
-import { api } from '../../lib/api'
+import { api, ActiveSubscription } from '../../lib/api'
 import SliderButton from '../../components/SliderButton'
 import { LogoImage } from '../../components/Logo'
 
@@ -82,6 +82,7 @@ export default function ClientHome() {
   const [recentJobs,   setRecentJobs]   = useState<{ emoji: string; name: string; meta: string; amt: string; serviceType: string }[]>([])
   const [serviceList,  setServiceList]  = useState<null | 'fix' | 'hire'>(null)
   const [sliderKey,    setSliderKey]    = useState(0)
+  const [subscription, setSubscription] = useState<ActiveSubscription | null>(null)
 
   useFocusEffect(useCallback(() => {
     setSliderKey(k => k + 1)
@@ -93,6 +94,10 @@ export default function ClientHome() {
       api.notifications.unreadCount().then(r => setUnreadCount(r.count)).catch(() => {})
     }, 30000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    api.subscriptions.my().then(setSubscription).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -158,9 +163,11 @@ export default function ClientHome() {
             <Text style={s.greeting}>{greeting()}, {displayName.split(' ')[0]}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={s.premiumPill}>
-              <Text style={s.premiumText}>PREMIUM</Text>
-            </View>
+            {subscription?.plan && (
+              <View style={s.premiumPill}>
+                <Text style={s.premiumText}>{subscription.plan.name.toUpperCase()}</Text>
+              </View>
+            )}
             <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(client)/notifications')} style={s.bellBtn}>
               <Ionicons name="notifications-outline" size={22} color={colors.white} />
               {unreadCount > 0 && (
