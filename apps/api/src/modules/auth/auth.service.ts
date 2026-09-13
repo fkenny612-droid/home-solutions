@@ -147,6 +147,12 @@ export class AuthService {
     }
   }
 
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    if (!user) throw new UnauthorizedException('User not found')
+    return { id: user.id, phone: user.phone, role: user.role, firstName: user.firstName, lastName: user.lastName, email: user.email, idVerified: user.idVerified }
+  }
+
   async updateProfile(userId: string, dto: { firstName?: string; lastName?: string; email?: string; avatarUrl?: string }) {
     const user = await this.prisma.user.update({
       where: { id: userId },

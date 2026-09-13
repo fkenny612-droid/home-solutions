@@ -48,7 +48,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   getMe(@Req() req: any) {
-    return this.svc.updateProfile(req.user.sub, {})
+    return this.svc.getProfile(req.user.sub)
   }
 
   @Get('bank-account')
