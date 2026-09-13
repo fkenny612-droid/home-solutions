@@ -50,7 +50,7 @@ const SERVICE_EMOJI: Record<string, string> = {
 
 export default function BookingDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [booking,    setBooking]    = useState<Booking | null>(null)
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -79,7 +79,12 @@ export default function BookingDetail() {
     finally { setLoading(false); setRefreshing(false) }
   }, [id])
 
-  useEffect(() => { load() }, [load])
+  // Wait for AuthProvider to finish restoring the session (and set the API token) before
+  // fetching — otherwise, on a cold app launch or a direct deep link (e.g. tapping a push
+  // notification straight into this screen), this effect fires before the token is set,
+  // the request goes out unauthenticated, gets a silent 401, and the screen is stuck
+  // showing "Booking not found" even though the booking exists.
+  useEffect(() => { if (!authLoading) load() }, [load, authLoading])
 
   useEffect(() => {
     if (!booking || booking.status !== 'completed' || !booking.providerId) { setCheckedReview(true); return }
