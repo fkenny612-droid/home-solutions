@@ -38,7 +38,9 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
     } catch {}
     throw new ApiError(message, res.status)
   }
-  return res.json()
+  const text = await res.text()
+  if (!text) return undefined as T
+  return JSON.parse(text)
 }
 
 export type ServiceType =
