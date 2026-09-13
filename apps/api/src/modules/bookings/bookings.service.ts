@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { SmsService } from '../notifications/sms.service'
+import { SubscriptionsService } from '../subscriptions/subscriptions.service'
 import { BookingStatus, ServiceType } from './booking.types'
 import { POINTS_PER_RAND_SPENT, REFERRAL_BONUS_POINTS } from '../loyalty/loyalty.constants'
 
@@ -16,6 +17,7 @@ export class BookingsService {
     private prisma:         PrismaService,
     private notifications:  NotificationsService,
     private sms:            SmsService,
+    private subscriptions:  SubscriptionsService,
   ) {}
 
   /** Clients see only their own bookings, providers see their assigned + open pending jobs, admins see all. */
@@ -161,9 +163,28 @@ export class BookingsService {
 
     if (status === 'completed') {
       this.awardLoyaltyAndReferral(booking.clientId, booking.finalAmount ?? booking.quotedAmount).catch(() => {})
+      if (booking.providerId) {
+        try {
+          await this.payoutProvider(booking.providerId, booking.finalAmount ?? booking.quotedAmount)
+        } catch (err) {
+          // Never let a payout failure undo the already-saved job completion — but this must not
+          // fail silently, since it means a provider didn't get credited for a job they did.
+          console.error(`Failed to credit provider ${booking.providerId} for completed booking ${booking.id}:`, err)
+        }
+      }
     }
 
     return booking
+  }
+
+  /** Credits a provider's earnings balance for a completed job, net of their subscription tier's platform commission. */
+  private async payoutProvider(providerId: string, amount: number) {
+    const commissionPct = await this.subscriptions.getProviderCommissionPct(providerId)
+    const payout = Math.round(amount * (1 - commissionPct / 100) * 100) / 100
+    await this.prisma.provider.update({
+      where: { id: providerId },
+      data:  { earningsBalance: { increment: payout }, jobCount: { increment: 1 } },
+    })
   }
 
   private async notifyOnStatusChange(booking: { id: string; clientId: string; providerId: string | null; serviceType: string; finalAmount: number | null; quotedAmount: number }, status: BookingStatus) {

@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
+import { SubscriptionsService } from '../subscriptions/subscriptions.service'
 
 export type ProviderStatus = 'pending_kyc' | 'active' | 'suspended'
 export type KycStatus      = 'pending' | 'in_review' | 'approved' | 'rejected'
 
 @Injectable()
 export class ProvidersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private subscriptions: SubscriptionsService,
+  ) {}
 
   private haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371
@@ -98,9 +102,20 @@ export class ProvidersService {
 
   async earnings(id: string) {
     const p = await this.findOne(id)
+
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1)
+    startOfMonth.setHours(0, 0, 0, 0)
+    const completedThisMonth = await this.prisma.booking.findMany({
+      where:  { providerId: id, status: 'completed', updatedAt: { gte: startOfMonth } },
+      select: { finalAmount: true, quotedAmount: true },
+    })
+    const grossThisMonth = completedThisMonth.reduce((sum, b) => sum + (b.finalAmount ?? b.quotedAmount), 0)
+    const commissionPct  = await this.subscriptions.getProviderCommissionPct(id)
+
     return {
       available:  p.earningsBalance,
-      thisMonth:  Math.round(p.earningsBalance * 5.87),
+      thisMonth:  Math.round(grossThisMonth * (1 - commissionPct / 100)),
       total:      p.jobCount,
     }
   }
@@ -145,9 +160,11 @@ export class ProvidersService {
     await this.prisma.review.create({
       data: { providerId: id, clientId: clientId ?? 'anonymous', stars, tags, comment, bookingId },
     })
+    // jobCount is credited when the booking is marked completed (see BookingsService.payoutProvider),
+    // not here — a job still counts even if the client never leaves a review.
     return this.prisma.provider.update({
       where: { id },
-      data:  { rating: newRating, reviewCount: newCount, jobCount: { increment: 1 } },
+      data:  { rating: newRating, reviewCount: newCount },
     })
   }
 
