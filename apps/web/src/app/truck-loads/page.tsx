@@ -5,7 +5,7 @@ import RouteMap from '@/components/truck-loads/RouteMap'
 import Login from '@/components/truck-loads/Login'
 import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
 import {
-  ApiError, fmtDate, fmtDuration, fmtFeet, fmtLb, fmtMiles, fmtMoney, dispatch, getToken, hazmatLabel,
+  ApiError, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, fmtMoney, dispatch, getToken, hazmatLabel,
   Load, LoadStatus, setToken, Summary, Truck, truckFitProblems,
 } from '@/lib/truck-loads'
 
@@ -69,7 +69,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
             <Pill className={STATUS_STYLE[load.status]}>{statusLabel(load.status)}</Pill>
             {load.hazmatTypes.length > 0 && <Pill className="bg-orange-100 text-orange-800"><i className="ti ti-alert-triangle mr-1" />Hazmat</Pill>}
           </div>
-          <p className="text-sm text-silver-500 mt-0.5">{load.shipperName} · {load.commodity} · {fmtLb(load.weightKg)}{load.rate != null && ` · ${fmtMoney(load.rate)}`}</p>
+          <p className="text-sm text-silver-500 mt-0.5">{load.shipperName} · {load.commodity} · {fmtWeight(load.weightKg)}{load.rate != null && ` · ${fmtMoney(load.rate)}`}</p>
         </div>
         <div className="flex gap-2">
           {load.status === 'assigned' && (
@@ -114,7 +114,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
             <span className="font-medium text-silver-900">Truck route</span>
             {preview && <span className="ml-2 text-brand-700">Preview with {preview.previewTruck?.name} — not saved</span>}
             {shown.routeDistanceM != null && (
-              <span className="ml-2 text-silver-600">{fmtMiles(shown.routeDistanceM)} · {fmtDuration(shown.routeDurationS ?? 0)} drive</span>
+              <span className="ml-2 text-silver-600">{fmtDistance(shown.routeDistanceM)} · {fmtDuration(shown.routeDurationS ?? 0)} drive</span>
             )}
           </div>
           {load.truck && (load.status === 'assigned' || load.status === 'in_transit') && (
@@ -151,7 +151,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
             <div>
               <span className="font-medium">{load.truck.name}</span> <span className="text-silver-500">{load.truck.plate}</span>
               {load.truck.driverName && <span className="text-silver-500"> · {load.truck.driverName}</span>}
-              <div className="text-xs text-silver-500">{fmtFeet(load.truck.heightMm)} tall · {fmtFeet(load.truck.lengthMm)} long · {load.truck.axleCount} axles · laden {fmtLb(load.truck.tareWeightKg + load.weightKg)}</div>
+              <div className="text-xs text-silver-500">{fmtLength(load.truck.heightMm)} tall · {fmtLength(load.truck.lengthMm)} long · {load.truck.axleCount} axles · laden {fmtWeight(load.truck.tareWeightKg + load.weightKg)}</div>
             </div>
             {load.status === 'assigned' && (
               <button onClick={() => run('unassign', () => dispatch.unassign(load.id))} disabled={!!busy}
@@ -170,7 +170,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
                     <span className="font-medium">{truck.name}</span> <span className="text-silver-500">{truck.plate}</span>
                     {problems.length
                       ? <div className="text-xs text-red-700">{problems.join(' · ')}</div>
-                      : <div className="text-xs text-green-700">Fits · payload {fmtLb(truck.grossWeightKg - truck.tareWeightKg)}</div>}
+                      : <div className="text-xs text-green-700">Fits · payload {fmtWeight(truck.grossWeightKg - truck.tareWeightKg)}</div>}
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {routingEnabled && (
@@ -241,8 +241,8 @@ function Fleet({ trucks, onChanged }: { trucks: Truck[]; onChanged: () => void }
               <tr key={t.id}>
                 <td className="px-3 py-2"><div className="font-medium">{t.name}</div><div className="text-xs text-silver-500">{t.plate}</div></td>
                 <td className="px-3 py-2 text-silver-600">{t.driverName ?? '—'}</td>
-                <td className="px-3 py-2 text-silver-600 whitespace-nowrap">{fmtFeet(t.heightMm)} × {fmtFeet(t.lengthMm)}</td>
-                <td className="px-3 py-2 text-silver-600 whitespace-nowrap">{fmtLb(t.grossWeightKg - t.tareWeightKg)}</td>
+                <td className="px-3 py-2 text-silver-600 whitespace-nowrap">{fmtLength(t.heightMm)} × {fmtLength(t.lengthMm)}</td>
+                <td className="px-3 py-2 text-silver-600 whitespace-nowrap">{fmtWeight(t.grossWeightKg - t.tareWeightKg)}</td>
                 <td className="px-3 py-2 text-xs text-silver-600">{t.hazmatTypes.map(hazmatLabel).join(', ') || '—'}</td>
                 <td className="px-3 py-2"><Pill className={TRUCK_STYLE[t.status]}>{statusLabel(t.status)}</Pill></td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -388,9 +388,9 @@ export default function DispatchPage() {
                       <div className="text-xs text-silver-600 mt-1 truncate">{l.originAddress}</div>
                       <div className="text-xs text-silver-600 truncate">→ {l.destAddress}</div>
                       <div className="text-[11px] text-silver-400 mt-1">
-                        {fmtDate(l.pickupAt)} · {fmtLb(l.weightKg)}
+                        {fmtDate(l.pickupAt)} · {fmtWeight(l.weightKg)}
                         {l.truck && ` · ${l.truck.name}`}
-                        {l.routeDistanceM != null && ` · ${fmtMiles(l.routeDistanceM)}`}
+                        {l.routeDistanceM != null && ` · ${fmtDistance(l.routeDistanceM)}`}
                         {l.hazmatTypes.length > 0 && ' · hazmat'}
                       </div>
                     </button>

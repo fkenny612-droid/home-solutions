@@ -17,7 +17,7 @@ import {
   type ArrivalEvent, type Location as NavLocation,
 } from '@googlemaps/react-native-navigation-sdk'
 import { api, ApiError, type NavigationPlan } from '../../lib/api'
-import { fmtDuration, fmtMiles } from '../../lib/format'
+import { fmtDuration, fmtDistance } from '../../lib/format'
 import { colors } from '../../lib/theme'
 import { Button } from '../../components/ui'
 
@@ -264,7 +264,7 @@ export default function Navigate() {
         {phase.kind === 'guiding' && plan && (
           <View style={s.planChip} pointerEvents="none">
             <Text style={s.planChipText}>
-              To {plan.leg} · {fmtMiles(plan.distanceMeters)} · {fmtDuration(plan.durationSeconds)} · truck route
+              To {plan.leg} · {fmtDistance(plan.distanceMeters)} · {fmtDuration(plan.durationSeconds)} · truck route
             </Text>
           </View>
         )}

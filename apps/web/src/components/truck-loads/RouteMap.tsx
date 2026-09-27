@@ -47,8 +47,8 @@ export default function RouteMap({ polyline, origin, destination }: {
       if (cancelled || !el.current) return
       if (!map.current) {
         map.current = new google.maps.Map(el.current, {
-          center: { lat: 39.5, lng: -98.35 }, // contiguous US
-          zoom: 4,
+          center: { lat: -28.8, lng: 24.9 }, // South Africa
+          zoom: 5,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,

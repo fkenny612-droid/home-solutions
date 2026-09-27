@@ -5,7 +5,7 @@ import Login from '@/components/truck-loads/Login'
 import RouteMap from '@/components/truck-loads/RouteMap'
 import { inputCls } from '@/components/truck-loads/forms'
 import {
-  ApiError, driver, DriverLoad, DriverTruck, fmtDate, fmtDuration, fmtFeet, fmtLb, fmtMiles, getToken,
+  ApiError, driver, DriverLoad, DriverTruck, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, getToken,
   hazmatLabel, setToken,
 } from '@/lib/truck-loads'
 
@@ -45,8 +45,8 @@ function LoadCard({ load, onOpen }: { load: DriverLoad; onOpen: () => void }) {
         <div className="flex gap-2"><span className="text-silver-400 w-4">B</span><span className="truncate">{load.destAddress}</span></div>
       </div>
       <div className="text-xs text-silver-500">
-        {load.pickupAt ? `Pickup ${fmtDate(load.pickupAt)}` : 'Pickup time not set'} · {fmtLb(load.weightKg)}
-        {load.routeDistanceM != null && ` · ${fmtMiles(load.routeDistanceM)}`}
+        {load.pickupAt ? `Pickup ${fmtDate(load.pickupAt)}` : 'Pickup time not set'} · {fmtWeight(load.weightKg)}
+        {load.routeDistanceM != null && ` · ${fmtDistance(load.routeDistanceM)}`}
         {load.hazmatTypes.length > 0 && ' · hazmat'}
       </div>
     </button>
@@ -109,7 +109,7 @@ function LoadView({ load, onBack, onChange }: { load: DriverLoad; onBack: () => 
           <div className="flex items-baseline justify-between">
             <span className="font-medium text-silver-900">Truck route</span>
             {load.routeDistanceM != null && (
-              <span className="text-sm text-silver-600">{fmtMiles(load.routeDistanceM)} · {fmtDuration(load.routeDurationS ?? 0)}</span>
+              <span className="text-sm text-silver-600">{fmtDistance(load.routeDistanceM)} · {fmtDuration(load.routeDurationS ?? 0)}</span>
             )}
           </div>
           {load.routeWarnings.length > 0 && (
@@ -131,11 +131,11 @@ function LoadView({ load, onBack, onChange }: { load: DriverLoad; onBack: () => 
 
         <section className="rounded-2xl bg-white border border-silver-200 p-4 grid grid-cols-2 gap-y-3 text-sm">
           <div><div className="text-xs text-silver-400">Cargo</div><div className="text-silver-900">{load.commodity}</div></div>
-          <div><div className="text-xs text-silver-400">Weight</div><div className="text-silver-900">{fmtLb(load.weightKg)}</div></div>
+          <div><div className="text-xs text-silver-400">Weight</div><div className="text-silver-900">{fmtWeight(load.weightKg)}</div></div>
           {load.truck && <>
             <div><div className="text-xs text-silver-400">Truck</div><div className="text-silver-900">{load.truck.name} · {load.truck.plate}</div></div>
-            <div><div className="text-xs text-silver-400">Height · length</div><div className="text-silver-900">{fmtFeet(load.truck.heightMm)} · {fmtFeet(load.truck.lengthMm)}</div></div>
-            <div className="col-span-2"><div className="text-xs text-silver-400">Laden weight</div><div className="text-silver-900">{fmtLb(load.truck.tareWeightKg + load.weightKg)}</div></div>
+            <div><div className="text-xs text-silver-400">Height · length</div><div className="text-silver-900">{fmtLength(load.truck.heightMm)} · {fmtLength(load.truck.lengthMm)}</div></div>
+            <div className="col-span-2"><div className="text-xs text-silver-400">Laden weight</div><div className="text-silver-900">{fmtWeight(load.truck.tareWeightKg + load.weightKg)}</div></div>
           </>}
           {load.notes && <div className="col-span-2"><div className="text-xs text-silver-400">Notes from dispatch</div><div className="text-silver-900 whitespace-pre-wrap">{load.notes}</div></div>}
         </section>

@@ -108,7 +108,7 @@ export class GoogleRoutesService {
           ...(truck.hazmatTypes.length ? { hazardousGoodsTypes: truck.hazmatTypes } : {}),
         },
       },
-      units: 'IMPERIAL',
+      units: 'METRIC',
       ...(opts.routeToken ? { routingPreference: 'TRAFFIC_AWARE' } : {}),
     }
     const fieldMask = [...FIELD_MASK, ...(opts.routeToken ? ['routes.routeToken'] : [])].join(',')

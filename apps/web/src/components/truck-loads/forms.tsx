@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ftToMm, hazmatLabel, lbToKg, LoadInput, TruckInput } from '@/lib/truck-loads'
+import { hazmatLabel, LoadInput, mToMm, TruckInput } from '@/lib/truck-loads'
 
 export const inputCls =
   'w-full rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm text-silver-900 focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600'
@@ -81,11 +81,11 @@ export function TruckForm({ hazmatTypes, onSubmit }: { hazmatTypes: string[]; on
         plate:         str(f.get('plate'))!,
         driverName:    str(f.get('driverName')) ?? null,
         driverPhone:   str(f.get('driverPhone')) ?? null,
-        heightMm:      ftToMm(num(f.get('heightFt'))!),
-        widthMm:       ftToMm(num(f.get('widthFt'))!),
-        lengthMm:      ftToMm(num(f.get('lengthFt'))!),
-        grossWeightKg: lbToKg(num(f.get('grossLb'))!),
-        tareWeightKg:  lbToKg(num(f.get('tareLb'))!),
+        heightMm:      mToMm(num(f.get('heightM'))!),
+        widthMm:       mToMm(num(f.get('widthM'))!),
+        lengthMm:      mToMm(num(f.get('lengthM'))!),
+        grossWeightKg: Math.round(num(f.get('grossKg'))!),
+        tareWeightKg:  Math.round(num(f.get('tareKg'))!),
         axleCount:     num(f.get('axles'))!,
         hazmatTypes:   hazmat,
       })
@@ -96,22 +96,22 @@ export function TruckForm({ hazmatTypes, onSubmit }: { hazmatTypes: string[]; on
     }
   }
 
-  // Defaults: a typical US 53' dry-van tractor-trailer
+  // Defaults: a typical South African interlink (7 axles, 56 t GCM)
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <Field label="Unit name"><input name="name" required className={inputCls} placeholder="Unit 12" /></Field>
-        <Field label="Plate"><input name="plate" required className={inputCls} placeholder="TX 4KD-221" /></Field>
+        <Field label="Plate"><input name="plate" required className={inputCls} placeholder="ND 123-456" /></Field>
         <Field label="Driver"><input name="driverName" className={inputCls} /></Field>
         <Field label="Driver phone" hint="The driver signs in to the driver app with this number."><input name="driverPhone" type="tel" className={inputCls} /></Field>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <Field label="Height (ft)"><input name="heightFt" type="number" step="0.1" min="4" max="19" required defaultValue="13.5" className={inputCls} /></Field>
-        <Field label="Width (ft)"><input name="widthFt" type="number" step="0.1" min="4" max="13" required defaultValue="8.5" className={inputCls} /></Field>
-        <Field label="Length (ft)"><input name="lengthFt" type="number" step="0.5" min="10" max="130" required defaultValue="72" className={inputCls} /></Field>
-        <Field label="Gross weight (lb)"><input name="grossLb" type="number" min="2500" max="220000" required defaultValue="80000" className={inputCls} /></Field>
-        <Field label="Tare weight (lb)"><input name="tareLb" type="number" min="1100" max="130000" required defaultValue="35000" className={inputCls} /></Field>
-        <Field label="Axles"><input name="axles" type="number" min="2" max="12" required defaultValue="5" className={inputCls} /></Field>
+        <Field label="Height (m)"><input name="heightM" type="number" step="0.01" min="1" max="6" required defaultValue="4.3" className={inputCls} /></Field>
+        <Field label="Width (m)"><input name="widthM" type="number" step="0.01" min="1" max="4" required defaultValue="2.6" className={inputCls} /></Field>
+        <Field label="Length (m)"><input name="lengthM" type="number" step="0.1" min="3" max="40" required defaultValue="22" className={inputCls} /></Field>
+        <Field label="Gross weight (kg)"><input name="grossKg" type="number" min="1000" max="100000" required defaultValue="56000" className={inputCls} /></Field>
+        <Field label="Tare weight (kg)"><input name="tareKg" type="number" min="500" max="60000" required defaultValue="17000" className={inputCls} /></Field>
+        <Field label="Axles"><input name="axles" type="number" min="2" max="12" required defaultValue="7" className={inputCls} /></Field>
       </div>
       <Field label="Hazmat certifications" hint="Loads with hazmat can only go on trucks certified for every class.">
         <HazmatPicker types={hazmatTypes} value={hazmat} onChange={setHazmat} />
@@ -136,7 +136,7 @@ export function LoadForm({ hazmatTypes, onSubmit }: { hazmatTypes: string[]; onS
         reference:     str(f.get('reference'))!,
         shipperName:   str(f.get('shipperName'))!,
         commodity:     str(f.get('commodity'))!,
-        weightKg:      lbToKg(num(f.get('weightLb'))!),
+        weightKg:      Math.round(num(f.get('weightKg'))!),
         hazmatTypes:   hazmat,
         rate:          num(f.get('rate')),
         originAddress: str(f.get('originAddress'))!,
@@ -157,11 +157,11 @@ export function LoadForm({ hazmatTypes, onSubmit }: { hazmatTypes: string[]; onS
       <div className="grid grid-cols-2 gap-3">
         <Field label="Load #"><input name="reference" required className={inputCls} placeholder="LD-10482" /></Field>
         <Field label="Shipper"><input name="shipperName" required className={inputCls} /></Field>
-        <Field label="Commodity"><input name="commodity" required className={inputCls} placeholder="Palletized beverages" /></Field>
-        <Field label="Weight (lb)"><input name="weightLb" type="number" min="1" max="130000" required className={inputCls} /></Field>
+        <Field label="Commodity"><input name="commodity" required className={inputCls} placeholder="Palletised beverages" /></Field>
+        <Field label="Weight (kg)"><input name="weightKg" type="number" min="1" max="60000" required className={inputCls} /></Field>
       </div>
-      <Field label="Pickup address"><input name="originAddress" required className={inputCls} placeholder="1200 Industrial Blvd, Dallas, TX" /></Field>
-      <Field label="Delivery address"><input name="destAddress" required className={inputCls} placeholder="455 Commerce St, Memphis, TN" /></Field>
+      <Field label="Pickup address"><input name="originAddress" required className={inputCls} placeholder="12 Jet Park Rd, Boksburg" /></Field>
+      <Field label="Delivery address"><input name="destAddress" required className={inputCls} placeholder="1 Bayhead Rd, Durban" /></Field>
       <div className="grid grid-cols-3 gap-3">
         <Field label="Pickup"><input name="pickupAt" type="datetime-local" className={inputCls} /></Field>
         <Field label="Deliver by"><input name="deliverBy" type="datetime-local" className={inputCls} /></Field>

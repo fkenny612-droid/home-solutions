@@ -1,7 +1,7 @@
 /**
  * Truck Loads API client + unit helpers.
- * The API stores mm / kg (what Google's truck routing expects); the UI works
- * in feet / lbs / miles because truck routing coverage is the US.
+ * The API stores mm / kg (what Google's truck routing expects); the UI shows
+ * metres, kg and km.
  */
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
@@ -153,23 +153,19 @@ export const driver = {
     dr<DriverLoad>(`/truck-loads/driver/loads/${id}/status`, { method: 'POST', body: JSON.stringify({ status, note }) }),
 }
 
-// ── Units ─────────────────────────────────────────────────────────────────────
+// ── Units (metric, South Africa) ─────────────────────────────────────────────
 
-const MM_PER_FT = 304.8
-const LB_PER_KG = 2.20462
+export const mToMm = (m: number) => Math.round(m * 1000)
 
-export const ftToMm  = (ft: number) => Math.round(ft * MM_PER_FT)
-export const mmToFt  = (mm: number) => mm / MM_PER_FT
-export const lbToKg  = (lb: number) => Math.round(lb / LB_PER_KG)
-export const kgToLb  = (kg: number) => Math.round(kg * LB_PER_KG)
-
-export function fmtFeet(mm: number) {
-  const totalIn = Math.round(mm / 25.4)
-  return `${Math.floor(totalIn / 12)}′${totalIn % 12}″`
+/** 4115 → "4.12 m" */
+export const fmtLength = (mm: number) => `${(mm / 1000).toFixed(2)} m`
+/** 13600 → "13 600 kg" */
+export const fmtWeight = (kg: number) => `${Math.round(kg).toLocaleString('en-ZA')} kg`
+/** 727000 → "727 km" */
+export function fmtDistance(m: number) {
+  const km = m / 1000
+  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km).toLocaleString('en-ZA')} km`
 }
-// Weights are stored as whole kg, so round to 10 lb to hide the lb→kg→lb drift
-export const fmtLb    = (kg: number) => `${(Math.round(kg * LB_PER_KG / 10) * 10).toLocaleString()} lb`
-export const fmtMiles = (m: number) => `${Math.round(m / 1609.344).toLocaleString()} mi`
 export function fmtDuration(s: number) {
   const h = Math.floor(s / 3600)
   const m = Math.round((s % 3600) / 60)
@@ -178,7 +174,7 @@ export function fmtDuration(s: number) {
 export const fmtMoney = (n: number) => n.toLocaleString('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 })
 export function fmtDate(iso: string | null) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return new Date(iso).toLocaleString('en-ZA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 export const hazmatLabel = (h: string) => h.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
@@ -188,7 +184,7 @@ export function truckFitProblems(truck: Truck, load: Pick<Load, 'weightKg' | 'ha
   if (truck.status === 'out_of_service') problems.push('out of service')
   if (truck.status === 'on_load' && truck.id !== load.truckId) problems.push('on another load')
   const payload = truck.grossWeightKg - truck.tareWeightKg
-  if (load.weightKg > payload) problems.push(`payload ${fmtLb(payload)}`)
+  if (load.weightKg > payload) problems.push(`payload ${fmtWeight(payload)}`)
   const missing = load.hazmatTypes.filter(h => !truck.hazmatTypes.includes(h))
   if (missing.length) problems.push(`no ${missing.map(hazmatLabel).join(', ')} cert`)
   return problems

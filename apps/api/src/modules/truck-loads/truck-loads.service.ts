@@ -262,12 +262,12 @@ export class TruckLoadsService {
     if (previewTruckId && previewTruckId !== load.truckId) {
       return { ...load, ...data, preview: true, previewTruck: truck }
     }
-    const miles = (result.distanceMeters / 1609.344).toFixed(0)
+    const km = Math.round(result.distanceMeters / 1000)
     return this.prisma.load.update({
       where: { id },
       data: {
         ...data,
-        events: { create: { type: 'routed', message: `Truck route computed: ${miles} mi via ${truck.name}` } },
+        events: { create: { type: 'routed', message: `Truck route computed: ${km} km via ${truck.name}` } },
       },
       include: LOAD_INCLUDE,
     })

@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useFocusEffect } from 'expo-router'
 import { api, type DriverLoad, type DriverTruck } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { fmtDate, fmtLb, fmtMiles } from '../lib/format'
+import { fmtDate, fmtWeight, fmtDistance } from '../lib/format'
 import { colors } from '../lib/theme'
 import { Card, Label, StatusPill } from '../components/ui'
 
@@ -22,8 +22,8 @@ function LoadCard({ load }: { load: DriverLoad }) {
           <Text style={s.addr} numberOfLines={1}><Text style={s.ab}>A  </Text>{load.originAddress}</Text>
           <Text style={s.addr} numberOfLines={1}><Text style={s.ab}>B  </Text>{load.destAddress}</Text>
           <Text style={s.meta}>
-            {load.pickupAt ? `Pickup ${fmtDate(load.pickupAt)}` : 'Pickup time not set'} · {fmtLb(load.weightKg)}
-            {load.routeDistanceM != null ? ` · ${fmtMiles(load.routeDistanceM)}` : ''}
+            {load.pickupAt ? `Pickup ${fmtDate(load.pickupAt)}` : 'Pickup time not set'} · {fmtWeight(load.weightKg)}
+            {load.routeDistanceM != null ? ` · ${fmtDistance(load.routeDistanceM)}` : ''}
             {load.hazmatTypes.length ? ' · hazmat' : ''}
           </Text>
         </Card>

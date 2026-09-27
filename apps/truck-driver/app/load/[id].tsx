@@ -3,7 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { api, type DriverLoad } from '../../lib/api'
-import { fmtDate, fmtDuration, fmtFeet, fmtLb, fmtMiles } from '../../lib/format'
+import { fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance } from '../../lib/format'
 import { colors } from '../../lib/theme'
 import { Button, Card, HazmatBanner, Label, StatusPill } from '../../components/ui'
 
@@ -81,18 +81,18 @@ export default function LoadDetail() {
         {load.routeDistanceM != null && (
           <Card style={{ gap: 6 }}>
             <Label>Planned truck route (pickup → delivery)</Label>
-            <Text style={s.addr}>{fmtMiles(load.routeDistanceM)} · {fmtDuration(load.routeDurationS ?? 0)}</Text>
+            <Text style={s.addr}>{fmtDistance(load.routeDistanceM)} · {fmtDuration(load.routeDurationS ?? 0)}</Text>
             {load.routeWarnings.map((w, i) => <Text key={i} style={s.warning}>⚠ {w}</Text>)}
           </Card>
         )}
 
         <Card style={s.grid}>
           <View style={s.cell}><Label>Cargo</Label><Text style={s.value}>{load.commodity}</Text></View>
-          <View style={s.cell}><Label>Weight</Label><Text style={s.value}>{fmtLb(load.weightKg)}</Text></View>
+          <View style={s.cell}><Label>Weight</Label><Text style={s.value}>{fmtWeight(load.weightKg)}</Text></View>
           {load.truck && <>
             <View style={s.cell}><Label>Truck</Label><Text style={s.value}>{load.truck.name} · {load.truck.plate}</Text></View>
-            <View style={s.cell}><Label>Height · length</Label><Text style={s.value}>{fmtFeet(load.truck.heightMm)} · {fmtFeet(load.truck.lengthMm)}</Text></View>
-            <View style={s.cell}><Label>Laden weight</Label><Text style={s.value}>{fmtLb(load.truck.tareWeightKg + load.weightKg)}</Text></View>
+            <View style={s.cell}><Label>Height · length</Label><Text style={s.value}>{fmtLength(load.truck.heightMm)} · {fmtLength(load.truck.lengthMm)}</Text></View>
+            <View style={s.cell}><Label>Laden weight</Label><Text style={s.value}>{fmtWeight(load.truck.tareWeightKg + load.weightKg)}</Text></View>
           </>}
           {load.notes && <View style={[s.cell, { width: '100%' }]}><Label>Notes from dispatch</Label><Text style={s.value}>{load.notes}</Text></View>}
         </Card>
