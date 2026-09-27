@@ -1,12 +1,13 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import LogoMark from '@/components/Logo'
-import RouteMap from '@/components/freight/RouteMap'
-import { Field, inputCls, LoadForm, Modal, TruckForm } from '@/components/freight/forms'
+import RouteMap from '@/components/truck-loads/RouteMap'
+import Login from '@/components/truck-loads/Login'
+import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
 import {
-  ApiError, fmtDate, fmtDuration, fmtFeet, fmtLb, fmtMiles, fmtMoney, freight, getToken, hazmatLabel,
+  ApiError, fmtDate, fmtDuration, fmtFeet, fmtLb, fmtMiles, fmtMoney, dispatch, getToken, hazmatLabel,
   Load, LoadStatus, setToken, Summary, Truck, truckFitProblems,
-} from '@/lib/freight'
+} from '@/lib/truck-loads'
 
 const STATUS_STYLE: Record<LoadStatus, string> = {
   booked:     'bg-stone-100 text-stone-700',
@@ -24,43 +25,6 @@ const statusLabel = (s: string) => s.replace(/_/g, ' ').replace(/^\w/, c => c.to
 
 function Pill({ className, children }: { className: string; children: React.ReactNode }) {
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${className}`}>{children}</span>
-}
-
-// ─── Login ────────────────────────────────────────────────────────────────────
-
-function Login({ onDone }: { onDone: () => void }) {
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const f = new FormData(e.currentTarget)
-    setBusy(true); setError(null)
-    try {
-      const { accessToken } = await freight.login(String(f.get('phone')), String(f.get('password')))
-      setToken(accessToken)
-      onDone()
-    } catch (err: any) {
-      setError(err.status === 401 ? 'Wrong phone number or password' : err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <main className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <LogoMark size={28} variant="dark" />
-          <h1 className="font-semibold text-stone-900">Freight dispatch</h1>
-        </div>
-        <Field label="Phone"><input name="phone" required className={inputCls} autoComplete="username" /></Field>
-        <Field label="Password"><input name="password" type="password" required className={inputCls} autoComplete="current-password" /></Field>
-        {error && <p className="text-sm text-red-700">{error}</p>}
-        <button disabled={busy} className="press w-full rounded-lg bg-stone-900 text-white py-2.5 text-sm font-medium disabled:opacity-50">
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
-    </main>
-  )
 }
 
 // ─── Load detail ──────────────────────────────────────────────────────────────
@@ -109,19 +73,19 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
         </div>
         <div className="flex gap-2">
           {load.status === 'assigned' && (
-            <button onClick={() => run('transit', () => freight.setStatus(load.id, 'in_transit'))} disabled={!!busy}
+            <button onClick={() => run('transit', () => dispatch.setStatus(load.id, 'in_transit'))} disabled={!!busy}
               className="press rounded-lg bg-stone-900 text-white px-3 py-1.5 text-sm disabled:opacity-50">
               <i className="ti ti-truck mr-1" />Dispatch
             </button>
           )}
           {load.status === 'in_transit' && (
-            <button onClick={() => run('deliver', () => freight.setStatus(load.id, 'delivered'))} disabled={!!busy}
+            <button onClick={() => run('deliver', () => dispatch.setStatus(load.id, 'delivered'))} disabled={!!busy}
               className="press rounded-lg bg-green-700 text-white px-3 py-1.5 text-sm disabled:opacity-50">
               <i className="ti ti-check mr-1" />Mark delivered
             </button>
           )}
           {editable && (
-            <button onClick={() => confirm(`Cancel load ${load.reference}?`) && run('cancel', () => freight.setStatus(load.id, 'cancelled'))}
+            <button onClick={() => confirm(`Cancel load ${load.reference}?`) && run('cancel', () => dispatch.setStatus(load.id, 'cancelled'))}
               disabled={!!busy} className="press rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 disabled:opacity-50">
               Cancel load
             </button>
@@ -153,9 +117,9 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
               <span className="ml-2 text-stone-600">{fmtMiles(shown.routeDistanceM)} · {fmtDuration(shown.routeDurationS ?? 0)} drive</span>
             )}
           </div>
-          {load.truck && (
+          {load.truck && (load.status === 'assigned' || load.status === 'in_transit') && (
             <button
-              onClick={() => run('route', () => freight.route(load.id))}
+              onClick={() => run('route', () => dispatch.route(load.id))}
               disabled={!!busy || !routingEnabled}
               title={routingEnabled ? '' : 'GOOGLE_MAPS_API_KEY is not set on the API'}
               className="press rounded-lg bg-yellow-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
@@ -190,7 +154,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
               <div className="text-xs text-stone-500">{fmtFeet(load.truck.heightMm)} tall · {fmtFeet(load.truck.lengthMm)} long · {load.truck.axleCount} axles · laden {fmtLb(load.truck.tareWeightKg + load.weightKg)}</div>
             </div>
             {load.status === 'assigned' && (
-              <button onClick={() => run('unassign', () => freight.unassign(load.id))} disabled={!!busy}
+              <button onClick={() => run('unassign', () => dispatch.unassign(load.id))} disabled={!!busy}
                 className="press text-sm text-stone-600 underline disabled:opacity-50">Unassign</button>
             )}
           </div>
@@ -210,12 +174,12 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {routingEnabled && (
-                      <button onClick={() => run(`p-${truck.id}`, () => freight.route(load.id, truck.id), true)} disabled={!!busy}
+                      <button onClick={() => run(`p-${truck.id}`, () => dispatch.route(load.id, truck.id), true)} disabled={!!busy}
                         className="press rounded-md border border-stone-300 px-2 py-1 text-xs disabled:opacity-50">
                         {busy === `p-${truck.id}` ? '…' : 'Preview route'}
                       </button>
                     )}
-                    <button onClick={() => run(`a-${truck.id}`, () => freight.assign(load.id, truck.id))} disabled={!!busy || problems.length > 0}
+                    <button onClick={() => run(`a-${truck.id}`, () => dispatch.assign(load.id, truck.id))} disabled={!!busy || problems.length > 0}
                       className="press rounded-md bg-stone-900 text-white px-2 py-1 text-xs disabled:opacity-40">
                       Assign
                     </button>
@@ -283,12 +247,12 @@ function Fleet({ trucks, onChanged }: { trucks: Truck[]; onChanged: () => void }
                 <td className="px-3 py-2"><Pill className={TRUCK_STYLE[t.status]}>{statusLabel(t.status)}</Pill></td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   {t.status === 'available' && (
-                    <button onClick={() => act(() => freight.updateTruck(t.id, { status: 'out_of_service' }))} className="text-xs text-stone-500 underline">Take out of service</button>
+                    <button onClick={() => act(() => dispatch.updateTruck(t.id, { status: 'out_of_service' }))} className="text-xs text-stone-500 underline">Take out of service</button>
                   )}
                   {t.status === 'out_of_service' && (
                     <>
-                      <button onClick={() => act(() => freight.updateTruck(t.id, { status: 'available' }))} className="text-xs text-stone-500 underline mr-3">Return to service</button>
-                      <button onClick={() => confirm(`Delete ${t.name}?`) && act(() => freight.deleteTruck(t.id))} className="text-xs text-red-600 underline">Delete</button>
+                      <button onClick={() => act(() => dispatch.updateTruck(t.id, { status: 'available' }))} className="text-xs text-stone-500 underline mr-3">Return to service</button>
+                      <button onClick={() => confirm(`Delete ${t.name}?`) && act(() => dispatch.deleteTruck(t.id))} className="text-xs text-red-600 underline">Delete</button>
                     </>
                   )}
                 </td>
@@ -305,7 +269,7 @@ function Fleet({ trucks, onChanged }: { trucks: Truck[]; onChanged: () => void }
 
 const FILTERS: (LoadStatus | 'active' | 'all')[] = ['active', 'booked', 'assigned', 'in_transit', 'delivered', 'cancelled', 'all']
 
-export default function FreightPage() {
+export default function DispatchPage() {
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [tab, setTab] = useState<'loads' | 'fleet'>('loads')
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('active')
@@ -317,14 +281,14 @@ export default function FreightPage() {
   const [modal, setModal] = useState<'load' | 'truck' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => { setAuthed(!!getToken()) }, [])
+  useEffect(() => { setAuthed(!!getToken('dispatch')) }, [])
 
   const refresh = useCallback(async () => {
     try {
-      const [s, l, t] = await Promise.all([freight.summary(), freight.loads(), freight.trucks()])
+      const [s, l, t] = await Promise.all([dispatch.summary(), dispatch.loads(), dispatch.trucks()])
       setSummary(s); setLoads(l); setTrucks(t); setError(null)
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) { setToken(null); setAuthed(false); return }
+      if (e instanceof ApiError && e.status === 401) { setToken('dispatch', null); setAuthed(false); return }
       setError((e as Error).message)
     }
   }, [])
@@ -332,11 +296,11 @@ export default function FreightPage() {
   useEffect(() => {
     if (!authed) return
     refresh()
-    freight.hazmatTypes().then(setHazmatTypes).catch(() => {})
+    dispatch.hazmatTypes().then(setHazmatTypes).catch(() => {})
   }, [authed, refresh])
 
   async function select(id: string) {
-    try { setSelected(await freight.load(id)) } catch (e: any) { setError(e.message) }
+    try { setSelected(await dispatch.load(id)) } catch (e: any) { setError(e.message) }
   }
 
   function onLoadChanged(l: Load) {
@@ -345,7 +309,7 @@ export default function FreightPage() {
   }
 
   if (authed === null) return null
-  if (!authed) return <Login onDone={() => setAuthed(true)} />
+  if (!authed) return <Login side="dispatch" onDone={() => setAuthed(true)} />
 
   const visible = loads.filter(l =>
     filter === 'all' ? true : filter === 'active' ? !['delivered', 'cancelled'].includes(l.status) : l.status === filter)
@@ -364,7 +328,7 @@ export default function FreightPage() {
       <header className="bg-stone-950 text-white">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
           <LogoMark size={26} variant="dark" />
-          <span className="font-semibold hidden sm:inline">Freight dispatch</span>
+          <span className="font-semibold hidden sm:inline">Truck Loads</span>
           <nav className="sm:ml-6 flex gap-1">
             {(['loads', 'fleet'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
@@ -373,7 +337,8 @@ export default function FreightPage() {
               </button>
             ))}
           </nav>
-          <button onClick={() => { setToken(null); setAuthed(false) }} className="ml-auto text-sm text-white/60 hover:text-white whitespace-nowrap">Sign out</button>
+          <a href="/truck-loads/driver" className="ml-auto text-sm text-white/60 hover:text-white whitespace-nowrap hidden sm:inline">Driver app</a>
+          <button onClick={() => { setToken('dispatch', null); setAuthed(false) }} className="ml-2 sm:ml-4 text-sm text-white/60 hover:text-white whitespace-nowrap">Sign out</button>
         </div>
       </header>
 
@@ -456,7 +421,7 @@ export default function FreightPage() {
       {modal === 'load' && (
         <Modal title="Book a load" onClose={() => setModal(null)}>
           <LoadForm hazmatTypes={hazmatTypes} onSubmit={async input => {
-            const l = await freight.createLoad(input)
+            const l = await dispatch.createLoad(input)
             setModal(null); setSelected(l); refresh()
           }} />
         </Modal>
@@ -464,7 +429,7 @@ export default function FreightPage() {
       {modal === 'truck' && (
         <Modal title="Add a truck" onClose={() => setModal(null)}>
           <TruckForm hazmatTypes={hazmatTypes} onSubmit={async input => {
-            await freight.createTruck(input)
+            await dispatch.createTruck(input)
             setModal(null); refresh()
           }} />
         </Modal>

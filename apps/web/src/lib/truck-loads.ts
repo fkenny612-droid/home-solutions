@@ -1,19 +1,22 @@
 /**
- * Freight (truck load management) API client + unit helpers.
+ * Truck Loads API client + unit helpers.
  * The API stores mm / kg (what Google's truck routing expects); the UI works
  * in feet / lbs / miles because truck routing coverage is the US.
  */
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
-const TOKEN_KEY = 'hs_freight_token'
 
-export function getToken() {
-  try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
+/** Dispatcher and driver sign in separately, so one device can run both. */
+export type Side = 'dispatch' | 'driver'
+const TOKEN_KEYS: Record<Side, string> = { dispatch: 'tl_dispatch_token', driver: 'tl_driver_token' }
+
+export function getToken(side: Side) {
+  try { return localStorage.getItem(TOKEN_KEYS[side]) } catch { return null }
 }
-export function setToken(t: string | null) {
+export function setToken(side: Side, t: string | null) {
   try {
-    if (t) localStorage.setItem(TOKEN_KEY, t)
-    else localStorage.removeItem(TOKEN_KEY)
+    if (t) localStorage.setItem(TOKEN_KEYS[side], t)
+    else localStorage.removeItem(TOKEN_KEYS[side])
   } catch {}
 }
 
@@ -21,8 +24,8 @@ export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message) }
 }
 
-async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
-  const token = getToken()
+async function req<T>(side: Side, path: string, opts: RequestInit = {}): Promise<T> {
+  const token = getToken(side)
   const res = await fetch(`${BASE}${path}`, {
     ...opts,
     headers: {
@@ -37,6 +40,11 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
     throw new ApiError(res.status, msg)
   }
   return body as T
+}
+
+export function login(side: Side, phone: string, password: string) {
+  return req<{ accessToken: string }>(side, '/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) })
+    .then(r => { setToken(side, r.accessToken); return r })
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -105,29 +113,44 @@ export type LoadInput = Pick<Load,
 
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 
-export const freight = {
-  login: (phone: string, password: string) =>
-    req<{ accessToken: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
+const d = <T,>(path: string, opts?: RequestInit) => req<T>('dispatch', path, opts)
 
-  summary:     () => req<Summary>('/freight/summary'),
-  hazmatTypes: () => req<string[]>('/freight/hazmat-types'),
+export const dispatch = {
+  summary:     () => d<Summary>('/truck-loads/summary'),
+  hazmatTypes: () => d<string[]>('/truck-loads/hazmat-types'),
 
-  trucks:      () => req<Truck[]>('/freight/trucks'),
-  createTruck: (t: TruckInput) => req<Truck>('/freight/trucks', { method: 'POST', body: JSON.stringify(t) }),
+  trucks:      () => d<Truck[]>('/truck-loads/trucks'),
+  createTruck: (t: TruckInput) => d<Truck>('/truck-loads/trucks', { method: 'POST', body: JSON.stringify(t) }),
   updateTruck: (id: string, t: Partial<TruckInput> & { status?: TruckStatus }) =>
-    req<Truck>(`/freight/trucks/${id}`, { method: 'PATCH', body: JSON.stringify(t) }),
-  deleteTruck: (id: string) => req<{ ok: true }>(`/freight/trucks/${id}`, { method: 'DELETE' }),
+    d<Truck>(`/truck-loads/trucks/${id}`, { method: 'PATCH', body: JSON.stringify(t) }),
+  deleteTruck: (id: string) => d<{ ok: true }>(`/truck-loads/trucks/${id}`, { method: 'DELETE' }),
 
-  loads:      (status?: LoadStatus) => req<Load[]>(`/freight/loads${status ? `?status=${status}` : ''}`),
-  load:       (id: string) => req<Load>(`/freight/loads/${id}`),
-  createLoad: (l: LoadInput) => req<Load>('/freight/loads', { method: 'POST', body: JSON.stringify(l) }),
+  loads:      (status?: LoadStatus) => d<Load[]>(`/truck-loads/loads${status ? `?status=${status}` : ''}`),
+  load:       (id: string) => d<Load>(`/truck-loads/loads/${id}`),
+  createLoad: (l: LoadInput) => d<Load>('/truck-loads/loads', { method: 'POST', body: JSON.stringify(l) }),
   assign:     (id: string, truckId: string) =>
-    req<Load>(`/freight/loads/${id}/assign`, { method: 'POST', body: JSON.stringify({ truckId }) }),
-  unassign:   (id: string) => req<Load>(`/freight/loads/${id}/unassign`, { method: 'POST' }),
+    d<Load>(`/truck-loads/loads/${id}/assign`, { method: 'POST', body: JSON.stringify({ truckId }) }),
+  unassign:   (id: string) => d<Load>(`/truck-loads/loads/${id}/unassign`, { method: 'POST' }),
   setStatus:  (id: string, status: LoadStatus) =>
-    req<Load>(`/freight/loads/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
+    d<Load>(`/truck-loads/loads/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
   route:      (id: string, previewTruckId?: string) =>
-    req<Load>(`/freight/loads/${id}/route${previewTruckId ? `?truckId=${previewTruckId}` : ''}`, { method: 'POST' }),
+    d<Load>(`/truck-loads/loads/${id}/route${previewTruckId ? `?truckId=${previewTruckId}` : ''}`, { method: 'POST' }),
+}
+
+/** What a driver sees — no rates or dispatcher-only fields. */
+export type DriverTruck = Pick<Truck, 'id' | 'name' | 'plate' | 'heightMm' | 'widthMm' | 'lengthMm' | 'tareWeightKg' | 'axleCount' | 'hazmatTypes'>
+export type DriverLoad = Omit<Load, 'rate' | 'truckId' | 'truck' | 'routeComputedAt' | 'preview' | 'previewTruck' | 'events'> & {
+  truck: DriverTruck | null
+  events?: Pick<LoadEvent, 'id' | 'message' | 'createdAt'>[]
+}
+
+const dr = <T,>(path: string, opts?: RequestInit) => req<T>('driver', path, opts)
+
+export const driver = {
+  loads:     () => dr<{ trucks: DriverTruck[]; loads: DriverLoad[] }>('/truck-loads/driver/loads'),
+  load:      (id: string) => dr<DriverLoad>(`/truck-loads/driver/loads/${id}`),
+  setStatus: (id: string, status: 'in_transit' | 'delivered', note?: string) =>
+    dr<DriverLoad>(`/truck-loads/driver/loads/${id}/status`, { method: 'POST', body: JSON.stringify({ status, note }) }),
 }
 
 // ── Units ─────────────────────────────────────────────────────────────────────

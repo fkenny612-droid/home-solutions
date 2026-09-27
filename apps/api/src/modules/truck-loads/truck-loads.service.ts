@@ -2,10 +2,12 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { GoogleRoutesService } from './google-routes.service'
-import { ACTIVE_LOAD_STATUSES, canTransition, truckLoadProblems } from './freight.rules'
+import { ACTIVE_LOAD_STATUSES, canTransition, phoneKey, truckLoadProblems } from './truck-loads.rules'
 import {
-  AssignLoadDto, CreateLoadDto, CreateTruckDto, LoadStatusDto, UpdateLoadDto, UpdateTruckDto,
-} from './freight.dto'
+  AssignLoadDto, CreateLoadDto, CreateTruckDto, DriverStatusDto, LoadStatus, LoadStatusDto, UpdateLoadDto, UpdateTruckDto,
+} from './truck-loads.dto'
+
+const DRIVER_HISTORY_DAYS = 14
 
 const LOAD_INCLUDE = {
   truck:  true,
@@ -13,7 +15,7 @@ const LOAD_INCLUDE = {
 }
 
 @Injectable()
-export class FreightService {
+export class TruckLoadsService {
   constructor(
     private prisma: PrismaService,
     private routes: GoogleRoutesService,
@@ -29,7 +31,7 @@ export class FreightService {
     this.assertTare(dto.grossWeightKg, dto.tareWeightKg)
     try {
       return await this.prisma.truck.create({
-        data: { ...dto, hazmatTypes: dto.hazmatTypes ?? [], ownerId },
+        data: { ...dto, hazmatTypes: dto.hazmatTypes ?? [], driverPhoneKey: phoneKey(dto.driverPhone), ownerId },
       })
     } catch (e) {
       throw this.mapUnique(e, `A truck with plate ${dto.plate} already exists`)
@@ -43,7 +45,10 @@ export class FreightService {
       throw new ConflictException('Truck still has an active load')
     }
     try {
-      return await this.prisma.truck.update({ where: { id }, data: dto })
+      return await this.prisma.truck.update({
+        where: { id },
+        data: { ...dto, ...(dto.driverPhone !== undefined ? { driverPhoneKey: phoneKey(dto.driverPhone) } : {}) },
+      })
     } catch (e) {
       throw this.mapUnique(e, `A truck with plate ${dto.plate} already exists`)
     }
@@ -185,19 +190,31 @@ export class FreightService {
 
   async setStatus(ownerId: string, id: string, dto: LoadStatusDto) {
     const load = await this.getLoad(ownerId, id)
-    if (!canTransition(load.status, dto.status)) {
-      throw new ConflictException(`Cannot move a load from ${load.status} to ${dto.status}`)
+    return this.applyStatus(load, dto.status, 'dispatcher')
+  }
+
+  private async applyStatus(
+    load: { id: string; status: string; truckId: string | null; truck?: { driverPhoneKey: string | null } | null },
+    status: LoadStatus,
+    actor: 'dispatcher' | 'driver',
+    note?: string,
+  ) {
+    if (!canTransition(load.status, status)) {
+      throw new ConflictException(`Cannot move a load from ${load.status.replace('_', ' ')} to ${status.replace('_', ' ')}`)
     }
-    const releasesTruck = load.truckId && !ACTIVE_LOAD_STATUSES.includes(dto.status)
+    const releasesTruck = load.truckId && !ACTIVE_LOAD_STATUSES.includes(status)
+    const who = actor === 'driver' ? 'Driver' : 'Dispatcher'
+    const message = `${who} changed status to ${status.replace('_', ' ')}${note ? ` — “${note}”` : ''}`
     return this.prisma.$transaction(async tx => {
       if (releasesTruck) {
         await tx.truck.update({ where: { id: load.truckId! }, data: { status: 'available' } })
       }
       return tx.load.update({
-        where: { id },
+        where: { id: load.id },
         data: {
-          status: dto.status,
-          events: { create: { type: 'status', message: `Status changed to ${dto.status.replace('_', ' ')}` } },
+          status,
+          ...(status === 'delivered' ? { deliveredByKey: load.truck?.driverPhoneKey ?? null } : {}),
+          events: { create: { type: 'status', actor, message } },
         },
         include: LOAD_INCLUDE,
       })
@@ -211,6 +228,9 @@ export class FreightService {
    */
   async route(ownerId: string, id: string, previewTruckId?: string) {
     const load  = await this.getLoad(ownerId, id)
+    if (['delivered', 'cancelled'].includes(load.status)) {
+      throw new ConflictException(`Cannot route a ${load.status} load`)
+    }
     const truck = previewTruckId ? await this.getTruck(ownerId, previewTruckId) : load.truck
     if (!truck) throw new BadRequestException('Assign a truck (or pass truckId to preview) — truck routing needs its dimensions')
 
@@ -251,6 +271,77 @@ export class FreightService {
       },
       include: LOAD_INCLUDE,
     })
+  }
+
+  // ── Driver app ──────────────────────────────────────────────────────────────
+  // A driver is whoever signs in with the phone number on a truck. They see
+  // that truck's current and recent loads, and can only start / deliver them.
+
+  async driverLoads(phone: string) {
+    const key = phoneKey(phone)
+    if (!key) return { trucks: [], loads: [] }
+    const since = new Date(Date.now() - DRIVER_HISTORY_DAYS * 86_400_000)
+    const [trucks, loads] = await Promise.all([
+      this.prisma.truck.findMany({ where: { driverPhoneKey: key }, orderBy: { name: 'asc' } }),
+      this.prisma.load.findMany({
+        where: {
+          OR: [
+            { truck: { driverPhoneKey: key }, status: { in: ACTIVE_LOAD_STATUSES } },
+            { deliveredByKey: key, status: 'delivered', updatedAt: { gte: since } },
+          ],
+        },
+        include: { truck: true },
+        orderBy: [{ pickupAt: 'asc' }, { createdAt: 'asc' }],
+      }),
+    ])
+    return { trucks: trucks.map(t => this.toDriverTruck(t)), loads: loads.map(l => this.toDriverLoad(l)) }
+  }
+
+  async driverLoad(phone: string, id: string) {
+    return this.toDriverLoad(await this.getDriverLoad(phone, id))
+  }
+
+  async driverSetStatus(phone: string, id: string, dto: DriverStatusDto) {
+    const load = await this.getDriverLoad(phone, id)
+    return this.toDriverLoad(await this.applyStatus(load, dto.status, 'driver', dto.note?.trim() || undefined))
+  }
+
+  private async getDriverLoad(phone: string, id: string) {
+    const key = phoneKey(phone)
+    const load = key && await this.prisma.load.findFirst({
+      where: {
+        id,
+        OR: [
+          { truck: { driverPhoneKey: key }, status: { in: ACTIVE_LOAD_STATUSES } },
+          { deliveredByKey: key, status: 'delivered' },
+        ],
+      },
+      include: LOAD_INCLUDE,
+    })
+    if (!load) throw new NotFoundException('Load not found')
+    return load
+  }
+
+  /** What a driver may see: no rates, owner ids or dispatcher-only fields. */
+  private toDriverLoad(l: any) {
+    return {
+      id: l.id, reference: l.reference, shipperName: l.shipperName, commodity: l.commodity,
+      weightKg: l.weightKg, hazmatTypes: l.hazmatTypes, notes: l.notes, status: l.status,
+      originAddress: l.originAddress, originLat: l.originLat, originLng: l.originLng,
+      destAddress: l.destAddress, destLat: l.destLat, destLng: l.destLng,
+      pickupAt: l.pickupAt, deliverBy: l.deliverBy,
+      routeDistanceM: l.routeDistanceM, routeDurationS: l.routeDurationS,
+      routePolyline: l.routePolyline, routeWarnings: l.routeWarnings,
+      truck: l.truck ? this.toDriverTruck(l.truck) : null,
+      ...(l.events ? { events: l.events.map((e: any) => ({ id: e.id, message: e.message, createdAt: e.createdAt })) } : {}),
+    }
+  }
+
+  private toDriverTruck(t: any) {
+    return {
+      id: t.id, name: t.name, plate: t.plate, heightMm: t.heightMm, widthMm: t.widthMm,
+      lengthMm: t.lengthMm, tareWeightKg: t.tareWeightKg, axleCount: t.axleCount, hazmatTypes: t.hazmatTypes,
+    }
   }
 
   /** Board KPIs for the dispatcher header. */

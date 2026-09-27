@@ -1,16 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
-import { FreightService } from './freight.service'
+import { TruckLoadsService } from './truck-loads.service'
 import { HAZMAT_TYPES } from './google-routes.service'
 import {
   AssignLoadDto, CreateLoadDto, CreateTruckDto, LoadStatusDto, UpdateLoadDto, UpdateTruckDto,
-} from './freight.dto'
+} from './truck-loads.dto'
 
-/** Truck load management. All data is scoped to the signed-in dispatcher. */
-@Controller('freight')
+/** Truck load management. Dispatcher side of Truck Loads; all data is scoped to the signed-in dispatcher. */
+@Controller('truck-loads')
 @UseGuards(AuthGuard('jwt'))
-export class FreightController {
-  constructor(private readonly svc: FreightService) {}
+export class TruckLoadsController {
+  constructor(private readonly svc: TruckLoadsService) {}
 
   @Get('summary')
   summary(@Req() req: any) {

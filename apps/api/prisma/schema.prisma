@@ -284,6 +284,7 @@ model Truck {
   plate         String
   driverName    String?
   driverPhone   String?
+  driverPhoneKey String? // digits of driverPhone; the driver app matches the signed-in phone against it
   heightMm      Int
   widthMm       Int
   lengthMm      Int
@@ -298,6 +299,7 @@ model Truck {
 
   @@unique([ownerId, plate])
   @@index([ownerId])
+  @@index([driverPhoneKey])
 }
 
 model Load {
@@ -321,6 +323,7 @@ model Load {
   notes            String?
   truckId          String?
   truck            Truck?    @relation(fields: [truckId], references: [id])
+  deliveredByKey   String?   // driver phone key at delivery, so history follows the driver, not the truck
   // Cached truck route from Google Routes API (travelMode TRUCK)
   routeDistanceM   Int?
   routeDurationS   Int?
@@ -334,6 +337,7 @@ model Load {
   @@unique([ownerId, reference])
   @@index([ownerId, status])
   @@index([truckId])
+  @@index([deliveredByKey])
 }
 
 model LoadEvent {
@@ -341,6 +345,7 @@ model LoadEvent {
   loadId    String
   load      Load     @relation(fields: [loadId], references: [id], onDelete: Cascade)
   type      String   // created | assigned | unassigned | status | routed
+  actor     String   @default("dispatcher") // dispatcher | driver
   message   String
   createdAt DateTime @default(now())
 

@@ -50,3 +50,8 @@ export class AssignLoadDto {
 export class LoadStatusDto {
   @IsIn(['in_transit', 'delivered', 'cancelled']) status: LoadStatus
 }
+
+export class DriverStatusDto {
+  @IsIn(['in_transit', 'delivered']) status: 'in_transit' | 'delivered'
+  @IsOptional() @IsString() @MaxLength(500) note?: string
+}

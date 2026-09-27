@@ -45,3 +45,12 @@ export function canTransition(from: string, to: string): boolean {
 
 /** Statuses during which a load occupies its truck. */
 export const ACTIVE_LOAD_STATUSES = ['assigned', 'in_transit']
+
+/**
+ * Phone numbers are stored as typed, so match drivers on digits only
+ * ("+1 (555) 010-0100" == "15550100100"). Null if too short to be a number.
+ */
+export function phoneKey(phone?: string | null): string | null {
+  const digits = (phone ?? '').replace(/\D/g, '')
+  return digits.length >= 7 ? digits : null
+}

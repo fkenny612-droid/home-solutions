@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ftToMm, hazmatLabel, lbToKg, LoadInput, TruckInput } from '@/lib/freight'
+import { ftToMm, hazmatLabel, lbToKg, LoadInput, TruckInput } from '@/lib/truck-loads'
 
 export const inputCls =
   'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-yellow-600/40 focus:border-yellow-600'
@@ -103,7 +103,7 @@ export function TruckForm({ hazmatTypes, onSubmit }: { hazmatTypes: string[]; on
         <Field label="Unit name"><input name="name" required className={inputCls} placeholder="Unit 12" /></Field>
         <Field label="Plate"><input name="plate" required className={inputCls} placeholder="TX 4KD-221" /></Field>
         <Field label="Driver"><input name="driverName" className={inputCls} /></Field>
-        <Field label="Driver phone"><input name="driverPhone" className={inputCls} /></Field>
+        <Field label="Driver phone" hint="The driver signs in to the driver app with this number."><input name="driverPhone" type="tel" className={inputCls} /></Field>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Field label="Height (ft)"><input name="heightFt" type="number" step="0.1" min="4" max="19" required defaultValue="13.5" className={inputCls} /></Field>

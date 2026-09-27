@@ -16,7 +16,7 @@ function loadGoogleMaps(): Promise<any> {
   if (w.google?.maps?.geometry) return Promise.resolve(w.google)
   if (!loader) {
     loader = new Promise((resolve, reject) => {
-      const cb = '__hsFreightMapsReady'
+      const cb = '__truckLoadsMapsReady'
       w[cb] = () => resolve(w.google)
       const s = document.createElement('script')
       s.src = `https://maps.googleapis.com/maps/api/js?key=${KEY}&libraries=geometry&loading=async&callback=${cb}`
