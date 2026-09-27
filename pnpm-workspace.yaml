@@ -1,6 +1,9 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  # Standalone Expo app with its own npm lockfile (like apps/mobile's EAS
+  # builds); kept out so its SDK 57 peers can't re-resolve the Easyfix app's.
+  - '!apps/truck-driver'
 allowBuilds:
   '@nestjs/core': true
   '@prisma/client': true

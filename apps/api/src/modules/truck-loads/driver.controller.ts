@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { TruckLoadsService } from './truck-loads.service'
-import { DriverStatusDto } from './truck-loads.dto'
+import { DriverNavigationDto, DriverStatusDto } from './truck-loads.dto'
 
 /**
  * Driver side of Truck Loads. Scoped by the signed-in phone number, not by
@@ -25,5 +25,11 @@ export class DriverController {
   @Post('loads/:id/status')
   setStatus(@Req() req: any, @Param('id') id: string, @Body() dto: DriverStatusDto) {
     return this.svc.driverSetStatus(req.user.phone, id, dto)
+  }
+
+  /** Fresh truck route token from the driver's position to their next stop. */
+  @Post('loads/:id/navigation')
+  navigation(@Req() req: any, @Param('id') id: string, @Body() dto: DriverNavigationDto) {
+    return this.svc.driverNavigation(req.user.phone, id, dto)
   }
 }

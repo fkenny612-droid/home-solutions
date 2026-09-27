@@ -55,3 +55,9 @@ export class DriverStatusDto {
   @IsIn(['in_transit', 'delivered']) status: 'in_transit' | 'delivered'
   @IsOptional() @IsString() @MaxLength(500) note?: string
 }
+
+/** The driver's current position, where turn-by-turn guidance starts from. */
+export class DriverNavigationDto {
+  @IsNumber() @Min(-90)  @Max(90)  lat: number
+  @IsNumber() @Min(-180) @Max(180) lng: number
+}

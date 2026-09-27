@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { GoogleRoutesService } from './google-routes.service'
 import { ACTIVE_LOAD_STATUSES, canTransition, phoneKey, truckLoadProblems } from './truck-loads.rules'
 import {
-  AssignLoadDto, CreateLoadDto, CreateTruckDto, DriverStatusDto, LoadStatus, LoadStatusDto, UpdateLoadDto, UpdateTruckDto,
+  AssignLoadDto, CreateLoadDto, CreateTruckDto, DriverNavigationDto, DriverStatusDto, LoadStatus, LoadStatusDto, UpdateLoadDto, UpdateTruckDto,
 } from './truck-loads.dto'
 
 const DRIVER_HISTORY_DAYS = 14
@@ -304,6 +304,59 @@ export class TruckLoadsService {
   async driverSetStatus(phone: string, id: string, dto: DriverStatusDto) {
     const load = await this.getDriverLoad(phone, id)
     return this.toDriverLoad(await this.applyStatus(load, dto.status, 'driver', dto.note?.trim() || undefined))
+  }
+
+  /**
+   * Turn-by-turn guidance for the driver's next stop: the pickup while the
+   * load is assigned, the delivery once the trip has started. Returns a
+   * Routes API route token computed for this rig from where the driver is
+   * now; the Navigation SDK follows it and keeps re-routes truck-legal.
+   * There is deliberately no car-routing fallback.
+   */
+  async driverNavigation(phone: string, id: string, dto: DriverNavigationDto) {
+    const load = await this.getDriverLoad(phone, id)
+    if (!ACTIVE_LOAD_STATUSES.includes(load.status) || !load.truck) {
+      throw new ConflictException(`Load is ${load.status.replace('_', ' ')} — nothing to navigate to`)
+    }
+    const leg = load.status === 'assigned' ? 'pickup' : 'delivery'
+    const address = leg === 'pickup' ? load.originAddress : load.destAddress
+    const truck = {
+      heightMm:    load.truck.heightMm,
+      widthMm:     load.truck.widthMm,
+      lengthMm:    load.truck.lengthMm,
+      // Heading to pickup the trailer is empty; after that it's laden
+      weightKg:    load.truck.tareWeightKg + (leg === 'pickup' ? 0 : load.weightKg),
+      axleCount:   load.truck.axleCount,
+      // Keep hazmat restrictions on the empty leg too: residue-carrying
+      // (e.g. tank) trailers stay placarded. Only ever over-restricts.
+      hazmatTypes: load.hazmatTypes,
+    }
+    const here = { lat: dto.lat, lng: dto.lng }
+
+    // The Navigation SDK needs the same waypoint the token was built with, so
+    // pin the stop to coordinates first (geocoded by Google on first use).
+    let stop = leg === 'pickup'
+      ? (load.originLat != null ? { lat: load.originLat, lng: load.originLng! } : null)
+      : (load.destLat   != null ? { lat: load.destLat,   lng: load.destLng! }   : null)
+    if (!stop) {
+      stop = (await this.routes.computeTruckRoute(here, { address }, truck)).destination
+      if (!stop) throw new ConflictException(`Google couldn't locate ${address}`)
+      await this.prisma.load.update({
+        where: { id },
+        data: leg === 'pickup' ? { originLat: stop.lat, originLng: stop.lng } : { destLat: stop.lat, destLng: stop.lng },
+      })
+    }
+
+    const route = await this.routes.computeTruckRoute(here, stop, truck, { routeToken: true })
+    if (!route.routeToken) throw new ConflictException('Google did not return a truck route token for this trip')
+    return {
+      leg,
+      destination:     { ...stop, title: address },
+      routeToken:      route.routeToken,
+      distanceMeters:  route.distanceMeters,
+      durationSeconds: route.durationSeconds,
+      warnings:        route.warnings,
+    }
   }
 
   private async getDriverLoad(phone: string, id: string) {

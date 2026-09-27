@@ -21,7 +21,7 @@ const FIELD_MASK = [
   'routes.warnings',
   'routes.legs.startLocation',
   'routes.legs.endLocation',
-].join(',')
+]
 
 /** Hazmat categories accepted by vehicleInfo.hazardousGoodsTypes. */
 export const HAZMAT_TYPES = [
@@ -56,6 +56,18 @@ export interface TruckRoute {
   warnings: string[]
   origin:      { lat: number; lng: number } | null
   destination: { lat: number; lng: number } | null
+  /** Only when requested: hands this exact truck route to the Navigation SDK. */
+  routeToken?: string
+}
+
+export interface RouteOptions {
+  /**
+   * Ask for a route token for turn-by-turn guidance in the Navigation SDK.
+   * The token carries the vehicle attributes, so the SDK's re-routes stay
+   * truck-legal. Tokens need traffic-aware routing and should be requested
+   * fresh from the driver's current position just before guidance starts.
+   */
+  routeToken?: boolean
 }
 
 function toGoogleWaypoint(w: Waypoint) {
@@ -76,7 +88,9 @@ export class GoogleRoutesService {
     return !!process.env.GOOGLE_MAPS_API_KEY
   }
 
-  async computeTruckRoute(origin: Waypoint, destination: Waypoint, truck: TruckProfile): Promise<TruckRoute> {
+  async computeTruckRoute(
+    origin: Waypoint, destination: Waypoint, truck: TruckProfile, opts: RouteOptions = {},
+  ): Promise<TruckRoute> {
     const key = process.env.GOOGLE_MAPS_API_KEY
     if (!key) throw new ServiceUnavailableException('GOOGLE_MAPS_API_KEY is not configured')
 
@@ -95,14 +109,16 @@ export class GoogleRoutesService {
         },
       },
       units: 'IMPERIAL',
+      ...(opts.routeToken ? { routingPreference: 'TRAFFIC_AWARE' } : {}),
     }
+    const fieldMask = [...FIELD_MASK, ...(opts.routeToken ? ['routes.routeToken'] : [])].join(',')
 
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type':     'application/json',
         'X-Goog-Api-Key':   key,
-        'X-Goog-FieldMask': FIELD_MASK,
+        'X-Goog-FieldMask': fieldMask,
       },
       body: JSON.stringify(body),
     })
@@ -126,6 +142,7 @@ export class GoogleRoutesService {
       warnings:        route.warnings ?? [],
       origin:          toLatLng(legs[0]?.startLocation),
       destination:     toLatLng(legs[legs.length - 1]?.endLocation),
+      ...(opts.routeToken ? { routeToken: route.routeToken } : {}),
     }
   }
 }

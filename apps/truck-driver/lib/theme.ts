@@ -1,0 +1,17 @@
+export const colors = {
+  bg:       '#F5F5F4',
+  card:     '#FFFFFF',
+  border:   '#E7E5E4',
+  text:     '#1C1917',
+  muted:    '#78716C',
+  faint:    '#A8A29E',
+  ink:      '#0C0A09',
+  gold:     '#CA8A04',
+  green:    '#15803D',
+  red:      '#B91C1C',
+  blueBg:   '#DBEAFE', blueText:   '#1E40AF',
+  yellowBg: '#FEF9C3', yellowText: '#854D0E',
+  greenBg:  '#DCFCE7', greenText:  '#166534',
+  orangeBg: '#FFEDD5', orangeText: '#9A3412', orangeBorder: '#FDBA74',
+  amberBg:  '#FFFBEB', amberText:  '#92400E',
+}
