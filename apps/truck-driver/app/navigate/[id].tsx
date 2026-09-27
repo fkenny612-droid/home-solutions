@@ -225,7 +225,7 @@ export default function Navigate() {
 
         {phase.kind === 'preparing' && (
           <View style={s.sheet}>
-            <ActivityIndicator color={colors.gold} />
+            <ActivityIndicator color={colors.brand} />
             <Text style={s.sheetText}>{phase.step}</Text>
           </View>
         )}
@@ -256,7 +256,7 @@ export default function Navigate() {
               style={s.note} value={note} onChangeText={setNote} maxLength={500}
               placeholder="Delivery note (optional) — who signed, dock #…" placeholderTextColor={colors.faint}
             />
-            <Button title="Mark delivered" variant="green" onPress={markDelivered} busy={busy} />
+            <Button title="Mark delivered" variant="dark" onPress={markDelivered} busy={busy} />
             <Button title="Back to load" variant="outline" onPress={() => router.back()} />
           </View>
         )}
@@ -277,7 +277,7 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#000' },
   overlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, justifyContent: 'space-between' },
   topBar: { flexDirection: 'row', gap: 8, padding: 12, marginTop: 84, flexWrap: 'wrap' },
-  exit: { backgroundColor: colors.ink, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10 },
+  exit: { backgroundColor: colors.brandDark, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10 },
   exitText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   notes: { backgroundColor: colors.amberBg, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
   notesText: { color: colors.amberText, fontWeight: '600', fontSize: 14 },

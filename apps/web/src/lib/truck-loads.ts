@@ -175,7 +175,7 @@ export function fmtDuration(s: number) {
   const m = Math.round((s % 3600) / 60)
   return h ? `${h} h ${m} min` : `${m} min`
 }
-export const fmtMoney = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+export const fmtMoney = (n: number) => n.toLocaleString('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 })
 export function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })

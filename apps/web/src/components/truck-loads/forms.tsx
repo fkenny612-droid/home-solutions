@@ -3,14 +3,14 @@ import { useState } from 'react'
 import { ftToMm, hazmatLabel, lbToKg, LoadInput, TruckInput } from '@/lib/truck-loads'
 
 export const inputCls =
-  'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-yellow-600/40 focus:border-yellow-600'
+  'w-full rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm text-silver-900 focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600'
 
 export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <label className="block">
-      <span className="block text-xs font-medium text-stone-600 mb-1">{label}</span>
+      <span className="block text-xs font-medium text-silver-600 mb-1">{label}</span>
       {children}
-      {hint && <span className="block text-[11px] text-stone-400 mt-1">{hint}</span>}
+      {hint && <span className="block text-[11px] text-silver-400 mt-1">{hint}</span>}
     </label>
   )
 }
@@ -19,9 +19,9 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="screen-enter w-full max-w-xl rounded-2xl bg-white shadow-xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
-          <h2 className="font-semibold text-stone-900">{title}</h2>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-700" aria-label="Close">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-silver-200">
+          <h2 className="font-semibold text-silver-900">{title}</h2>
+          <button onClick={onClose} className="text-silver-400 hover:text-silver-700" aria-label="Close">
             <i className="ti ti-x text-lg" />
           </button>
         </div>
@@ -42,7 +42,7 @@ function HazmatPicker({ types, value, onChange }: { types: string[]; value: stri
             onClick={() => onChange(on ? value.filter(v => v !== t) : [...value, t])}
             className={`press rounded-full px-2.5 py-1 text-xs border ${on
               ? 'bg-orange-100 border-orange-400 text-orange-800'
-              : 'bg-white border-stone-300 text-stone-600 hover:border-stone-400'}`}
+              : 'bg-white border-silver-300 text-silver-600 hover:border-silver-400'}`}
           >
             {hazmatLabel(t)}
           </button>
@@ -56,7 +56,7 @@ function FormFooter({ busy, error, label }: { busy: boolean; error: string | nul
   return (
     <div className="pt-2">
       {error && <p className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</p>}
-      <button disabled={busy} className="press w-full rounded-lg bg-stone-900 text-white py-2.5 text-sm font-medium disabled:opacity-50">
+      <button disabled={busy} className="press w-full rounded-lg bg-brand-700 hover:bg-brand-800 text-white py-2.5 text-sm font-medium disabled:opacity-50">
         {busy ? 'Saving…' : label}
       </button>
     </div>
@@ -165,7 +165,7 @@ export function LoadForm({ hazmatTypes, onSubmit }: { hazmatTypes: string[]; onS
       <div className="grid grid-cols-3 gap-3">
         <Field label="Pickup"><input name="pickupAt" type="datetime-local" className={inputCls} /></Field>
         <Field label="Deliver by"><input name="deliverBy" type="datetime-local" className={inputCls} /></Field>
-        <Field label="Rate (USD)"><input name="rate" type="number" min="0" step="1" className={inputCls} /></Field>
+        <Field label="Rate (R)"><input name="rate" type="number" min="0" step="1" className={inputCls} /></Field>
       </div>
       <Field label="Hazmat">
         <HazmatPicker types={hazmatTypes} value={hazmat} onChange={setHazmat} />

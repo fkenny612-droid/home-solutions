@@ -51,7 +51,7 @@ export default function Login() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   inner: { flex: 1, justifyContent: 'center', padding: 24 },
-  title: { fontSize: 30, fontWeight: '800', color: colors.text },
+  title: { fontSize: 30, fontWeight: '800', color: colors.brandDark },
   subtitle: { fontSize: 15, color: colors.muted, marginTop: 6, marginBottom: 28 },
   form: { gap: 12 },
   input: {

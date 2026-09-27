@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
-import LogoMark from '@/components/Logo'
+import TruckLoadsMark from '@/components/truck-loads/TruckLoadsMark'
 import RouteMap from '@/components/truck-loads/RouteMap'
 import Login from '@/components/truck-loads/Login'
 import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
@@ -10,7 +10,7 @@ import {
 } from '@/lib/truck-loads'
 
 const STATUS_STYLE: Record<LoadStatus, string> = {
-  booked:     'bg-stone-100 text-stone-700',
+  booked:     'bg-silver-100 text-silver-700',
   assigned:   'bg-blue-100 text-blue-800',
   in_transit: 'bg-yellow-100 text-yellow-800',
   delivered:  'bg-green-100 text-green-800',
@@ -19,7 +19,7 @@ const STATUS_STYLE: Record<LoadStatus, string> = {
 const TRUCK_STYLE: Record<Truck['status'], string> = {
   available:      'bg-green-100 text-green-800',
   on_load:        'bg-yellow-100 text-yellow-800',
-  out_of_service: 'bg-stone-200 text-stone-600',
+  out_of_service: 'bg-silver-200 text-silver-600',
 }
 const statusLabel = (s: string) => s.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
 
@@ -65,16 +65,16 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-stone-900">{load.reference}</h2>
+            <h2 className="text-lg font-semibold text-silver-900">{load.reference}</h2>
             <Pill className={STATUS_STYLE[load.status]}>{statusLabel(load.status)}</Pill>
             {load.hazmatTypes.length > 0 && <Pill className="bg-orange-100 text-orange-800"><i className="ti ti-alert-triangle mr-1" />Hazmat</Pill>}
           </div>
-          <p className="text-sm text-stone-500 mt-0.5">{load.shipperName} · {load.commodity} · {fmtLb(load.weightKg)}{load.rate != null && ` · ${fmtMoney(load.rate)}`}</p>
+          <p className="text-sm text-silver-500 mt-0.5">{load.shipperName} · {load.commodity} · {fmtLb(load.weightKg)}{load.rate != null && ` · ${fmtMoney(load.rate)}`}</p>
         </div>
         <div className="flex gap-2">
           {load.status === 'assigned' && (
             <button onClick={() => run('transit', () => dispatch.setStatus(load.id, 'in_transit'))} disabled={!!busy}
-              className="press rounded-lg bg-stone-900 text-white px-3 py-1.5 text-sm disabled:opacity-50">
+              className="press rounded-lg bg-brand-700 hover:bg-brand-800 text-white px-3 py-1.5 text-sm disabled:opacity-50">
               <i className="ti ti-truck mr-1" />Dispatch
             </button>
           )}
@@ -86,7 +86,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
           )}
           {editable && (
             <button onClick={() => confirm(`Cancel load ${load.reference}?`) && run('cancel', () => dispatch.setStatus(load.id, 'cancelled'))}
-              disabled={!!busy} className="press rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 disabled:opacity-50">
+              disabled={!!busy} className="press rounded-lg border border-silver-300 px-3 py-1.5 text-sm text-silver-600 disabled:opacity-50">
               Cancel load
             </button>
           )}
@@ -97,24 +97,24 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
 
       {/* Lane */}
       <div className="grid sm:grid-cols-2 gap-3 text-sm">
-        <div className="rounded-xl border border-stone-200 bg-white p-3">
-          <div className="text-[11px] uppercase tracking-wide text-stone-400 mb-1">A · Pickup · {fmtDate(load.pickupAt)}</div>
-          <div className="text-stone-800">{load.originAddress}</div>
+        <div className="rounded-xl border border-silver-200 bg-white p-3">
+          <div className="text-[11px] uppercase tracking-wide text-silver-400 mb-1">A · Pickup · {fmtDate(load.pickupAt)}</div>
+          <div className="text-silver-800">{load.originAddress}</div>
         </div>
-        <div className="rounded-xl border border-stone-200 bg-white p-3">
-          <div className="text-[11px] uppercase tracking-wide text-stone-400 mb-1">B · Deliver by · {fmtDate(load.deliverBy)}</div>
-          <div className="text-stone-800">{load.destAddress}</div>
+        <div className="rounded-xl border border-silver-200 bg-white p-3">
+          <div className="text-[11px] uppercase tracking-wide text-silver-400 mb-1">B · Deliver by · {fmtDate(load.deliverBy)}</div>
+          <div className="text-silver-800">{load.destAddress}</div>
         </div>
       </div>
 
       {/* Route */}
-      <div className="rounded-xl border border-stone-200 bg-white p-3 space-y-3">
+      <div className="rounded-xl border border-silver-200 bg-white p-3 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm">
-            <span className="font-medium text-stone-900">Truck route</span>
-            {preview && <span className="ml-2 text-yellow-700">Preview with {preview.previewTruck?.name} — not saved</span>}
+            <span className="font-medium text-silver-900">Truck route</span>
+            {preview && <span className="ml-2 text-brand-700">Preview with {preview.previewTruck?.name} — not saved</span>}
             {shown.routeDistanceM != null && (
-              <span className="ml-2 text-stone-600">{fmtMiles(shown.routeDistanceM)} · {fmtDuration(shown.routeDurationS ?? 0)} drive</span>
+              <span className="ml-2 text-silver-600">{fmtMiles(shown.routeDistanceM)} · {fmtDuration(shown.routeDurationS ?? 0)} drive</span>
             )}
           </div>
           {load.truck && (load.status === 'assigned' || load.status === 'in_transit') && (
@@ -122,7 +122,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
               onClick={() => run('route', () => dispatch.route(load.id))}
               disabled={!!busy || !routingEnabled}
               title={routingEnabled ? '' : 'GOOGLE_MAPS_API_KEY is not set on the API'}
-              className="press rounded-lg bg-yellow-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
+              className="press rounded-lg bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 text-sm disabled:opacity-50"
             >
               <i className="ti ti-route mr-1" />{busy === 'route' ? 'Routing…' : load.routePolyline ? 'Re-route' : 'Compute truck route'}
             </button>
@@ -140,34 +140,34 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
             destination={shown.destLat != null ? { lat: shown.destLat, lng: shown.destLng! } : null}
           />
         </div>
-        {!load.truck && <p className="text-xs text-stone-500">Assign a truck (or preview one below) — Google routes around low bridges, weight limits and hazmat restrictions using the rig&apos;s dimensions.</p>}
+        {!load.truck && <p className="text-xs text-silver-500">Assign a truck (or preview one below) — Google routes around low bridges, weight limits and hazmat restrictions using the rig&apos;s dimensions.</p>}
       </div>
 
       {/* Truck */}
-      <div className="rounded-xl border border-stone-200 bg-white p-3 space-y-3">
-        <div className="text-sm font-medium text-stone-900">Truck</div>
+      <div className="rounded-xl border border-silver-200 bg-white p-3 space-y-3">
+        <div className="text-sm font-medium text-silver-900">Truck</div>
         {load.truck ? (
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div>
-              <span className="font-medium">{load.truck.name}</span> <span className="text-stone-500">{load.truck.plate}</span>
-              {load.truck.driverName && <span className="text-stone-500"> · {load.truck.driverName}</span>}
-              <div className="text-xs text-stone-500">{fmtFeet(load.truck.heightMm)} tall · {fmtFeet(load.truck.lengthMm)} long · {load.truck.axleCount} axles · laden {fmtLb(load.truck.tareWeightKg + load.weightKg)}</div>
+              <span className="font-medium">{load.truck.name}</span> <span className="text-silver-500">{load.truck.plate}</span>
+              {load.truck.driverName && <span className="text-silver-500"> · {load.truck.driverName}</span>}
+              <div className="text-xs text-silver-500">{fmtFeet(load.truck.heightMm)} tall · {fmtFeet(load.truck.lengthMm)} long · {load.truck.axleCount} axles · laden {fmtLb(load.truck.tareWeightKg + load.weightKg)}</div>
             </div>
             {load.status === 'assigned' && (
               <button onClick={() => run('unassign', () => dispatch.unassign(load.id))} disabled={!!busy}
-                className="press text-sm text-stone-600 underline disabled:opacity-50">Unassign</button>
+                className="press text-sm text-silver-600 underline disabled:opacity-50">Unassign</button>
             )}
           </div>
-        ) : <p className="text-sm text-stone-500">No truck assigned.</p>}
+        ) : <p className="text-sm text-silver-500">No truck assigned.</p>}
 
         {editable && fits.length > 0 && (
-          <div className="border-t border-stone-100 pt-3">
-            <div className="text-xs text-stone-500 mb-2">{load.truck ? 'Reassign to' : 'Assign to'}</div>
-            <ul className="divide-y divide-stone-100">
+          <div className="border-t border-silver-100 pt-3">
+            <div className="text-xs text-silver-500 mb-2">{load.truck ? 'Reassign to' : 'Assign to'}</div>
+            <ul className="divide-y divide-silver-100">
               {fits.map(({ truck, problems }) => (
                 <li key={truck.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                   <div className="min-w-0">
-                    <span className="font-medium">{truck.name}</span> <span className="text-stone-500">{truck.plate}</span>
+                    <span className="font-medium">{truck.name}</span> <span className="text-silver-500">{truck.plate}</span>
                     {problems.length
                       ? <div className="text-xs text-red-700">{problems.join(' · ')}</div>
                       : <div className="text-xs text-green-700">Fits · payload {fmtLb(truck.grossWeightKg - truck.tareWeightKg)}</div>}
@@ -175,12 +175,12 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
                   <div className="flex gap-2 shrink-0">
                     {routingEnabled && (
                       <button onClick={() => run(`p-${truck.id}`, () => dispatch.route(load.id, truck.id), true)} disabled={!!busy}
-                        className="press rounded-md border border-stone-300 px-2 py-1 text-xs disabled:opacity-50">
+                        className="press rounded-md border border-silver-300 px-2 py-1 text-xs disabled:opacity-50">
                         {busy === `p-${truck.id}` ? '…' : 'Preview route'}
                       </button>
                     )}
                     <button onClick={() => run(`a-${truck.id}`, () => dispatch.assign(load.id, truck.id))} disabled={!!busy || problems.length > 0}
-                      className="press rounded-md bg-stone-900 text-white px-2 py-1 text-xs disabled:opacity-40">
+                      className="press rounded-md bg-brand-700 hover:bg-brand-800 text-white px-2 py-1 text-xs disabled:opacity-40">
                       Assign
                     </button>
                   </div>
@@ -191,17 +191,17 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
         )}
       </div>
 
-      {load.notes && <p className="text-sm text-stone-600 whitespace-pre-wrap rounded-xl border border-stone-200 bg-white p-3">{load.notes}</p>}
+      {load.notes && <p className="text-sm text-silver-600 whitespace-pre-wrap rounded-xl border border-silver-200 bg-white p-3">{load.notes}</p>}
 
       {/* History */}
       {load.events && load.events.length > 0 && (
-        <div className="rounded-xl border border-stone-200 bg-white p-3">
-          <div className="text-sm font-medium text-stone-900 mb-2">History</div>
+        <div className="rounded-xl border border-silver-200 bg-white p-3">
+          <div className="text-sm font-medium text-silver-900 mb-2">History</div>
           <ol className="space-y-1.5">
             {load.events.map(ev => (
               <li key={ev.id} className="flex gap-3 text-xs">
-                <span className="text-stone-400 w-28 shrink-0">{fmtDate(ev.createdAt)}</span>
-                <span className="text-stone-700">{ev.message}</span>
+                <span className="text-silver-400 w-28 shrink-0">{fmtDate(ev.createdAt)}</span>
+                <span className="text-silver-700">{ev.message}</span>
               </li>
             ))}
           </ol>
@@ -219,13 +219,13 @@ function Fleet({ trucks, onChanged }: { trucks: Truck[]; onChanged: () => void }
     setError(null)
     try { await fn(); onChanged() } catch (e: any) { setError(e.message) }
   }
-  if (!trucks.length) return <p className="text-sm text-stone-500 p-6 text-center">No trucks yet — add your first rig.</p>
+  if (!trucks.length) return <p className="text-sm text-silver-500 p-6 text-center">No trucks yet — add your first rig.</p>
   return (
     <div className="space-y-3">
       {error && <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</p>}
-      <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-silver-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="text-left text-xs text-stone-500 border-b border-stone-200">
+          <thead className="text-left text-xs text-silver-500 border-b border-silver-200">
             <tr>
               <th className="px-3 py-2 font-medium">Unit</th>
               <th className="px-3 py-2 font-medium">Driver</th>
@@ -236,22 +236,22 @@ function Fleet({ trucks, onChanged }: { trucks: Truck[]; onChanged: () => void }
               <th className="px-3 py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody className="divide-y divide-silver-100">
             {trucks.map(t => (
               <tr key={t.id}>
-                <td className="px-3 py-2"><div className="font-medium">{t.name}</div><div className="text-xs text-stone-500">{t.plate}</div></td>
-                <td className="px-3 py-2 text-stone-600">{t.driverName ?? '—'}</td>
-                <td className="px-3 py-2 text-stone-600 whitespace-nowrap">{fmtFeet(t.heightMm)} × {fmtFeet(t.lengthMm)}</td>
-                <td className="px-3 py-2 text-stone-600 whitespace-nowrap">{fmtLb(t.grossWeightKg - t.tareWeightKg)}</td>
-                <td className="px-3 py-2 text-xs text-stone-600">{t.hazmatTypes.map(hazmatLabel).join(', ') || '—'}</td>
+                <td className="px-3 py-2"><div className="font-medium">{t.name}</div><div className="text-xs text-silver-500">{t.plate}</div></td>
+                <td className="px-3 py-2 text-silver-600">{t.driverName ?? '—'}</td>
+                <td className="px-3 py-2 text-silver-600 whitespace-nowrap">{fmtFeet(t.heightMm)} × {fmtFeet(t.lengthMm)}</td>
+                <td className="px-3 py-2 text-silver-600 whitespace-nowrap">{fmtLb(t.grossWeightKg - t.tareWeightKg)}</td>
+                <td className="px-3 py-2 text-xs text-silver-600">{t.hazmatTypes.map(hazmatLabel).join(', ') || '—'}</td>
                 <td className="px-3 py-2"><Pill className={TRUCK_STYLE[t.status]}>{statusLabel(t.status)}</Pill></td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   {t.status === 'available' && (
-                    <button onClick={() => act(() => dispatch.updateTruck(t.id, { status: 'out_of_service' }))} className="text-xs text-stone-500 underline">Take out of service</button>
+                    <button onClick={() => act(() => dispatch.updateTruck(t.id, { status: 'out_of_service' }))} className="text-xs text-silver-500 underline">Take out of service</button>
                   )}
                   {t.status === 'out_of_service' && (
                     <>
-                      <button onClick={() => act(() => dispatch.updateTruck(t.id, { status: 'available' }))} className="text-xs text-stone-500 underline mr-3">Return to service</button>
+                      <button onClick={() => act(() => dispatch.updateTruck(t.id, { status: 'available' }))} className="text-xs text-silver-500 underline mr-3">Return to service</button>
                       <button onClick={() => confirm(`Delete ${t.name}?`) && act(() => dispatch.deleteTruck(t.id))} className="text-xs text-red-600 underline">Delete</button>
                     </>
                   )}
@@ -320,19 +320,19 @@ export default function DispatchPage() {
     { label: 'Assigned',   value: count('assigned'), icon: 'ti-clipboard-check' },
     { label: 'In transit', value: count('in_transit'), icon: 'ti-truck-delivery' },
     { label: 'Trucks available', value: `${summary?.trucks.available ?? 0} / ${trucks.length}`, icon: 'ti-truck' },
-    { label: 'Delivered revenue', value: fmtMoney(summary?.loads.delivered?.revenue ?? 0), icon: 'ti-currency-dollar' },
+    { label: 'Delivered revenue', value: fmtMoney(summary?.loads.delivered?.revenue ?? 0), icon: 'ti-cash' },
   ]
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-900" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <header className="bg-stone-950 text-white">
+    <main className="min-h-screen bg-silver-100 text-silver-900" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <header className="bg-brand-800 text-white">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
-          <LogoMark size={26} variant="dark" />
+          <TruckLoadsMark size={26} onDark />
           <span className="font-semibold hidden sm:inline">Truck Loads</span>
           <nav className="sm:ml-6 flex gap-1">
             {(['loads', 'fleet'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
-                className={`rounded-md px-3 py-1.5 text-sm capitalize ${tab === t ? 'bg-yellow-600/20 text-yellow-400' : 'text-white/60 hover:text-white'}`}>
+                className={`rounded-md px-3 py-1.5 text-sm capitalize ${tab === t ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'}`}>
                 {t}
               </button>
             ))}
@@ -352,8 +352,8 @@ export default function DispatchPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {kpis.map(k => (
-            <div key={k.label} className="rounded-xl bg-white border border-stone-200 p-3">
-              <div className="text-xs text-stone-500 flex items-center gap-1"><i className={`ti ${k.icon}`} />{k.label}</div>
+            <div key={k.label} className="rounded-xl bg-white border border-silver-200 p-3">
+              <div className="text-xs text-silver-500 flex items-center gap-1"><i className={`ti ${k.icon}`} />{k.label}</div>
               <div className="text-xl font-semibold mt-1 tabular-nums">{k.value}</div>
             </div>
           ))}
@@ -364,14 +364,14 @@ export default function DispatchPage() {
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h1 className="font-semibold">Loads</h1>
-                <button onClick={() => setModal('load')} className="press rounded-lg bg-stone-900 text-white px-3 py-1.5 text-sm">
+                <button onClick={() => setModal('load')} className="press rounded-lg bg-brand-700 hover:bg-brand-800 text-white px-3 py-1.5 text-sm">
                   <i className="ti ti-plus mr-1" />New load
                 </button>
               </div>
               <div className="flex flex-wrap gap-1">
                 {FILTERS.map(f => (
                   <button key={f} onClick={() => setFilter(f)}
-                    className={`rounded-full px-2.5 py-1 text-xs ${filter === f ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 border border-stone-200'}`}>
+                    className={`rounded-full px-2.5 py-1 text-xs ${filter === f ? 'bg-brand-700 hover:bg-brand-800 text-white' : 'bg-white text-silver-600 border border-silver-200'}`}>
                     {statusLabel(f)}
                   </button>
                 ))}
@@ -380,14 +380,14 @@ export default function DispatchPage() {
                 {visible.map(l => (
                   <li key={l.id}>
                     <button onClick={() => select(l.id)}
-                      className={`press w-full text-left rounded-xl border bg-white p-3 transition-colors ${selected?.id === l.id ? 'border-yellow-600 ring-2 ring-yellow-600/20' : 'border-stone-200 hover:border-stone-300'}`}>
+                      className={`press w-full text-left rounded-xl border bg-white p-3 transition-colors ${selected?.id === l.id ? 'border-brand-600 ring-2 ring-brand-600/20' : 'border-silver-200 hover:border-silver-300'}`}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium text-sm">{l.reference}</span>
                         <Pill className={STATUS_STYLE[l.status]}>{statusLabel(l.status)}</Pill>
                       </div>
-                      <div className="text-xs text-stone-600 mt-1 truncate">{l.originAddress}</div>
-                      <div className="text-xs text-stone-600 truncate">→ {l.destAddress}</div>
-                      <div className="text-[11px] text-stone-400 mt-1">
+                      <div className="text-xs text-silver-600 mt-1 truncate">{l.originAddress}</div>
+                      <div className="text-xs text-silver-600 truncate">→ {l.destAddress}</div>
+                      <div className="text-[11px] text-silver-400 mt-1">
                         {fmtDate(l.pickupAt)} · {fmtLb(l.weightKg)}
                         {l.truck && ` · ${l.truck.name}`}
                         {l.routeDistanceM != null && ` · ${fmtMiles(l.routeDistanceM)}`}
@@ -396,20 +396,20 @@ export default function DispatchPage() {
                     </button>
                   </li>
                 ))}
-                {!visible.length && <li className="text-sm text-stone-500 text-center py-8">No loads here.</li>}
+                {!visible.length && <li className="text-sm text-silver-500 text-center py-8">No loads here.</li>}
               </ul>
             </section>
             <section>
               {selected
                 ? <LoadDetail load={selected} trucks={trucks} routingEnabled={!!summary?.routingEnabled} onChange={onLoadChanged} />
-                : <div className="rounded-xl border border-dashed border-stone-300 p-10 text-center text-sm text-stone-500">Select a load to assign a truck and plan its route.</div>}
+                : <div className="rounded-xl border border-dashed border-silver-300 p-10 text-center text-sm text-silver-500">Select a load to assign a truck and plan its route.</div>}
             </section>
           </div>
         ) : (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h1 className="font-semibold">Fleet</h1>
-              <button onClick={() => setModal('truck')} className="press rounded-lg bg-stone-900 text-white px-3 py-1.5 text-sm">
+              <button onClick={() => setModal('truck')} className="press rounded-lg bg-brand-700 hover:bg-brand-800 text-white px-3 py-1.5 text-sm">
                 <i className="ti ti-plus mr-1" />Add truck
               </button>
             </div>

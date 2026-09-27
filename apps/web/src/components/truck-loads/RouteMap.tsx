@@ -61,7 +61,7 @@ export default function RouteMap({ polyline, origin, destination }: {
       if (polyline) {
         const path = google.maps.geometry.encoding.decodePath(polyline)
         overlays.current.push(new google.maps.Polyline({
-          map: map.current, path, strokeColor: '#CA8A04', strokeWeight: 5, strokeOpacity: 0.9,
+          map: map.current, path, strokeColor: '#1A7340', strokeWeight: 5, strokeOpacity: 0.9,
         }))
         path.forEach((p: any) => bounds.extend(p))
       }
@@ -79,10 +79,10 @@ export default function RouteMap({ polyline, origin, destination }: {
 
   if (!KEY || error) {
     return (
-      <div className="h-full min-h-[260px] rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-center p-6 text-sm text-stone-500">
+      <div className="h-full min-h-[260px] rounded-xl bg-silver-100 border border-silver-200 flex items-center justify-center text-center p-6 text-sm text-silver-500">
         {error ?? 'Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to show the route map.'}
       </div>
     )
   }
-  return <div ref={el} className="h-full min-h-[260px] rounded-xl overflow-hidden border border-stone-200" />
+  return <div ref={el} className="h-full min-h-[260px] rounded-xl overflow-hidden border border-silver-200" />
 }

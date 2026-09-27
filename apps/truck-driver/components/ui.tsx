@@ -34,12 +34,12 @@ export function HazmatBanner({ types }: { types: string[] }) {
 export function Button({ title, onPress, variant = 'primary', busy, disabled }: {
   title: string
   onPress: () => void
-  variant?: 'primary' | 'gold' | 'green' | 'outline'
+  variant?: 'primary' | 'dark' | 'silver' | 'outline'
   busy?: boolean
   disabled?: boolean
 }) {
-  const bg = { primary: colors.ink, gold: colors.gold, green: colors.green, outline: 'transparent' }[variant]
-  const fg = variant === 'outline' ? colors.text : '#fff'
+  const bg = { primary: colors.brand, dark: colors.brandDark, silver: colors.silver, outline: 'transparent' }[variant]
+  const fg = variant === 'silver' || variant === 'outline' ? colors.text : '#fff'
   return (
     <Pressable
       accessibilityRole="button"
@@ -67,7 +67,7 @@ const s = StyleSheet.create({
   hazmat: { backgroundColor: colors.orangeBg, borderColor: colors.orangeBorder, borderWidth: 1, borderRadius: 12, padding: 14 },
   hazmatText: { color: colors.orangeText, fontWeight: '600', fontSize: 15 },
   button: { borderRadius: 14, paddingVertical: 17, alignItems: 'center', justifyContent: 'center', minHeight: 56 },
-  buttonOutline: { borderWidth: 1, borderColor: colors.border },
+  buttonOutline: { borderWidth: 1, borderColor: colors.silverMid },
   buttonText: { fontSize: 17, fontWeight: '700' },
   label: { fontSize: 12, color: colors.faint, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' },
 })

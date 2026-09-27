@@ -110,7 +110,7 @@ export default function LoadDetail() {
           {error && <Text style={s.error}>{error}</Text>}
           <Button
             title={`Navigate to ${nextStop}`}
-            variant="gold"
+            variant="primary"
             onPress={() => router.push({ pathname: '/navigate/[id]', params: { id: load.id } })}
           />
           {load.status === 'in_transit' && (
@@ -120,8 +120,8 @@ export default function LoadDetail() {
             />
           )}
           {load.status === 'assigned'
-            ? <Button title="Start trip" onPress={() => changeStatus('in_transit')} busy={busy} />
-            : <Button title="Mark delivered" variant="green" onPress={() => changeStatus('delivered')} busy={busy} />}
+            ? <Button title="Start trip" variant="silver" onPress={() => changeStatus('in_transit')} busy={busy} />
+            : <Button title="Mark delivered" variant="dark" onPress={() => changeStatus('delivered')} busy={busy} />}
         </View>
       )}
     </SafeAreaView>
@@ -135,7 +135,7 @@ const s = StyleSheet.create({
   centered: { textAlign: 'center', color: colors.muted, marginTop: 40 },
   content: { padding: 16, gap: 14, paddingBottom: 24 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  ref: { fontSize: 28, fontWeight: '800', color: colors.text },
+  ref: { fontSize: 28, fontWeight: '800', color: colors.brandDark },
   addr: { fontSize: 17, color: colors.text },
   muted: { fontSize: 14, color: colors.muted },
   divider: { height: 1, backgroundColor: colors.border },

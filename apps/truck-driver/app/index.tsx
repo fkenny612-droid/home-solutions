@@ -96,7 +96,7 @@ export default function Loads() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
-  title: { fontSize: 28, fontWeight: '800', color: colors.text },
+  title: { fontSize: 28, fontWeight: '800', color: colors.brandDark },
   signOut: { color: colors.muted, fontSize: 15 },
   content: { padding: 16, gap: 20, paddingBottom: 40 },
   section: { gap: 10 },
