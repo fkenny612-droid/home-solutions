@@ -272,3 +272,77 @@ model Listing {
   @@index([sellerId])
   @@index([city])
 }
+
+// ── Freight: truck load management ──────────────────────────────────────────
+// Dimensions are stored in the units Google's Routes API expects for
+// travelMode TRUCK (millimetres / kilograms) so they pass straight through.
+
+model Truck {
+  id            String   @id @default(uuid())
+  ownerId       String
+  name          String
+  plate         String
+  driverName    String?
+  driverPhone   String?
+  heightMm      Int
+  widthMm       Int
+  lengthMm      Int
+  grossWeightKg Int      // tractor + trailer + max payload
+  tareWeightKg  Int      // empty weight; payload capacity = gross - tare
+  axleCount     Int      @default(5)
+  hazmatTypes   String[] // hazmat classes this rig is certified to haul
+  status        String   @default("available") // available | on_load | out_of_service
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  loads         Load[]
+
+  @@unique([ownerId, plate])
+  @@index([ownerId])
+}
+
+model Load {
+  id               String    @id @default(uuid())
+  ownerId          String
+  reference        String
+  shipperName      String
+  commodity        String
+  weightKg         Int
+  hazmatTypes      String[]
+  rate             Float?
+  originAddress    String
+  originLat        Float?
+  originLng        Float?
+  destAddress      String
+  destLat          Float?
+  destLng          Float?
+  pickupAt         DateTime?
+  deliverBy        DateTime?
+  status           String    @default("booked") // booked | assigned | in_transit | delivered | cancelled
+  notes            String?
+  truckId          String?
+  truck            Truck?    @relation(fields: [truckId], references: [id])
+  // Cached truck route from Google Routes API (travelMode TRUCK)
+  routeDistanceM   Int?
+  routeDurationS   Int?
+  routePolyline    String?
+  routeWarnings    String[]
+  routeComputedAt  DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  events           LoadEvent[]
+
+  @@unique([ownerId, reference])
+  @@index([ownerId, status])
+  @@index([truckId])
+}
+
+model LoadEvent {
+  id        String   @id @default(uuid())
+  loadId    String
+  load      Load     @relation(fields: [loadId], references: [id], onDelete: Cascade)
+  type      String   // created | assigned | unassigned | status | routed
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([loadId])
+}

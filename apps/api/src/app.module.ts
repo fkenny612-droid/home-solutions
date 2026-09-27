@@ -12,6 +12,7 @@ import { ChatModule } from './modules/chat/chat.module'
 import { LoyaltyModule } from './modules/loyalty/loyalty.module'
 import { ListingsModule } from './modules/listings/listings.module'
 import { PaymentMethodsModule } from './modules/payment-methods/payment-methods.module'
+import { FreightModule } from './modules/freight/freight.module'
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PaymentMethodsModule } from './modules/payment-methods/payment-methods.
     LoyaltyModule,
     ListingsModule,
     PaymentMethodsModule,
+    FreightModule,
   ],
 })
 export class AppModule {}
