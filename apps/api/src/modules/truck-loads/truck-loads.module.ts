@@ -17,6 +17,9 @@ import { ApplicationsController, PublicApplicationsController } from './applicat
 import { ApplicationsService } from './applications.service'
 import { TruckLoadsService } from './truck-loads.service'
 import { GoogleRoutesService } from './google-routes.service'
+import { ChatService } from './chat.service'
+import { ClaimsService } from './claims.service'
+import { CarrierChatClaimsController, ClaimsAdminController, ShipperChatClaimsController } from './chat-claims.controller'
 
 @Module({
   imports:     [NotificationsModule],
@@ -25,9 +28,10 @@ import { GoogleRoutesService } from './google-routes.service'
     CarrierController, CarrierAdminController, ShipperController, MarketController,
     PaymentsWebhookController, CarrierPaymentsController, EscrowAdminController,
     DriverDeliveryController, CarrierDeliveryController, ShipperDeliveryController, CarrierRatingController, PublicTrackingController,
+    ShipperChatClaimsController, CarrierChatClaimsController, ClaimsAdminController,
   ],
   providers:   [TruckLoadsService, GoogleRoutesService, ApplicationsService, CarrierService, MarketplaceService,
-    EscrowService, PaymentGatewayProvider, DeliveryService,
+    EscrowService, PaymentGatewayProvider, DeliveryService, ChatService, ClaimsService,
   ],
 })
 export class TruckLoadsModule {}

@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { EscrowService, PLATFORM_FEE_PERCENT, CLAIM_WINDOW_HOURS } from './escrow.service'
 import { DeliveryService, newTrackingToken } from './delivery.service'
+import { ChatService } from './chat.service'
 import { SmsService } from '../notifications/sms.service'
 import { carrierBadge, complianceBlockers } from './compliance'
 import { truckLoadProblems } from './truck-loads.rules'
@@ -16,7 +17,7 @@ type Shipment = Awaited<ReturnType<PrismaService['shipment']['findUniqueOrThrow'
 
 @Injectable()
 export class MarketplaceService {
-  constructor(private prisma: PrismaService, private sms: SmsService, private escrow: EscrowService, private delivery: DeliveryService) {}
+  constructor(private prisma: PrismaService, private sms: SmsService, private escrow: EscrowService, private delivery: DeliveryService, private chat: ChatService) {}
 
   // ── Shipper profile ─────────────────────────────────────────────────────────
 
@@ -74,8 +75,15 @@ export class MarketplaceService {
       take: 200,
       include: { bids: { where: { status: { in: ['active', 'accepted'] } }, select: { amount: true, status: true } } },
     })
+    const unread = await this.chat.unread('shipper', { shipmentId: { in: rows.map(r => r.id) } })
+    const unreadFor = (id: string) => [...unread].reduce((n, [k, c]) => (k.startsWith(`${id}:`) ? n + c : n), 0)
+    const disputed = new Set((await this.prisma.claim.findMany({
+      where: { shipmentId: { in: rows.map(r => r.id) }, status: 'open' }, select: { shipmentId: true },
+    })).map(c => c.shipmentId))
     return rows.map(({ bids, ...s }) => ({
       ...s,
+      unread: unreadFor(s.id),
+      claimOpen: disputed.has(s.id),
       bidCount:  bids.filter(b => b.status === 'active').length,
       lowestBid: bids.filter(b => b.status === 'active').reduce<number | null>((m, b) => (m === null || b.amount < m ? b.amount : m), null),
       awardedAmount: bids.find(b => b.status === 'accepted')?.amount ?? null,
@@ -101,10 +109,13 @@ export class MarketplaceService {
         : null,
       this.escrow.latestFor(shipment.id),
     ])
-    const myRating = await this.delivery.myRating(shipment.id, 'shipper_rates_carrier')
+    const [myRating, unread] = await Promise.all([
+      this.delivery.myRating(shipment.id, 'shipper_rates_carrier'),
+      this.chat.unread('shipper', { shipmentId: { in: [shipment.id] } }),
+    ])
     return {
       ...shipment,
-      bids: shipment.bids.map(b => ({ ...b, carrier: carriers.get(b.carrierId) ?? null })),
+      bids: shipment.bids.map(b => ({ ...b, carrier: carriers.get(b.carrierId) ?? null, unread: unread.get(`${shipment.id}:${b.carrierId}`) ?? 0 })),
       progress: load,
       myRating,
       payment: payment && {
@@ -336,12 +347,14 @@ export class MarketplaceService {
       include: { shipment: true },
     })
     const shippers = await this.shipperNames(bids.map(b => b.shipment.shipperId))
+    const unread = await this.chat.unread('carrier', { carrierId })
     const rated = new Set((await this.prisma.rating.findMany({
       where: { raterId: carrierId, role: 'carrier_rates_shipper', shipmentId: { in: bids.map(b => b.shipmentId) } },
       select: { shipmentId: true },
     })).map(r => r.shipmentId))
     return bids.map(b => ({
       id: b.id, amount: b.amount, message: b.message, status: b.status, updatedAt: b.updatedAt,
+      unread: unread.get(`${b.shipmentId}:${carrierId}`) ?? 0,
       shipment: {
         id: b.shipment.id, reference: b.shipment.reference, status: b.shipment.status,
         originAddress: b.shipment.originAddress, destAddress: b.shipment.destAddress,

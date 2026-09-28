@@ -198,3 +198,32 @@ export class RatingDto {
   @IsOptional() @IsBoolean() onTime?: boolean
   @IsOptional() @IsString() @MaxLength(1000) comment?: string
 }
+
+// ── Chat & claims ─────────────────────────────────────────────────────────────
+
+export const CLAIM_TYPES = ['damaged', 'short', 'late', 'not_delivered', 'other'] as const
+export const CLAIM_OUTCOMES = ['carrier', 'shipper', 'split'] as const
+
+export class MessageDto {
+  @IsString() @MinLength(1) @MaxLength(2000) body: string
+}
+
+export class ShipperMessageDto extends MessageDto {
+  @IsString() @MinLength(1) @MaxLength(64) carrierId: string
+}
+
+export class ClaimDto {
+  @IsIn(CLAIM_TYPES) type: (typeof CLAIM_TYPES)[number]
+  @IsString() @MinLength(10) @MaxLength(2000) description: string
+  @IsOptional() @IsNumber() @Min(0) @Max(100_000_000) amountClaimed?: number
+}
+
+export class ClaimResponseDto {
+  @IsString() @MinLength(2) @MaxLength(2000) response: string
+}
+
+export class ResolveClaimDto {
+  @IsIn(CLAIM_OUTCOMES) outcome: (typeof CLAIM_OUTCOMES)[number]
+  @IsOptional() @IsNumber() @Min(0.01) refundAmount?: number
+  @IsOptional() @IsString() @MaxLength(1000) note?: string
+}

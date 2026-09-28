@@ -8,11 +8,11 @@ datasource db {
 }
 
 model User {
-  id                  String   @id @default(uuid())
-  phone               String   @unique
-  email               String?  @unique
+  id                  String    @id @default(uuid())
+  phone               String    @unique
+  email               String?   @unique
   passwordHash        String
-  role                String   @default("client")
+  role                String    @default("client")
   firstName           String?
   lastName            String?
   // Provider-only fields
@@ -21,13 +21,13 @@ model User {
   vatNumber           String?
   serviceArea         String?
   pushToken           String?
-  idVerified          Boolean  @default(false)
+  idVerified          Boolean   @default(false)
   idVerifiedAt        DateTime?
-  loyaltyPoints       Int      @default(0)
-  referralCode        String?  @unique
+  loyaltyPoints       Int       @default(0)
+  referralCode        String?   @unique
   referredById        String?
-  referralRewarded    Boolean  @default(false)
-  createdAt           DateTime @default(now())
+  referralRewarded    Boolean   @default(false)
+  createdAt           DateTime  @default(now())
 }
 
 model LoyaltyRedemption {
@@ -123,7 +123,7 @@ model MaterialOrderItem {
 model KycDocument {
   id         String   @id @default(uuid())
   providerId String
-  type       String   // 'id' | 'company_reg' | 'bank_letter'
+  type       String // 'id' | 'company_reg' | 'bank_letter'
   fileName   String
   fileUrl    String
   status     String   @default("pending") // pending | approved | rejected
@@ -137,25 +137,25 @@ model Message {
   bookingId   String
   booking     Booking  @relation(fields: [bookingId], references: [id])
   senderId    String
-  senderRole  String   // 'client' | 'provider' | 'admin'
+  senderRole  String // 'client' | 'provider' | 'admin'
   senderName  String
   text        String   @default("")
-  attachments Json?    // [{ url, type: 'image'|'file', fileName }]
+  attachments Json? // [{ url, type: 'image'|'file', fileName }]
   createdAt   DateTime @default(now())
 }
 
 model Subscription {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   userId       String
-  userRole     String   // 'client' | 'provider'
+  userRole     String // 'client' | 'provider'
   planId       String
-  status       String   @default("active") // active | cancelled | expired
+  status       String    @default("active") // active | cancelled | expired
   peachTokenId String?
-  startsAt     DateTime @default(now())
+  startsAt     DateTime  @default(now())
   expiresAt    DateTime?
   cancelledAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([userId, userRole])
 }
@@ -201,7 +201,7 @@ model Notification {
   userId    String
   title     String
   body      String
-  type      String   // new_job | provider_assigned | job_complete | chat_message | payment
+  type      String // new_job | provider_assigned | job_complete | chat_message | payment
   data      Json?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -210,38 +210,38 @@ model Notification {
 }
 
 model Booking {
-  id               String    @id @default(uuid())
-  clientId         String
-  providerId       String?
-  provider         Provider? @relation(fields: [providerId], references: [id])
-  serviceType      String
-  status           String    @default("pending")
-  location         String
-  address          String
-  quotedAmount     Float
-  finalAmount      Float?
-  paymentMethod    String    @default("card")
-  paymentHeld      Boolean   @default(false)
-  paymentReleased  Boolean   @default(false)
-  transactionId    String?
-  serviceDetails   Json?
-  images           String[]
+  id                String    @id @default(uuid())
+  clientId          String
+  providerId        String?
+  provider          Provider? @relation(fields: [providerId], references: [id])
+  serviceType       String
+  status            String    @default("pending")
+  location          String
+  address           String
+  quotedAmount      Float
+  finalAmount       Float?
+  paymentMethod     String    @default("card")
+  paymentHeld       Boolean   @default(false)
+  paymentReleased   Boolean   @default(false)
+  transactionId     String?
+  serviceDetails    Json?
+  images            String[]
   warrantyExpiresAt DateTime?
-  notes            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  messages         Message[]
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  messages          Message[]
 }
 
 model SavedCard {
-  id          String   @id @default(uuid())
-  userId      String
-  brand       String
-  last4       String
-  expiry      String
-  holderName  String
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  brand      String
+  last4      String
+  expiry     String
+  holderName String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   @@index([userId])
 }
@@ -253,20 +253,20 @@ model Listing {
   sellerPhone  String
   sellerAvatar String?
   category     String
-  subcategory String
-  title       String
-  description String
-  price       Float?
-  priceLabel  String
-  condition   String?
-  images      String[]
-  city        String
-  suburb      String
-  views       Int      @default(0)
-  urgent      Boolean  @default(false)
-  savedBy     String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  subcategory  String
+  title        String
+  description  String
+  price        Float?
+  priceLabel   String
+  condition    String?
+  images       String[]
+  city         String
+  suburb       String
+  views        Int      @default(0)
+  urgent       Boolean  @default(false)
+  savedBy      String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([category])
   @@index([sellerId])
@@ -278,31 +278,31 @@ model Listing {
 // travelMode TRUCK (millimetres / kilograms) so they pass straight through.
 
 model Truck {
-  id            String   @id @default(uuid())
-  ownerId       String
-  name          String
-  plate         String
-  driverName    String?
-  driverPhone   String?
-  driverPhoneKey String? // digits of driverPhone; the driver app matches the signed-in phone against it
-  heightMm      Int
-  widthMm       Int
-  lengthMm      Int
-  grossWeightKg Int      // tractor + trailer + max payload
-  tareWeightKg  Int      // empty weight; payload capacity = gross - tare
-  axleCount     Int      @default(5)
-  hazmatTypes   String[] // hazmat classes this rig is certified to haul
-  status        String   @default("available") // available | on_load | out_of_service
+  id                  String    @id @default(uuid())
+  ownerId             String
+  name                String
+  plate               String
+  driverName          String?
+  driverPhone         String?
+  driverPhoneKey      String? // digits of driverPhone; the driver app matches the signed-in phone against it
+  heightMm            Int
+  widthMm             Int
+  lengthMm            Int
+  grossWeightKg       Int // tractor + trailer + max payload
+  tareWeightKg        Int // empty weight; payload capacity = gross - tare
+  axleCount           Int       @default(5)
+  hazmatTypes         String[] // hazmat classes this rig is certified to haul
+  status              String    @default("available") // available | on_load | out_of_service
   // Compliance expiry dates (null = not recorded)
   licenceDiscExpiry   DateTime?
   roadworthyExpiry    DateTime?
   insuranceExpiry     DateTime?
   driverLicenceExpiry DateTime?
   driverPrdpExpiry    DateTime?
-  applicationId       String?   // the carrier application it was approved from
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  loads         Load[]
+  applicationId       String? // the carrier application it was approved from
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  loads               Load[]
 
   @@unique([ownerId, plate])
   @@index([ownerId])
@@ -310,45 +310,45 @@ model Truck {
 }
 
 model Load {
-  id               String    @id @default(uuid())
-  ownerId          String
-  reference        String
-  shipperName      String
-  commodity        String
-  weightKg         Int
-  hazmatTypes      String[]
-  rate             Float?
-  originAddress    String
-  originLat        Float?
-  originLng        Float?
-  destAddress      String
-  destLat          Float?
-  destLng          Float?
-  pickupAt         DateTime?
-  deliverBy        DateTime?
-  status           String    @default("booked") // booked | assigned | in_transit | delivered | cancelled
-  notes            String?
-  truckId          String?
-  truck            Truck?    @relation(fields: [truckId], references: [id])
-  shipmentId       String?   // set when won on the marketplace. Not @unique: adding a unique
-                             // constraint to an existing table makes `db push` refuse at deploy.
-  deliveredByKey   String?   // driver phone key at delivery, so history follows the driver, not the truck
+  id              String           @id @default(uuid())
+  ownerId         String
+  reference       String
+  shipperName     String
+  commodity       String
+  weightKg        Int
+  hazmatTypes     String[]
+  rate            Float?
+  originAddress   String
+  originLat       Float?
+  originLng       Float?
+  destAddress     String
+  destLat         Float?
+  destLng         Float?
+  pickupAt        DateTime?
+  deliverBy       DateTime?
+  status          String           @default("booked") // booked | assigned | in_transit | delivered | cancelled
+  notes           String?
+  truckId         String?
+  truck           Truck?           @relation(fields: [truckId], references: [id])
+  shipmentId      String? // set when won on the marketplace. Not @unique: adding a unique
+  // constraint to an existing table makes `db push` refuse at deploy.
+  deliveredByKey  String? // driver phone key at delivery, so history follows the driver, not the truck
   // Live tracking: last position reported by the driver app while in transit
-  lastLat          Float?
-  lastLng          Float?
-  lastSpeedKmh     Float?
-  lastLocationAt   DateTime?
+  lastLat         Float?
+  lastLng         Float?
+  lastSpeedKmh    Float?
+  lastLocationAt  DateTime?
   // Cached truck route from Google Routes API (travelMode TRUCK)
-  routeDistanceM   Int?
-  routeDurationS   Int?
-  routePolyline    String?
-  routeWarnings    String[]
-  routeComputedAt  DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  events           LoadEvent[]
-  pod              ProofOfDelivery?
-  trackingPoints   TrackingPoint[]
+  routeDistanceM  Int?
+  routeDurationS  Int?
+  routePolyline   String?
+  routeWarnings   String[]
+  routeComputedAt DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  events          LoadEvent[]
+  pod             ProofOfDelivery?
+  trackingPoints  TrackingPoint[]
 
   @@unique([ownerId, reference])
   @@index([ownerId, status])
@@ -361,7 +361,7 @@ model LoadEvent {
   id        String   @id @default(uuid())
   loadId    String
   load      Load     @relation(fields: [loadId], references: [id], onDelete: Cascade)
-  type      String   // created | assigned | unassigned | status | routed
+  type      String // created | assigned | unassigned | status | routed
   actor     String   @default("dispatcher") // dispatcher | driver
   message   String
   createdAt DateTime @default(now())
@@ -375,75 +375,75 @@ model LoadEvent {
 // driver-app login) in that dispatcher's fleet.
 
 model ApplicationLink {
-  id        String   @id @default(uuid())
-  ownerId   String
-  token     String   @unique
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id           String             @id @default(uuid())
+  ownerId      String
+  token        String             @unique
+  active       Boolean            @default(true)
+  createdAt    DateTime           @default(now())
   applications TruckApplication[]
 
   @@index([ownerId, active])
 }
 
 model TruckApplication {
-  id             String    @id @default(uuid())
-  ownerId        String
-  linkId         String
-  link           ApplicationLink @relation(fields: [linkId], references: [id])
-  reference      String    @unique // short code shown to the applicant, e.g. TL-7K3M9Q
-  status         String    @default("pending") // pending | approved | rejected
+  id               String                @id @default(uuid())
+  ownerId          String
+  linkId           String
+  link             ApplicationLink       @relation(fields: [linkId], references: [id])
+  reference        String                @unique // short code shown to the applicant, e.g. TL-7K3M9Q
+  status           String                @default("pending") // pending | approved | rejected
   // Company / contact
-  companyName    String?
-  contactName    String
-  contactPhone   String
-  contactEmail   String?
+  companyName      String?
+  contactName      String
+  contactPhone     String
+  contactEmail     String?
   // Driver
-  driverName     String
-  driverPhone    String
-  driverIdNumber String
-  licenceCode    String
-  licenceExpiry  DateTime
-  prdpExpiry     DateTime?
+  driverName       String
+  driverPhone      String
+  driverIdNumber   String
+  licenceCode      String
+  licenceExpiry    DateTime
+  prdpExpiry       DateTime?
   discExpiry       DateTime?
   roadworthyExpiry DateTime?
   insuranceExpiry  DateTime?
-  passwordHash   String?   // driver-app password chosen on the form; used on approval
+  passwordHash     String? // driver-app password chosen on the form; used on approval
   // Truck
-  truckType      String
-  make           String
-  model          String?
-  year           Int?
-  plate          String
-  vin            String?
-  heightMm       Int
-  widthMm        Int
-  lengthMm       Int
-  grossWeightKg  Int
-  tareWeightKg   Int
-  axleCount      Int
-  hazmatTypes    String[]
+  truckType        String
+  make             String
+  model            String?
+  year             Int?
+  plate            String
+  vin              String?
+  heightMm         Int
+  widthMm          Int
+  lengthMm         Int
+  grossWeightKg    Int
+  tareWeightKg     Int
+  axleCount        Int
+  hazmatTypes      String[]
   // Review
-  consentAt      DateTime  // POPIA consent to process personal information
-  reviewNote     String?
-  reviewedAt     DateTime?
-  truckId        String?   // set when approved
-  createdAt      DateTime  @default(now())
-  documents      ApplicationDocument[]
+  consentAt        DateTime // POPIA consent to process personal information
+  reviewNote       String?
+  reviewedAt       DateTime?
+  truckId          String? // set when approved
+  createdAt        DateTime              @default(now())
+  documents        ApplicationDocument[]
 
   @@index([ownerId, status])
 }
 
 model ApplicationDocument {
-  id            String   @id @default(uuid())
+  id            String           @id @default(uuid())
   applicationId String
   application   TruckApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  kind          String   // see APPLICATION_DOCUMENTS
+  kind          String // see APPLICATION_DOCUMENTS
   fileName      String
   mimeType      String
   size          Int
   // Stored in the database (not a public URL): these include ID documents
   data          Bytes
-  createdAt     DateTime @default(now())
+  createdAt     DateTime         @default(now())
 
   @@index([applicationId])
 }
@@ -453,38 +453,38 @@ model ApplicationDocument {
 // platform admin verifies them. The Verified badge is what shippers trust.
 
 model CarrierProfile {
-  id                 String    @id @default(uuid())
-  ownerId            String    @unique
-  companyName        String
-  registrationNumber String    // CIPC
-  vatNumber          String?
-  contactName        String
-  contactPhone       String
-  contactEmail       String?
-  address            String?
-  status             String    @default("draft") // draft | pending | verified | rejected
-  reviewNote         String?
-  submittedAt        DateTime?
-  verifiedAt         DateTime?
+  id                  String            @id @default(uuid())
+  ownerId             String            @unique
+  companyName         String
+  registrationNumber  String // CIPC
+  vatNumber           String?
+  contactName         String
+  contactPhone        String
+  contactEmail        String?
+  address             String?
+  status              String            @default("draft") // draft | pending | verified | rejected
+  reviewNote          String?
+  submittedAt         DateTime?
+  verifiedAt          DateTime?
   lastComplianceSmsAt DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  documents          CarrierDocument[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  documents           CarrierDocument[]
 
   @@index([status])
 }
 
 model CarrierDocument {
-  id        String    @id @default(uuid())
+  id        String         @id @default(uuid())
   profileId String
   profile   CarrierProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  kind      String    // see CARRIER_DOCUMENTS
+  kind      String // see CARRIER_DOCUMENTS
   fileName  String
   mimeType  String
   size      Int
   data      Bytes
   expiresAt DateTime?
-  createdAt DateTime  @default(now())
+  createdAt DateTime       @default(now())
 
   @@unique([profileId, kind])
 }
@@ -505,29 +505,31 @@ model ShipperProfile {
 }
 
 model Shipment {
-  id              String    @id @default(uuid())
-  shipperId       String    // User id of the shipper
-  reference       String    @unique // SH-XXXXXX
+  id              String            @id @default(uuid())
+  shipperId       String // User id of the shipper
+  reference       String            @unique // SH-XXXXXX
   commodity       String
   weightKg        Int
   hazmatTypes     String[]
-  truckType       String?   // preferred truck type
+  truckType       String? // preferred truck type
   originAddress   String
   destAddress     String
   pickupAt        DateTime?
   deliverBy       DateTime?
   notes           String?
-  targetRate      Float?    // shipper's budget, shown to carriers
-  verifiedOnly    Boolean   @default(true)
+  targetRate      Float? // shipper's budget, shown to carriers
+  verifiedOnly    Boolean           @default(true)
   biddingClosesAt DateTime?
-  trackingToken   String?   // public tracking link for the consignee (set on award)
-  status          String    @default("open") // open | awaiting_payment | awarded | in_transit | delivered | cancelled
-  awardedBidId    String?   @unique
-  loadId          String?   @unique // the carrier's Load once awarded
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  trackingToken   String? // public tracking link for the consignee (set on award)
+  status          String            @default("open") // open | awaiting_payment | awarded | in_transit | delivered | cancelled
+  awardedBidId    String?           @unique
+  loadId          String?           @unique // the carrier's Load once awarded
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   bids            Bid[]
   payments        Payment[]
+  messages        ShipmentMessage[]
+  claims          Claim[]
 
   @@index([status, createdAt])
   @@index([shipperId])
@@ -538,7 +540,7 @@ model Bid {
   id         String   @id @default(uuid())
   shipmentId String
   shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  carrierId  String   // User id of the carrier (fleet owner)
+  carrierId  String // User id of the carrier (fleet owner)
   amount     Float
   message    String?
   status     String   @default("active") // active | withdrawn | accepted | declined
@@ -554,20 +556,20 @@ model Bid {
 // released to the carrier (less the platform fee) after the claim window.
 
 model Payment {
-  id                String    @id @default(uuid())
+  id                String         @id @default(uuid())
   shipmentId        String
-  shipment          Shipment  @relation(fields: [shipmentId], references: [id])
+  shipment          Shipment       @relation(fields: [shipmentId], references: [id])
   bidId             String
   shipperId         String
   carrierId         String
-  amount            Float     // what the shipper pays (the accepted bid)
+  amount            Float // what the shipper pays (the accepted bid)
   feePercent        Float
   feeAmount         Float
-  payoutAmount      Float     // amount - fee, owed to the carrier
-  currency          String    @default("ZAR")
+  payoutAmount      Float // amount - fee, owed to the carrier
+  currency          String         @default("ZAR")
   // pending | held | release_pending | payout_due | paid_out | refund_due | refunded | failed | cancelled | disputed
-  status            String    @default("pending")
-  provider          String    // mock | peach
+  status            String         @default("pending")
+  provider          String // mock | peach
   checkoutId        String?
   checkoutUrl       String?
   providerPaymentId String?
@@ -577,8 +579,8 @@ model Payment {
   payoutReference   String?
   refundedAt        DateTime?
   refundReference   String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
   events            PaymentEvent[]
 
   @@index([shipmentId])
@@ -599,16 +601,16 @@ model PaymentEvent {
 // ── Truck Loads: proof of delivery, tracking, ratings ──────────────────────
 
 model ProofOfDelivery {
-  id           String    @id @default(uuid())
-  loadId       String    @unique
-  load         Load      @relation(fields: [loadId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid())
+  loadId       String     @unique
+  load         Load       @relation(fields: [loadId], references: [id], onDelete: Cascade)
   receiverName String
   note         String?
   lat          Float?
   lng          Float?
   accuracyM    Float?
-  capturedBy   String    // driver | dispatcher
-  deliveredAt  DateTime  @default(now())
+  capturedBy   String // driver | dispatcher
+  deliveredAt  DateTime   @default(now())
   photos       PodPhoto[]
 }
 
@@ -642,14 +644,84 @@ model TrackingPoint {
 model Rating {
   id         String   @id @default(uuid())
   shipmentId String
-  role       String   // shipper_rates_carrier | carrier_rates_shipper
+  role       String // shipper_rates_carrier | carrier_rates_shipper
   raterId    String
   rateeId    String
-  stars      Int      // 1–5
+  stars      Int // 1–5
   onTime     Boolean? // shipper: delivered on time? carrier: paid/loaded without delays?
   comment    String?
   createdAt  DateTime @default(now())
 
   @@unique([shipmentId, role])
   @@index([rateeId, role])
+}
+
+// ── Truck Loads: chat and claims ────────────────────────────────────────────
+
+// One thread per (shipment, carrier): a shipper can talk to every bidder,
+// then to the awarded carrier. Admins read threads when handling a claim.
+model ShipmentMessage {
+  id         String   @id @default(uuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  carrierId  String // the carrier side of this thread
+  senderId   String
+  fromRole   String // shipper | carrier | admin
+  body       String
+  createdAt  DateTime @default(now())
+
+  @@index([shipmentId, carrierId, createdAt])
+  @@index([carrierId, createdAt])
+}
+
+// When each side last opened a thread (drives unread counts)
+model ChatRead {
+  id         String   @id @default(uuid())
+  shipmentId String
+  carrierId  String
+  role       String // shipper | carrier
+  readAt     DateTime @default(now())
+
+  @@unique([shipmentId, carrierId, role])
+}
+
+// A shipper's problem report inside the claim window. It freezes the payout
+// (payment status "disputed") until a platform admin decides.
+model Claim {
+  id              String       @id @default(uuid())
+  shipmentId      String
+  shipment        Shipment     @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  paymentId       String
+  shipperId       String
+  carrierId       String
+  type            String // damaged | short | late | not_delivered | other
+  description     String
+  amountClaimed   Float?
+  carrierResponse String?
+  // open → closed, or refund_due → closed when part of the money goes back
+  status          String       @default("open")
+  outcome         String? // carrier | shipper | split
+  refundAmount    Float?
+  adminNote       String?
+  refundReference String?
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime     @default(now())
+  photos          ClaimPhoto[]
+
+  @@index([shipmentId])
+  @@index([status])
+}
+
+model ClaimPhoto {
+  id        String   @id @default(uuid())
+  claimId   String
+  claim     Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  fileName  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([claimId])
 }
