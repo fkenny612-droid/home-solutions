@@ -30,10 +30,14 @@ function loadGoogleMaps(): Promise<any> {
 
 type LatLng = { lat: number; lng: number }
 
-export default function RouteMap({ polyline, origin, destination }: {
+export default function RouteMap({ polyline, origin, destination, truck, trail }: {
   polyline: string | null
   origin: LatLng | null
   destination: LatLng | null
+  /** Live position from the driver app */
+  truck?: LatLng | null
+  /** Where the truck has been */
+  trail?: LatLng[]
 }) {
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<any>(null)
@@ -70,12 +74,25 @@ export default function RouteMap({ polyline, origin, destination }: {
         overlays.current.push(new google.maps.Marker({ map: map.current, position: pos, label }))
         bounds.extend(pos)
       }
+      if (trail && trail.length > 1) {
+        overlays.current.push(new google.maps.Polyline({
+          map: map.current, path: trail, strokeColor: '#7B838C', strokeWeight: 4, strokeOpacity: 0.8,
+        }))
+        trail.forEach(p => bounds.extend(p))
+      }
+      if (truck) {
+        overlays.current.push(new google.maps.Marker({
+          map: map.current, position: truck, title: 'Truck',
+          icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#1A7340', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 },
+        }))
+        bounds.extend(truck)
+      }
       if (!bounds.isEmpty()) map.current.fitBounds(bounds, 40)
     }).catch(e => setError(e.message))
     return () => { cancelled = true }
     // Depend on coordinates, not object identity, so re-renders don't redraw
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [polyline, origin?.lat, origin?.lng, destination?.lat, destination?.lng])
+  }, [polyline, origin?.lat, origin?.lng, destination?.lat, destination?.lng, truck?.lat, truck?.lng, trail?.length])
 
   if (!KEY || error) {
     return (

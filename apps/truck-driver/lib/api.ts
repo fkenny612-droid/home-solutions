@@ -82,6 +82,9 @@ export interface NavigationPlan {
   warnings: string[]
 }
 
+export interface PodInput { receiverName: string; note?: string; lat?: number; lng?: number; accuracyM?: number }
+export interface LocationReport { lat: number; lng: number; speedKmh?: number; heading?: number; accuracyM?: number }
+
 export const api = {
   login: (phone: string, password: string) =>
     req<{ accessToken: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
@@ -90,6 +93,11 @@ export const api = {
   load:  (id: string) => req<DriverLoad>(`/truck-loads/driver/loads/${id}`),
   setStatus: (id: string, status: 'in_transit' | 'delivered', note?: string) =>
     req<DriverLoad>(`/truck-loads/driver/loads/${id}/status`, { method: 'POST', body: JSON.stringify({ status, note }) }),
+  /** Deliver with proof: who signed, a note and where. Marketplace loads require this. */
+  deliver: (id: string, pod: PodInput) =>
+    req<DriverLoad>(`/truck-loads/driver/loads/${id}/deliver`, { method: 'POST', body: JSON.stringify({ data: pod }) }),
+  location: (id: string, p: LocationReport) =>
+    req<{ ok: boolean }>(`/truck-loads/driver/loads/${id}/location`, { method: 'POST', body: JSON.stringify(p) }),
   navigation: (id: string, here: { lat: number; lng: number }) =>
     req<NavigationPlan>(`/truck-loads/driver/loads/${id}/navigation`, { method: 'POST', body: JSON.stringify(here) }),
 }

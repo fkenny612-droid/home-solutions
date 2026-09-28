@@ -1,37 +1,36 @@
 import { useCallback, useState } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { api, type DriverLoad } from '../../lib/api'
 import { fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance } from '../../lib/format'
 import { colors } from '../../lib/theme'
 import { Button, Card, HazmatBanner, Label, StatusPill } from '../../components/ui'
+import { DeliverForm } from '../../components/DeliverForm'
+import { useLocationSharing } from '../../lib/tracking'
 
 export default function LoadDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const [load, setLoad] = useState<DriverLoad | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [note, setNote] = useState('')
+  const [delivering, setDelivering] = useState(false)
+  const sharing = useLocationSharing(load?.id, load?.status === 'assigned' || load?.status === 'in_transit')
 
   useFocusEffect(useCallback(() => {
     api.load(id).then(setLoad).catch(e => setError(e.message))
   }, [id]))
 
-  function changeStatus(status: 'in_transit' | 'delivered') {
+  function startTrip() {
     if (!load) return
-    const [title, msg] = status === 'in_transit'
-      ? ['Start trip?', `Dispatch will see ${load.reference} is on the road.`]
-      : ['Mark delivered?', `Confirm ${load.reference} was delivered.`]
-    Alert.alert(title, msg, [
+    Alert.alert('Start trip?', `Dispatch will see ${load.reference} is on the road.`, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: status === 'in_transit' ? 'Start trip' : 'Delivered',
+        text: 'Start trip',
         onPress: async () => {
           setBusy(true); setError(null)
           try {
-            setLoad(await api.setStatus(load.id, status, status === 'delivered' ? note.trim() || undefined : undefined))
-            setNote('')
+            setLoad(await api.setStatus(load.id, 'in_transit'))
           } catch (e) {
             setError((e as Error).message)
           } finally {
@@ -113,15 +112,15 @@ export default function LoadDetail() {
             variant="primary"
             onPress={() => router.push({ pathname: '/navigate/[id]', params: { id: load.id } })}
           />
-          {load.status === 'in_transit' && (
-            <TextInput
-              style={s.note} value={note} onChangeText={setNote} maxLength={500}
-              placeholder="Delivery note (optional) — who signed, dock #…" placeholderTextColor={colors.faint}
-            />
-          )}
+          <Text style={s.sharing}>
+            {sharing === 'on' ? '● Sharing your location with dispatch and the shipper'
+              : sharing === 'denied' ? 'Location is off — allow it so dispatch can see where you are' : ' '}
+          </Text>
           {load.status === 'assigned'
-            ? <Button title="Start trip" variant="silver" onPress={() => changeStatus('in_transit')} busy={busy} />
-            : <Button title="Mark delivered" variant="dark" onPress={() => changeStatus('delivered')} busy={busy} />}
+            ? <Button title="Start trip" variant="silver" onPress={startTrip} busy={busy} />
+            : delivering
+              ? <DeliverForm loadId={load.id} onDelivered={l => { setLoad(l); setDelivering(false) }} onError={setError} />
+              : <Button title="Mark delivered" variant="dark" onPress={() => setDelivering(true)} />}
         </View>
       )}
     </SafeAreaView>
@@ -145,9 +144,6 @@ const s = StyleSheet.create({
   value: { fontSize: 15, color: colors.text },
   event: { fontSize: 13, color: colors.text },
   actions: { padding: 16, gap: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: '#fff' },
-  note: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: colors.text,
-  },
+  sharing: { fontSize: 12, color: colors.muted, textAlign: 'center' },
   error: { color: colors.red, fontSize: 14 },
 })

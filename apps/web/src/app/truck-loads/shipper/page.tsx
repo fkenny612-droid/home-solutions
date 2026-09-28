@@ -4,8 +4,10 @@ import TruckLoadsMark from '@/components/truck-loads/TruckLoadsMark'
 import Login from '@/components/truck-loads/Login'
 import { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { Field, HazmatPicker, inputCls, Modal } from '@/components/truck-loads/forms'
+import RouteMap from '@/components/truck-loads/RouteMap'
+import { LastSeen, PodView, RatingBadge, RatingForm } from '@/components/truck-loads/Delivery'
 import {
-  ApiError, fmtDate, PAYMENT_LABEL, fmtDistance, fmtMoney, fmtWeight, getToken, hazmatLabel, setToken, shipper,
+  ApiError, fmtDate, PAYMENT_LABEL, Pod, Tracking, fmtDistance, fmtMoney, fmtWeight, getToken, hazmatLabel, setToken, shipper,
   ShipmentInput, ShipmentStatus, ShipperProfile, ShipperShipmentDetail, ShipperShipmentRow, truckTypeLabel,
 } from '@/lib/truck-loads'
 
@@ -160,6 +162,24 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
     setBusy(true); setError(null)
     try { window.location.href = (await fn()).checkoutUrl } catch (e: any) { setError(e.message); setBusy(false) }
   }
+  const [pod, setPod] = useState<Pod | null>(null)
+  const [track, setTrack] = useState<Tracking | null>(null)
+  const [copied, setCopied] = useState(false)
+  const live = s.status === 'awarded' || s.status === 'in_transit'
+  useEffect(() => {
+    setPod(null)
+    if (s.status === 'delivered') shipper.pod(s.id).then(setPod).catch(() => {})
+  }, [s.id, s.status])
+  useEffect(() => {
+    setTrack(null)
+    if (live || s.status === 'delivered') shipper.tracking(s.id).then(setTrack).catch(() => {})
+  }, [s.id, s.status, live, s.progress?.lastLocationAt])
+  const podPhoto = useCallback((photoId: string) => shipper.podPhoto(s.id, photoId), [s.id])
+  const trackUrl = s.trackingToken && typeof window !== 'undefined' ? `${window.location.origin}/truck-loads/track/${s.trackingToken}` : null
+  async function copyLink() {
+    if (!trackUrl) return
+    try { await navigator.clipboard.writeText(trackUrl); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { window.prompt('Tracking link', trackUrl) }
+  }
   const pay = s.payment
   const activeBids = s.bids.filter(b => b.status === 'active')
   const awarded = s.bids.find(b => b.status === 'accepted')
@@ -224,6 +244,7 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
                       <td className="py-3 pr-3">
                         <div className="font-medium">{b.carrier?.companyName}</div>
                         {b.carrier && <CarrierBadgePill badge={b.carrier.badge} size="xs" />}
+                        <div><RatingBadge rating={b.carrier?.rating} /></div>
                         {b.message && <div className="text-xs text-silver-600 mt-1">&ldquo;{b.message}&rdquo;</div>}
                       </td>
                       <td className="py-3 pr-3 text-xs text-silver-600">
@@ -253,6 +274,7 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
             <div>
               <div className="text-xs uppercase text-silver-400">Awarded to</div>
               <div className="font-medium">{awarded.carrier?.companyName} {awarded.carrier && <CarrierBadgePill badge={awarded.carrier.badge} size="xs" />}</div>
+              <RatingBadge rating={awarded.carrier?.rating} />
             </div>
             <div className="text-right"><div className="text-xs uppercase text-silver-400">Price</div><div className="font-semibold">{fmtMoney(awarded.amount)}</div></div>
           </div>
@@ -263,6 +285,24 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
                 <div><div className="text-xs text-silver-400">Driver</div>{s.progress.truck?.driverName ?? '—'}</div>
                 <div><div className="text-xs text-silver-400">Route</div>{s.progress.routeDistanceM != null ? fmtDistance(s.progress.routeDistanceM) : '—'}</div>
               </div>
+              {live && (
+                <div className="space-y-2 border-t border-silver-100 pt-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span><LastSeen at={s.progress.lastLocationAt} lat={s.progress.lastLat} lng={s.progress.lastLng} speedKmh={s.progress.lastSpeedKmh} /></span>
+                    {trackUrl && (
+                      <button onClick={copyLink} className="press rounded-lg border border-silver-300 bg-white px-3 py-1.5 text-xs">
+                        {copied ? 'Copied ✓' : 'Copy tracking link for the receiver'}
+                      </button>
+                    )}
+                  </div>
+                  {track && (track.routePolyline || track.last) && (
+                    <div className="h-[280px]">
+                      <RouteMap polyline={track.routePolyline ?? null} origin={track.origin ?? null} destination={track.destination ?? null}
+                        truck={track.last ? { lat: track.last.lat, lng: track.last.lng } : null} trail={track.trail} />
+                    </div>
+                  )}
+                </div>
+              )}
               <ol className="space-y-1.5 border-t border-silver-100 pt-3">
                 {s.progress.events.map(ev => (
                   <li key={ev.id} className="flex gap-3 text-xs"><span className="text-silver-400 w-28 shrink-0">{fmtDate(ev.createdAt)}</span><span>{ev.message}</span></li>
@@ -272,6 +312,15 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
           )}
         </div>
       )}
+
+      {pod && <PodView pod={pod} loadPhoto={podPhoto} />}
+
+      {s.status === 'delivered' && awarded && (s.myRating
+        ? <div className="rounded-xl border border-silver-200 bg-white px-4 py-3 text-sm text-silver-600">
+            You rated {awarded.carrier?.companyName ?? 'the carrier'} {s.myRating.stars}★{s.myRating.comment && <> — &ldquo;{s.myRating.comment}&rdquo;</>}
+          </div>
+        : <RatingForm subject={awarded.carrier?.companyName ?? 'the carrier'} onTimeLabel="Delivered on time?"
+            onSubmit={async r => { await shipper.rate(s.id, r); onChanged() }} />)}
     </div>
   )
 }

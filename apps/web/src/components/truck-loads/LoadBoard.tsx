@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { inputCls } from '@/components/truck-loads/forms'
+import { RatingBadge, RatingForm } from '@/components/truck-loads/Delivery'
 import {
   BoardShipment, CarrierBadge, CarrierPayment, fmtDate, fmtMoney, fmtWeight, hazmatLabel, market, MyBid,
   PAYMENT_LABEL, truckTypeLabel,
@@ -67,6 +68,7 @@ export default function LoadBoard({ onWon }: { onWon: () => void }) {
   const [bids, setBids] = useState<MyBid[]>([])
   const [payments, setPayments] = useState<CarrierPayment[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [rating, setRating] = useState<string | null>(null)
 
   const refresh = useCallback(async (query?: string) => {
     try {
@@ -106,6 +108,7 @@ export default function LoadBoard({ onWon }: { onWon: () => void }) {
                     {s.reference} · {s.shipperName} · pickup {fmtDate(s.pickupAt)}{s.deliverBy && ` · deliver by ${fmtDate(s.deliverBy)}`}
                     {s.biddingClosesAt && ` · bids close ${fmtDate(s.biddingClosesAt)}`}
                   </div>
+                  <div className="mt-1"><RatingBadge rating={s.shipperRating} empty="Shipper not rated yet" /></div>
                 </div>
                 <div className="text-right shrink-0">
                   {s.targetRate != null && <div className="text-sm"><span className="text-silver-500">Target </span><span className="font-semibold">{fmtMoney(s.targetRate)}</span></div>}
@@ -137,7 +140,13 @@ export default function LoadBoard({ onWon }: { onWon: () => void }) {
                   </span>
                 </div>
                 <div className="text-xs text-silver-500">{b.shipment.reference} · {fmtMoney(b.amount)} · {b.shipment.shipperName}</div>
-                {b.status === 'accepted' && <div className="text-xs text-green-700">Payment secured · added to your Loads — assign a truck.</div>}
+                {b.status === 'accepted' && b.shipment.status !== 'delivered' && <div className="text-xs text-green-700">Payment secured · added to your Loads — assign a truck.</div>}
+                {b.status === 'accepted' && b.shipment.status === 'delivered' && (b.shipment.ratedByMe
+                  ? <div className="text-xs text-silver-500">Delivered · you rated this shipper</div>
+                  : rating === b.shipment.id
+                    ? <div className="mt-2"><RatingForm subject={b.shipment.shipperName} onTimeLabel="Cargo ready on time?"
+                        onSubmit={async r => { await market.rateShipper(b.shipment.id, r); setRating(null); refresh(q.trim() || undefined) }} /></div>
+                    : <button onClick={() => setRating(b.shipment.id)} className="press mt-1 text-xs text-brand-700 underline">Delivered · rate shipper</button>)}
                 {b.status === 'active' && b.shipment.awardedToMe && b.shipment.status === 'awaiting_payment' && (
                   <div className="text-xs text-amber-700">Shipper accepted your bid — waiting for their payment.</div>
                 )}

@@ -8,9 +8,10 @@ import LoadBoard from '@/components/truck-loads/LoadBoard'
 import Company, { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { ComplianceBanner, CompliancePanel, CompliancePill, TruckDatesModal } from '@/components/truck-loads/Compliance'
 import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
+import { DeliverForm, LastSeen, PodView } from '@/components/truck-loads/Delivery'
 import {
   ApiError, carrier, CarrierBadge, ComplianceOverview, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, fmtMoney,
-  CarrierPayment, dispatch, getToken, hazmatLabel, Load, LoadStatus, market, PAYMENT_LABEL, setToken, Summary, Truck, truckFitProblems,
+  CarrierPayment, dispatch, getToken, hazmatLabel, Load, LoadStatus, market, PAYMENT_LABEL, Pod, podForm, setToken, Summary, Truck, truckFitProblems,
 } from '@/lib/truck-loads'
 
 const STATUS_STYLE: Record<LoadStatus, string> = {
@@ -43,7 +44,14 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<Load | null>(null)
   const [payment, setPayment] = useState<CarrierPayment | null>(null)
-  useEffect(() => { setPreview(null); setError(null) }, [load.id])
+  const [pod, setPod] = useState<Pod | null>(null)
+  const [delivering, setDelivering] = useState(false)
+  useEffect(() => { setPreview(null); setError(null); setDelivering(false) }, [load.id])
+  useEffect(() => {
+    setPod(null)
+    if (load.status === 'delivered') dispatch.pod(load.id).then(setPod).catch(() => {})
+  }, [load.id, load.status])
+  const podPhoto = useCallback((photoId: string) => dispatch.podPhoto(load.id, photoId), [load.id])
   useEffect(() => {
     setPayment(null)
     if (load.shipmentId) market.loadPayment(load.id).then(setPayment).catch(() => {})
@@ -88,7 +96,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
             </button>
           )}
           {load.status === 'in_transit' && (
-            <button onClick={() => run('deliver', () => dispatch.setStatus(load.id, 'delivered'))} disabled={!!busy}
+            <button onClick={() => setDelivering(true)} disabled={!!busy}
               className="press rounded-lg bg-green-700 text-white px-3 py-1.5 text-sm disabled:opacity-50">
               <i className="ti ti-check mr-1" />Mark delivered
             </button>
@@ -111,6 +119,21 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
           {payment.status === 'release_pending' && payment.releaseAfter && <> · releases {fmtDate(payment.releaseAfter)}</>}
           {payment.status === 'paid_out' && payment.payoutReference && <> · paid, ref {payment.payoutReference}</>}
         </div>
+      )}
+
+      {(load.status === 'assigned' || load.status === 'in_transit') && load.truck && (
+        <p className="text-sm text-silver-600"><i className="ti ti-map-pin mr-1" /><LastSeen at={load.lastLocationAt ?? null} lat={load.lastLat ?? null} lng={load.lastLng ?? null} speedKmh={load.lastSpeedKmh} /></p>
+      )}
+
+      {pod && <PodView pod={pod} loadPhoto={podPhoto} />}
+
+      {delivering && (
+        <Modal title={`Deliver ${load.reference}`} onClose={() => setDelivering(false)}>
+          <DeliverForm defaultLocation={false} onSubmit={async (input, photos) => {
+            const next = await dispatch.deliver(load.id, podForm(input, photos))
+            setDelivering(false); onChange(next)
+          }} />
+        </Modal>
       )}
 
       {/* Lane */}
@@ -156,6 +179,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
             polyline={shown.routePolyline}
             origin={shown.originLat != null ? { lat: shown.originLat, lng: shown.originLng! } : null}
             destination={shown.destLat != null ? { lat: shown.destLat, lng: shown.destLng! } : null}
+            truck={load.status === 'in_transit' && load.lastLat != null ? { lat: load.lastLat, lng: load.lastLng! } : null}
           />
         </div>
         {!load.truck && <p className="text-xs text-silver-500">Assign a truck (or preview one below) — Google routes around low bridges, weight limits and hazmat restrictions using the rig&apos;s dimensions.</p>}

@@ -110,6 +110,10 @@ export interface Load {
   routeWarnings: string[]
   routeComputedAt: string | null
   shipmentId?: string | null
+  lastLat?: number | null
+  lastLng?: number | null
+  lastSpeedKmh?: number | null
+  lastLocationAt?: string | null
   events?: LoadEvent[]
   preview?: boolean
   previewTruck?: Truck
@@ -148,6 +152,9 @@ export const dispatch = {
   unassign:   (id: string) => d<Load>(`/truck-loads/loads/${id}/unassign`, { method: 'POST' }),
   setStatus:  (id: string, status: LoadStatus) =>
     d<Load>(`/truck-loads/loads/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
+  deliver:    (id: string, form: FormData) => upload<Load>('dispatch', `/truck-loads/loads/${id}/deliver`, form),
+  pod:        (id: string) => d<Pod | null>(`/truck-loads/loads/${id}/pod`),
+  podPhoto:   (id: string, photoId: string) => fetchBlob('dispatch', `/truck-loads/loads/${id}/pod/photos/${photoId}`),
   route:      (id: string, previewTruckId?: string) =>
     d<Load>(`/truck-loads/loads/${id}/route${previewTruckId ? `?truckId=${previewTruckId}` : ''}`, { method: 'POST' }),
 }
@@ -162,6 +169,9 @@ export type DriverLoad = Omit<Load, 'rate' | 'truckId' | 'truck' | 'routeCompute
 const dr = <T,>(path: string, opts?: RequestInit) => req<T>('driver', path, opts)
 
 export const driver = {
+  deliver:   (id: string, form: FormData) => upload<DriverLoad>('driver', `/truck-loads/driver/loads/${id}/deliver`, form),
+  location:  (id: string, p: { lat: number; lng: number; speedKmh?: number; heading?: number; accuracyM?: number }) =>
+    dr<{ ok: boolean }>(`/truck-loads/driver/loads/${id}/location`, { method: 'POST', body: JSON.stringify(p) }),
   loads:     () => dr<{ trucks: DriverTruck[]; loads: DriverLoad[] }>('/truck-loads/driver/loads'),
   load:      (id: string) => dr<DriverLoad>(`/truck-loads/driver/loads/${id}`),
   setStatus: (id: string, status: 'in_transit' | 'delivered', note?: string) =>
@@ -300,13 +310,49 @@ export interface ShipmentInput {
   originAddress: string; destAddress: string; pickupAt?: string; deliverBy?: string; notes?: string
   targetRate?: number; verifiedOnly?: boolean; biddingClosesAt?: string
 }
-export interface CarrierSummary { companyName: string; badge: CarrierBadge; memberSince: string | null; fleetSize: number; completedLoads: number }
+export interface RatingSummary { average: number | null; count: number; onTimePercent: number | null }
+export interface Rating { id: string; stars: number; onTime: boolean | null; comment: string | null; createdAt: string }
+export interface CarrierSummary { companyName: string; badge: CarrierBadge; memberSince: string | null; fleetSize: number; completedLoads: number; rating: RatingSummary | null }
+
+export interface LatLngPoint { lat: number; lng: number }
+export interface Pod {
+  id: string; receiverName: string; note: string | null; lat: number | null; lng: number | null; accuracyM: number | null
+  capturedBy: 'driver' | 'dispatcher'; deliveredAt: string
+  photos: { id: string; fileName: string; mimeType: string; size: number }[]
+}
+export interface Tracking {
+  status?: LoadStatus
+  last?: { lat: number; lng: number; speedKmh: number | null; at: string } | null
+  trail?: (LatLngPoint & { createdAt: string })[]
+  routePolyline?: string | null
+  origin?: LatLngPoint | null
+  destination?: LatLngPoint | null
+  trackingToken?: string | null
+}
+export interface PublicTracking {
+  reference: string; status: ShipmentStatus; commodity: string; originAddress: string; destAddress: string
+  pickupAt: string | null; deliverBy: string | null; shipperName: string | null; truckName: string | null
+  last: Tracking['last']; trail: NonNullable<Tracking['trail']>; origin: LatLngPoint | null; destination: LatLngPoint | null
+  delivered: { receiverName: string; at: string } | null
+}
+export interface PodInput { receiverName: string; note?: string; lat?: number; lng?: number; accuracyM?: number }
+
+/** multipart body for a delivery: JSON fields + photos. */
+export function podForm(input: PodInput, photos: File[]) {
+  const f = new FormData()
+  f.append('data', JSON.stringify(input))
+  for (const p of photos) f.append('photos', p, p.name)
+  return f
+}
 export interface ShipperBid { id: string; amount: number; message: string | null; status: BidStatus; createdAt: string; updatedAt: string; carrier: CarrierSummary | null }
-export interface ShipperShipmentRow extends Shipment { bidCount: number; lowestBid: number | null; awardedAmount: number | null }
+export interface ShipperShipmentRow extends Shipment { bidCount: number; lowestBid: number | null; awardedAmount: number | null; trackingToken?: string | null }
 export interface ShipperShipmentDetail extends Shipment {
   bids: ShipperBid[]
+  trackingToken: string | null
+  myRating: Rating | null
   progress: {
     status: LoadStatus; routeDistanceM: number | null; routeDurationS: number | null
+    lastLat: number | null; lastLng: number | null; lastSpeedKmh: number | null; lastLocationAt: string | null
     truck: { name: string; plate: string; driverName: string | null } | null
     events: { id: string; message: string; createdAt: string; actor: string }[]
   } | null
@@ -331,13 +377,18 @@ export const shipper = {
     sh<{ shipmentId: string; checkoutUrl: string }>(`/truck-loads/shipper/shipments/${id}/bids/${bidId}/accept`, { method: 'POST' }),
   pay:         (id: string) => sh<{ shipmentId: string; checkoutUrl: string }>(`/truck-loads/shipper/shipments/${id}/pay`, { method: 'POST' }),
   changeCarrier: (id: string) => sh<Shipment>(`/truck-loads/shipper/shipments/${id}/change-carrier`, { method: 'POST' }),
+  pod:         (id: string) => sh<Pod | null>(`/truck-loads/shipper/shipments/${id}/pod`),
+  podPhoto:    (id: string, photoId: string) => fetchBlob('shipper', `/truck-loads/shipper/shipments/${id}/pod/photos/${photoId}`),
+  tracking:    (id: string) => sh<Tracking>(`/truck-loads/shipper/shipments/${id}/tracking`),
+  rate:        (id: string, r: { stars: number; onTime?: boolean; comment?: string }) =>
+    sh<Rating>(`/truck-loads/shipper/shipments/${id}/rating`, { method: 'POST', body: JSON.stringify(r) }),
   testPay:     (paymentId: string, succeed: boolean) =>
     sh<{ status: string }>(`/truck-loads/payments/test/${paymentId}`, { method: 'POST', body: JSON.stringify({ succeed }) }),
   cancel:      (id: string) => sh<Shipment>(`/truck-loads/shipper/shipments/${id}/cancel`, { method: 'POST' }),
 }
 
 export interface BoardShipment extends Shipment {
-  shipperName: string; bidCount: number; fittingTrucks: number; canBid: boolean
+  shipperName: string; shipperRating: RatingSummary | null; bidCount: number; fittingTrucks: number; canBid: boolean
   myBid: { id: string; amount: number; message: string | null } | null
 }
 export interface MyBid {
@@ -346,6 +397,7 @@ export interface MyBid {
     id: string; reference: string; status: ShipmentStatus; originAddress: string; destAddress: string
     pickupAt: string | null; weightKg: number; commodity: string; shipperName: string; loadId: string | null
     awardedToMe: boolean
+    ratedByMe: boolean
   }
 }
 
@@ -364,6 +416,8 @@ export const market = {
   myBids:   () => d<MyBid[]>('/truck-loads/market/bids'),
   payments: () => d<CarrierPayment[]>('/truck-loads/payments'),
   loadPayment: (loadId: string) => d<CarrierPayment | null>(`/truck-loads/loads/${loadId}/payment`),
+  rateShipper: (shipmentId: string, r: { stars: number; onTime?: boolean; comment?: string }) =>
+    d<Rating>(`/truck-loads/market/shipments/${shipmentId}/rating`, { method: 'POST', body: JSON.stringify(r) }),
 }
 
 export interface AdminPayment {
@@ -454,6 +508,14 @@ export const applications = {
     if (!res.ok) throw new ApiError(res.status, `Could not open document (${res.status})`)
     return res.blob()
   },
+}
+
+/** Public tracking link — no login. */
+export async function publicTracking(token: string): Promise<PublicTracking> {
+  const res = await fetch(`${BASE}/truck-loads/track/${encodeURIComponent(token)}`)
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new ApiError(res.status, body?.message ?? 'Tracking link not found')
+  return body
 }
 
 /** Public application form — no login. */

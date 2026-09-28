@@ -7,7 +7,7 @@
  * If a truck route can't be produced we stop — never fall back to car routing.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useKeepAwake } from 'expo-keep-awake'
@@ -20,6 +20,8 @@ import { api, ApiError, type NavigationPlan } from '../../lib/api'
 import { fmtDuration, fmtDistance } from '../../lib/format'
 import { colors } from '../../lib/theme'
 import { Button } from '../../components/ui'
+import { DeliverForm } from '../../components/DeliverForm'
+import { useLocationSharing } from '../../lib/tracking'
 
 type Phase =
   | { kind: 'preparing'; step: string }
@@ -53,12 +55,13 @@ export default function Navigate() {
 
   const [phase, setPhase] = useState<Phase>({ kind: 'preparing', step: 'Checking location permission…' })
   const [plan, setPlan] = useState<NavigationPlan | null>(null)
-  const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const lastFix = useRef<NavLocation | null>(null)
   const firstFixWaiters = useRef<((l: NavLocation) => void)[]>([])
   const sessionReady = useRef(false)
   const started = useRef(false)
+  // Only reachable for active loads; the server ignores reports once delivered.
+  useLocationSharing(id, true)
 
   const fail = useCallback((message: string, action?: { label: string; run: () => void }) => {
     setPhase({ kind: 'error', message, action })
@@ -180,18 +183,6 @@ export default function Navigate() {
     }
   }
 
-  async function markDelivered() {
-    setBusy(true)
-    try {
-      await api.setStatus(id, 'delivered', note.trim() || undefined)
-      router.dismissTo('/')
-    } catch (e) {
-      Alert.alert("Couldn't mark delivered", (e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <View style={s.screen}>
       <NavigationView
@@ -252,11 +243,11 @@ export default function Navigate() {
           <View style={s.sheet}>
             <Text style={s.sheetTitle}>Arrived at delivery</Text>
             <Text style={s.sheetText}>{plan.destination.title}</Text>
-            <TextInput
-              style={s.note} value={note} onChangeText={setNote} maxLength={500}
-              placeholder="Delivery note (optional) — who signed, dock #…" placeholderTextColor={colors.faint}
+            <DeliverForm
+              loadId={id}
+              onDelivered={() => router.dismissTo('/')}
+              onError={msg => Alert.alert("Couldn't mark delivered", msg)}
             />
-            <Button title="Mark delivered" variant="dark" onPress={markDelivered} busy={busy} />
             <Button title="Back to load" variant="outline" onPress={() => router.back()} />
           </View>
         )}
@@ -287,10 +278,6 @@ const s = StyleSheet.create({
   },
   sheetTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
   sheetText: { fontSize: 16, color: colors.muted },
-  note: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: colors.text,
-  },
   planChip: {
     alignSelf: 'center', marginBottom: 96, backgroundColor: 'rgba(12,10,9,0.8)',
     borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6,

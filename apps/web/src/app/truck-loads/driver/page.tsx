@@ -3,13 +3,37 @@ import { useCallback, useEffect, useState } from 'react'
 import TruckLoadsMark from '@/components/truck-loads/TruckLoadsMark'
 import Login from '@/components/truck-loads/Login'
 import RouteMap from '@/components/truck-loads/RouteMap'
-import { inputCls } from '@/components/truck-loads/forms'
+import { Modal } from '@/components/truck-loads/forms'
+import { DeliverForm } from '@/components/truck-loads/Delivery'
 import {
   ApiError, driver, DriverLoad, DriverTruck, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, getToken,
-  hazmatLabel, setToken,
+  hazmatLabel, podForm, setToken,
 } from '@/lib/truck-loads'
 
 const REFRESH_MS = 60_000
+const LOCATION_EVERY_MS = 30_000
+
+/** Share the phone's position with dispatch and the shipper while this load is active. */
+function useLocationSharing(loadId: string, active: boolean) {
+  const [state, setState] = useState<'off' | 'on' | 'denied'>('off')
+  useEffect(() => {
+    if (!active || !('geolocation' in navigator)) { setState('off'); return }
+    let last = 0
+    const id = navigator.geolocation.watchPosition(pos => {
+      setState('on')
+      if (Date.now() - last < LOCATION_EVERY_MS) return
+      last = Date.now()
+      const { latitude, longitude, speed, heading, accuracy } = pos.coords
+      driver.location(loadId, {
+        lat: latitude, lng: longitude, accuracyM: Math.round(accuracy),
+        ...(speed != null && speed >= 0 ? { speedKmh: Math.round(speed * 3.6) } : {}),
+        ...(heading != null && !Number.isNaN(heading) ? { heading: Math.round(heading) } : {}),
+      }).catch(() => { last = 0 })
+    }, err => setState(err.code === err.PERMISSION_DENIED ? 'denied' : 'off'), { enableHighAccuracy: true, maximumAge: 10_000 })
+    return () => navigator.geolocation.clearWatch(id)
+  }, [loadId, active])
+  return state
+}
 
 const STATUS_COPY: Record<string, { label: string; cls: string }> = {
   assigned:   { label: 'Up next',    cls: 'bg-blue-100 text-blue-800' },
@@ -58,17 +82,14 @@ function LoadCard({ load, onOpen }: { load: DriverLoad; onOpen: () => void }) {
 function LoadView({ load, onBack, onChange }: { load: DriverLoad; onBack: () => void; onChange: (l: DriverLoad) => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [note, setNote] = useState('')
+  const [delivering, setDelivering] = useState(false)
+  const sharing = useLocationSharing(load.id, load.status === 'assigned' || load.status === 'in_transit')
 
-  async function act(status: 'in_transit' | 'delivered') {
-    const prompt = status === 'in_transit'
-      ? `Start trip for ${load.reference}? Dispatch will see you're on the road.`
-      : `Mark ${load.reference} delivered?`
-    if (!confirm(prompt)) return
+  async function startTrip() {
+    if (!confirm(`Start trip for ${load.reference}? Dispatch will see you're on the road.`)) return
     setBusy(true); setError(null)
     try {
-      onChange(await driver.setStatus(load.id, status, status === 'delivered' ? note : undefined))
-      setNote('')
+      onChange(await driver.setStatus(load.id, 'in_transit'))
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -156,20 +177,30 @@ function LoadView({ load, onBack, onChange }: { load: DriverLoad; onBack: () => 
       {canAct && (
         <div className="fixed inset-x-0 bottom-0 max-w-lg mx-auto bg-white border-t border-silver-200 p-4 space-y-2" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
           {error && <p className="text-sm text-red-700">{error}</p>}
-          {load.status === 'in_transit' && (
-            <input value={note} onChange={e => setNote(e.target.value)} maxLength={500}
-              placeholder="Delivery note (optional) — who signed, dock #…" className={inputCls} />
-          )}
+          <p className="text-xs text-silver-500 text-center">
+            {sharing === 'on' ? <><i className="ti ti-broadcast mr-1 text-brand-700" />Sharing your location with dispatch and the shipper</>
+              : sharing === 'denied' ? 'Location is blocked — allow it so dispatch can see where you are'
+              : 'Keep this page open to share your location'}
+          </p>
           {load.status === 'assigned'
-            ? <button onClick={() => act('in_transit')} disabled={busy}
+            ? <button onClick={startTrip} disabled={busy}
                 className="press w-full rounded-xl bg-brand-700 hover:bg-brand-800 text-white py-4 text-base font-semibold disabled:opacity-50">
                 <i className="ti ti-truck mr-2" />{busy ? 'Starting…' : 'Start trip'}
               </button>
-            : <button onClick={() => act('delivered')} disabled={busy}
+            : <button onClick={() => setDelivering(true)} disabled={busy}
                 className="press w-full rounded-xl bg-green-700 text-white py-4 text-base font-semibold disabled:opacity-50">
                 <i className="ti ti-circle-check mr-2" />{busy ? 'Saving…' : 'Mark delivered'}
               </button>}
         </div>
+      )}
+
+      {delivering && (
+        <Modal title={`Deliver ${load.reference}`} onClose={() => setDelivering(false)}>
+          <DeliverForm onSubmit={async (input, photos) => {
+            const next = await driver.deliver(load.id, podForm(input, photos))
+            setDelivering(false); onChange(next)
+          }} />
+        </Modal>
       )}
     </>
   )
