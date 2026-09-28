@@ -26,14 +26,20 @@ export class ApiError extends Error {
 
 async function req<T>(side: Side, path: string, opts: RequestInit = {}): Promise<T> {
   const token = getToken(side)
-  const res = await fetch(`${BASE}${path}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...opts.headers,
-    },
-  })
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...opts.headers,
+      },
+    })
+  } catch {
+    // Browsers report an unreachable server as a bare "Load failed" / "Failed to fetch"
+    throw new ApiError(0, `Can't reach the Truck Loads API at ${BASE} — is it running?`)
+  }
   const body = await res.json().catch(() => null)
   if (!res.ok) {
     const msg = Array.isArray(body?.message) ? body.message.join('; ') : body?.message ?? `Request failed (${res.status})`
