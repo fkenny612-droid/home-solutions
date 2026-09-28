@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common'
 import { NotificationsModule } from '../notifications/notifications.module'
 import { CarrierAdminController, CarrierController } from './carrier.controller'
 import { CarrierService } from './carrier.service'
+import { MarketController, ShipperController } from './marketplace.controller'
+import { MarketplaceService } from './marketplace.service'
 import { TruckLoadsController } from './truck-loads.controller'
 import { DriverController } from './driver.controller'
 import { ApplicationsController, PublicApplicationsController } from './applications.controller'
@@ -13,8 +15,8 @@ import { GoogleRoutesService } from './google-routes.service'
   imports:     [NotificationsModule],
   controllers: [
     TruckLoadsController, DriverController, ApplicationsController, PublicApplicationsController,
-    CarrierController, CarrierAdminController,
+    CarrierController, CarrierAdminController, ShipperController, MarketController,
   ],
-  providers:   [TruckLoadsService, GoogleRoutesService, ApplicationsService, CarrierService],
+  providers:   [TruckLoadsService, GoogleRoutesService, ApplicationsService, CarrierService, MarketplaceService],
 })
 export class TruckLoadsModule {}

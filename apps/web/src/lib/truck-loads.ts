@@ -109,6 +109,7 @@ export interface Load {
   routePolyline: string | null
   routeWarnings: string[]
   routeComputedAt: string | null
+  shipmentId?: string | null
   events?: LoadEvent[]
   preview?: boolean
   previewTruck?: Truck
@@ -268,6 +269,77 @@ export const platformAdmin = {
   verify:   (id: string) => ad<AdminCarrierDetail>(`/truck-loads/admin/carriers/${id}/verify`, { method: 'POST' }),
   reject:   (id: string, note?: string) =>
     ad<AdminCarrierDetail>(`/truck-loads/admin/carriers/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
+}
+
+// ── Marketplace (shippers post, carriers bid) ────────────────────────────────
+
+export type ShipmentStatus = 'open' | 'awarded' | 'in_transit' | 'delivered' | 'cancelled'
+export type BidStatus = 'active' | 'withdrawn' | 'accepted' | 'declined'
+
+export interface ShipperProfile {
+  id: string; ownerId: string; companyName: string; contactName: string; contactPhone: string
+  contactEmail: string | null; vatNumber: string | null; address: string | null
+}
+export type ShipperProfileInput = Pick<ShipperProfile, 'companyName' | 'contactName' | 'contactPhone'>
+  & { contactEmail?: string; vatNumber?: string; address?: string }
+
+export interface Shipment {
+  id: string; reference: string; commodity: string; weightKg: number; hazmatTypes: string[]
+  truckType: string | null; originAddress: string; destAddress: string
+  pickupAt: string | null; deliverBy: string | null; notes: string | null
+  targetRate: number | null; verifiedOnly: boolean; biddingClosesAt: string | null
+  status: ShipmentStatus; awardedBidId: string | null; loadId: string | null; createdAt: string
+}
+export interface ShipmentInput {
+  commodity: string; weightKg: number; hazmatTypes?: string[]; truckType?: string
+  originAddress: string; destAddress: string; pickupAt?: string; deliverBy?: string; notes?: string
+  targetRate?: number; verifiedOnly?: boolean; biddingClosesAt?: string
+}
+export interface CarrierSummary { companyName: string; badge: CarrierBadge; memberSince: string | null; fleetSize: number; completedLoads: number }
+export interface ShipperBid { id: string; amount: number; message: string | null; status: BidStatus; createdAt: string; updatedAt: string; carrier: CarrierSummary | null }
+export interface ShipperShipmentRow extends Shipment { bidCount: number; lowestBid: number | null; awardedAmount: number | null }
+export interface ShipperShipmentDetail extends Shipment {
+  bids: ShipperBid[]
+  progress: {
+    status: LoadStatus; routeDistanceM: number | null; routeDurationS: number | null
+    truck: { name: string; plate: string; driverName: string | null } | null
+    events: { id: string; message: string; createdAt: string; actor: string }[]
+  } | null
+}
+
+const sh = <T,>(path: string, opts?: RequestInit) => req<T>('shipper', path, opts)
+
+export const shipper = {
+  register: (p: { phone: string; password: string; firstName: string; lastName: string }) =>
+    req<{ accessToken: string }>('shipper', '/auth/register', { method: 'POST', body: JSON.stringify({ ...p, role: 'client' }) })
+      .then(r => { setToken('shipper', r.accessToken); return r }),
+  profile:     () => sh<{ profile: ShipperProfile | null; truckTypes: string[]; hazmatTypes: string[] }>('/truck-loads/shipper/profile'),
+  saveProfile: (p: ShipperProfileInput) => sh<ShipperProfile>('/truck-loads/shipper/profile', { method: 'PUT', body: JSON.stringify(p) }),
+  shipments:   () => sh<ShipperShipmentRow[]>('/truck-loads/shipper/shipments'),
+  shipment:    (id: string) => sh<ShipperShipmentDetail>(`/truck-loads/shipper/shipments/${id}`),
+  create:      (s: ShipmentInput) => sh<Shipment>('/truck-loads/shipper/shipments', { method: 'POST', body: JSON.stringify(s) }),
+  accept:      (id: string, bidId: string) => sh<Shipment>(`/truck-loads/shipper/shipments/${id}/bids/${bidId}/accept`, { method: 'POST' }),
+  cancel:      (id: string) => sh<Shipment>(`/truck-loads/shipper/shipments/${id}/cancel`, { method: 'POST' }),
+}
+
+export interface BoardShipment extends Shipment {
+  shipperName: string; bidCount: number; fittingTrucks: number; canBid: boolean
+  myBid: { id: string; amount: number; message: string | null } | null
+}
+export interface MyBid {
+  id: string; amount: number; message: string | null; status: BidStatus; updatedAt: string
+  shipment: {
+    id: string; reference: string; status: ShipmentStatus; originAddress: string; destAddress: string
+    pickupAt: string | null; weightKg: number; commodity: string; shipperName: string; loadId: string | null
+  }
+}
+
+export const market = {
+  board:    (q?: string) => d<{ badge: CarrierBadge; shipments: BoardShipment[] }>(`/truck-loads/market/shipments${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  bid:      (id: string, amount: number, message?: string) =>
+    d<{ id: string }>(`/truck-loads/market/shipments/${id}/bids`, { method: 'POST', body: JSON.stringify({ amount, message }) }),
+  withdraw: (id: string) => d<{ id: string }>(`/truck-loads/market/shipments/${id}/bids`, { method: 'DELETE' }),
+  myBids:   () => d<MyBid[]>('/truck-loads/market/bids'),
 }
 
 // ── Applications (carrier / driver onboarding) ────────────────────────────────

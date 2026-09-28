@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types'
 import {
-  ArrayUnique, Equals, IsArray, IsDateString, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString,
+  ArrayUnique, Equals, IsArray, IsBoolean, IsDateString, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString,
   Matches, Max, MaxLength, Min, MinLength,
 } from 'class-validator'
 import { HAZMAT_TYPES } from './google-routes.service'
@@ -142,4 +142,35 @@ export class CarrierProfileDto {
 
 export class ReviewNoteDto {
   @IsOptional() @IsString() @MaxLength(500) note?: string
+}
+
+// ── Marketplace ─────────────────────────────────────────────────────────────
+
+export class ShipperProfileDto {
+  @IsString() @MinLength(2) @MaxLength(120) companyName: string
+  @IsString() @MinLength(2) @MaxLength(120) contactName: string
+  @Matches(PHONE, { message: 'contactPhone must be a valid phone number' }) contactPhone: string
+  @IsOptional() @IsEmail() @MaxLength(160) contactEmail?: string
+  @IsOptional() @IsString() @MaxLength(20) vatNumber?: string
+  @IsOptional() @IsString() @MaxLength(300) address?: string
+}
+
+export class CreateShipmentDto {
+  @IsString() @MinLength(1) @MaxLength(120)  commodity: string
+  @IsInt() @Min(1) @Max(60000)               weightKg: number
+  @IsOptional() @IsArray() @ArrayUnique() @IsIn(HAZMAT_TYPES, { each: true }) hazmatTypes?: string[]
+  @IsOptional() @IsIn(TRUCK_TYPES)           truckType?: string
+  @IsString() @MinLength(3) @MaxLength(300)  originAddress: string
+  @IsString() @MinLength(3) @MaxLength(300)  destAddress: string
+  @IsOptional() @IsDateString()              pickupAt?: string
+  @IsOptional() @IsDateString()              deliverBy?: string
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string
+  @IsOptional() @IsNumber() @Min(0) @Max(10_000_000) targetRate?: number
+  @IsOptional() @IsBoolean()                 verifiedOnly?: boolean
+  @IsOptional() @IsDateString()              biddingClosesAt?: string
+}
+
+export class BidDto {
+  @IsNumber() @Min(1) @Max(10_000_000) amount: number
+  @IsOptional() @IsString() @MaxLength(500) message?: string
 }

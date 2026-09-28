@@ -107,6 +107,9 @@ export class TruckLoadsService {
     if (['delivered', 'cancelled'].includes(load.status)) {
       throw new ConflictException(`Cannot edit a ${load.status} load`)
     }
+    if (load.shipmentId && Object.keys(dto).some(k => k !== 'notes')) {
+      throw new ConflictException('Marketplace loads keep the terms agreed with the shipper — only notes can be edited')
+    }
     this.assertWindow(dto.pickupAt ?? load.pickupAt?.toISOString(), dto.deliverBy ?? load.deliverBy?.toISOString())
 
     // Re-check the assigned truck still fits if weight/hazmat changed
@@ -197,7 +200,7 @@ export class TruckLoadsService {
   }
 
   private async applyStatus(
-    load: { id: string; status: string; truckId: string | null; truck?: { driverPhoneKey: string | null } | null },
+    load: { id: string; status: string; truckId: string | null; shipmentId?: string | null; truck?: { driverPhoneKey: string | null } | null },
     status: LoadStatus,
     actor: 'dispatcher' | 'driver',
     note?: string,
@@ -212,9 +215,25 @@ export class TruckLoadsService {
       if (releasesTruck) {
         await tx.truck.update({ where: { id: load.truckId! }, data: { status: 'available' } })
       }
+      // Keep the shipper's marketplace shipment in step with the carrier's load
+      let unlinkShipment = false
+      if (load.shipmentId) {
+        if (status === 'in_transit' || status === 'delivered') {
+          await tx.shipment.update({ where: { id: load.shipmentId }, data: { status } })
+        } else if (status === 'cancelled') {
+          // Carrier pulled out: reopen the shipment for other carriers' bids
+          const shipment = await tx.shipment.findUnique({ where: { id: load.shipmentId } })
+          if (shipment?.awardedBidId) await tx.bid.update({ where: { id: shipment.awardedBidId }, data: { status: 'withdrawn' } })
+          // The other carriers' offers stand again, so the shipper can pick the next best
+          await tx.bid.updateMany({ where: { shipmentId: load.shipmentId, status: 'declined' }, data: { status: 'active' } })
+          await tx.shipment.update({ where: { id: load.shipmentId }, data: { status: 'open', awardedBidId: null, loadId: null } })
+          unlinkShipment = true
+        }
+      }
       return tx.load.update({
         where: { id: load.id },
         data: {
+          ...(unlinkShipment ? { shipmentId: null } : {}),
           status,
           ...(status === 'delivered' ? { deliveredByKey: load.truck?.driverPhoneKey ?? null } : {}),
           events: { create: { type: 'status', actor, message } },

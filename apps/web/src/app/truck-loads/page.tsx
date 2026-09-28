@@ -4,6 +4,7 @@ import TruckLoadsMark from '@/components/truck-loads/TruckLoadsMark'
 import RouteMap from '@/components/truck-loads/RouteMap'
 import Login from '@/components/truck-loads/Login'
 import Applications from '@/components/truck-loads/Applications'
+import LoadBoard from '@/components/truck-loads/LoadBoard'
 import Company, { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { ComplianceBanner, CompliancePanel, CompliancePill, TruckDatesModal } from '@/components/truck-loads/Compliance'
 import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
@@ -275,11 +276,17 @@ function Fleet({ trucks, onChanged, onDates }: { trucks: Truck[]; onChanged: () 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type Tab = 'loads' | 'market' | 'fleet' | 'applications' | 'company'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'loads', label: 'Loads' }, { id: 'market', label: 'Load board' }, { id: 'fleet', label: 'Fleet' },
+  { id: 'applications', label: 'Applications' }, { id: 'company', label: 'Company' },
+]
+
 const FILTERS: (LoadStatus | 'active' | 'all')[] = ['active', 'booked', 'assigned', 'in_transit', 'delivered', 'cancelled', 'all']
 
 export default function DispatchPage() {
   const [authed, setAuthed] = useState<boolean | null>(null)
-  const [tab, setTab] = useState<'loads' | 'fleet' | 'applications' | 'company'>('loads')
+  const [tab, setTab] = useState<Tab>('loads')
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('active')
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loads, setLoads] = useState<Load[]>([])
@@ -345,10 +352,10 @@ export default function DispatchPage() {
           <span className="font-semibold hidden sm:inline">Truck Loads</span>
           {badge === 'verified' && <span className="hidden md:inline"><CarrierBadgePill badge={badge} size="xs" /></span>}
           <nav className="sm:ml-4 flex gap-1 overflow-x-auto">
-            {(['loads', 'fleet', 'applications', 'company'] as const).map(t => (
+            {TABS.map(({ id: t, label }) => (
               <button key={t} onClick={() => setTab(t)}
-                className={`rounded-md px-3 py-1.5 text-sm capitalize ${tab === t ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'}`}>
-                {t}
+                className={`rounded-md px-3 py-1.5 text-sm whitespace-nowrap ${tab === t ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'}`}>
+                {label}
               </button>
             ))}
           </nav>
@@ -398,7 +405,10 @@ export default function DispatchPage() {
                     <button onClick={() => select(l.id)}
                       className={`press w-full text-left rounded-xl border bg-white p-3 transition-colors ${selected?.id === l.id ? 'border-brand-600 ring-2 ring-brand-600/20' : 'border-silver-200 hover:border-silver-300'}`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm">{l.reference}</span>
+                        <span className="font-medium text-sm">
+                          {l.reference}
+                          {l.shipmentId && <span className="ml-1.5 rounded-full bg-brand-100 text-brand-800 px-1.5 py-0.5 text-[10px] font-medium align-middle">Marketplace</span>}
+                        </span>
                         <Pill className={STATUS_STYLE[l.status]}>{statusLabel(l.status)}</Pill>
                       </div>
                       <div className="text-xs text-silver-600 mt-1 truncate">{l.originAddress}</div>
@@ -421,6 +431,8 @@ export default function DispatchPage() {
                 : <div className="rounded-xl border border-dashed border-silver-300 p-10 text-center text-sm text-silver-500">Select a load to assign a truck and plan its route.</div>}
             </section>
           </div>
+        ) : tab === 'market' ? (
+          <LoadBoard onWon={refresh} />
         ) : tab === 'applications' ? (
           <Applications onFleetChanged={refresh} />
         ) : tab === 'company' ? (

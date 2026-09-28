@@ -11,7 +11,7 @@ const COPY: Record<Side, { title: string; switchText: string; switchHref: string
   admin:    { title: 'Truck Loads · Platform admin', switchText: 'Back to the dispatch board', switchHref: '/truck-loads' },
 }
 
-export default function Login({ side, onDone }: { side: Side; onDone: () => void }) {
+export default function Login({ side, onDone, footer }: { side: Side; onDone: () => void; footer?: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const copy = COPY[side]
@@ -48,6 +48,7 @@ export default function Login({ side, onDone }: { side: Side; onDone: () => void
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+        {footer}
         <a href={copy.switchHref} className="block text-center text-sm text-silver-500 underline">{copy.switchText}</a>
       </div>
     </main>

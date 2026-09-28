@@ -330,6 +330,8 @@ model Load {
   notes            String?
   truckId          String?
   truck            Truck?    @relation(fields: [truckId], references: [id])
+  shipmentId       String?   // set when won on the marketplace. Not @unique: adding a unique
+                             // constraint to an existing table makes `db push` refuse at deploy.
   deliveredByKey   String?   // driver phone key at delivery, so history follows the driver, not the truck
   // Cached truck route from Google Routes API (travelMode TRUCK)
   routeDistanceM   Int?
@@ -345,6 +347,7 @@ model Load {
   @@index([ownerId, status])
   @@index([truckId])
   @@index([deliveredByKey])
+  @@index([shipmentId])
 }
 
 model LoadEvent {
@@ -477,4 +480,61 @@ model CarrierDocument {
   createdAt DateTime  @default(now())
 
   @@unique([profileId, kind])
+}
+
+// ── Truck Loads marketplace: shippers post, carriers bid (RFQ) ──────────────
+
+model ShipperProfile {
+  id           String   @id @default(uuid())
+  ownerId      String   @unique
+  companyName  String
+  contactName  String
+  contactPhone String
+  contactEmail String?
+  vatNumber    String?
+  address      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Shipment {
+  id              String    @id @default(uuid())
+  shipperId       String    // User id of the shipper
+  reference       String    @unique // SH-XXXXXX
+  commodity       String
+  weightKg        Int
+  hazmatTypes     String[]
+  truckType       String?   // preferred truck type
+  originAddress   String
+  destAddress     String
+  pickupAt        DateTime?
+  deliverBy       DateTime?
+  notes           String?
+  targetRate      Float?    // shipper's budget, shown to carriers
+  verifiedOnly    Boolean   @default(true)
+  biddingClosesAt DateTime?
+  status          String    @default("open") // open | awarded | in_transit | delivered | cancelled
+  awardedBidId    String?   @unique
+  loadId          String?   @unique // the carrier's Load once awarded
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  bids            Bid[]
+
+  @@index([status, createdAt])
+  @@index([shipperId])
+}
+
+model Bid {
+  id         String   @id @default(uuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  carrierId  String   // User id of the carrier (fleet owner)
+  amount     Float
+  message    String?
+  status     String   @default("active") // active | withdrawn | accepted | declined
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([shipmentId, carrierId])
+  @@index([carrierId])
 }
