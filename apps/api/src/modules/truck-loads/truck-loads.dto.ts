@@ -174,3 +174,27 @@ export class BidDto {
   @IsNumber() @Min(1) @Max(10_000_000) amount: number
   @IsOptional() @IsString() @MaxLength(500) message?: string
 }
+
+// ── Delivery, tracking, ratings ─────────────────────────────────────────────
+
+export class PodDto {
+  @IsString() @MinLength(2) @MaxLength(120) receiverName: string
+  @IsOptional() @IsString() @MaxLength(500) note?: string
+  @IsOptional() @IsNumber() @Min(-90)  @Max(90)  lat?: number
+  @IsOptional() @IsNumber() @Min(-180) @Max(180) lng?: number
+  @IsOptional() @IsNumber() @Min(0) @Max(100000) accuracyM?: number
+}
+
+export class LocationDto {
+  @IsNumber() @Min(-90)  @Max(90)  lat: number
+  @IsNumber() @Min(-180) @Max(180) lng: number
+  @IsOptional() @IsNumber() @Min(0) @Max(300)    speedKmh?: number
+  @IsOptional() @IsNumber() @Min(0) @Max(360)    heading?: number
+  @IsOptional() @IsNumber() @Min(0) @Max(100000) accuracyM?: number
+}
+
+export class RatingDto {
+  @IsInt() @Min(1) @Max(5) stars: number
+  @IsOptional() @IsBoolean() onTime?: boolean
+  @IsOptional() @IsString() @MaxLength(1000) comment?: string
+}

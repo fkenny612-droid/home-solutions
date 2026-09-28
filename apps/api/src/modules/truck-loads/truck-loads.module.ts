@@ -5,6 +5,10 @@ import { CarrierService } from './carrier.service'
 import { MarketController, ShipperController } from './marketplace.controller'
 import { MarketplaceService } from './marketplace.service'
 import { EscrowService } from './escrow.service'
+import { DeliveryService } from './delivery.service'
+import {
+  CarrierDeliveryController, CarrierRatingController, DriverDeliveryController, PublicTrackingController, ShipperDeliveryController,
+} from './delivery.controller'
 import { PaymentGatewayProvider } from './payment-gateway'
 import { CarrierPaymentsController, EscrowAdminController, PaymentsWebhookController } from './payments.controller'
 import { TruckLoadsController } from './truck-loads.controller'
@@ -20,9 +24,10 @@ import { GoogleRoutesService } from './google-routes.service'
     TruckLoadsController, DriverController, ApplicationsController, PublicApplicationsController,
     CarrierController, CarrierAdminController, ShipperController, MarketController,
     PaymentsWebhookController, CarrierPaymentsController, EscrowAdminController,
+    DriverDeliveryController, CarrierDeliveryController, ShipperDeliveryController, CarrierRatingController, PublicTrackingController,
   ],
   providers:   [TruckLoadsService, GoogleRoutesService, ApplicationsService, CarrierService, MarketplaceService,
-    EscrowService, PaymentGatewayProvider,
+    EscrowService, PaymentGatewayProvider, DeliveryService,
   ],
 })
 export class TruckLoadsModule {}

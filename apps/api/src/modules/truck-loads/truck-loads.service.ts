@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { GoogleRoutesService } from './google-routes.service'
 import { EscrowService } from './escrow.service'
+import { DeliveryService } from './delivery.service'
+import { UploadedDoc } from './documents.util'
 import { ACTIVE_LOAD_STATUSES, canTransition, phoneKey, truckLoadProblems } from './truck-loads.rules'
 import { complianceBlockers, truckCompliance } from './compliance'
 import {
@@ -23,6 +25,7 @@ export class TruckLoadsService {
     private prisma: PrismaService,
     private routes: GoogleRoutesService,
     private escrow: EscrowService,
+    private delivery: DeliveryService,
   ) {}
 
   // ── Trucks ──────────────────────────────────────────────────────────────────
@@ -210,6 +213,10 @@ export class TruckLoadsService {
     if (!canTransition(load.status, status)) {
       throw new ConflictException(`Cannot move a load from ${load.status.replace('_', ' ')} to ${status.replace('_', ' ')}`)
     }
+    // Marketplace deliveries release escrow, so they need proof of delivery
+    if (status === 'delivered' && load.shipmentId && !(await this.delivery.hasPod(load.id))) {
+      throw new ConflictException('Record the delivery (receiver name, optional photos) to complete a marketplace load')
+    }
     const releasesTruck = load.truckId && !ACTIVE_LOAD_STATUSES.includes(status)
     const who = actor === 'driver' ? 'Driver' : 'Dispatcher'
     const message = `${who} changed status to ${status.replace('_', ' ')}${note ? ` — “${note}”` : ''}`
@@ -247,6 +254,19 @@ export class TruckLoadsService {
         include: LOAD_INCLUDE,
       })
     })
+  }
+
+  /** Deliver with proof of delivery (receiver, note, GPS, photos). */
+  async deliver(scope: { ownerId?: string; driverPhone?: string }, id: string, rawData: unknown, files: UploadedDoc[]) {
+    const load = scope.driverPhone ? await this.getDriverLoad(scope.driverPhone, id) : await this.getLoad(scope.ownerId!, id)
+    if (!canTransition(load.status, 'delivered')) throw new ConflictException(`Cannot deliver a load that is ${load.status.replace('_', ' ')}`)
+    const dto = await this.delivery.parsePod(rawData)
+    this.delivery.checkPhotos(files)
+    const actor = scope.driverPhone ? 'driver' : 'dispatcher'
+    await this.delivery.createPod(load.id, actor, dto, files)
+    const updated = await this.applyStatus(load, 'delivered', actor, `received by ${dto.receiverName.trim()}${dto.note ? `, ${dto.note.trim()}` : ''}`)
+    if (load.shipmentId) this.delivery.notifyShipperDelivered(load.shipmentId).catch(() => {})
+    return scope.driverPhone ? this.toDriverLoad(updated) : updated
   }
 
   /**

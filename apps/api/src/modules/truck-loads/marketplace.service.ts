@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { EscrowService, PLATFORM_FEE_PERCENT, CLAIM_WINDOW_HOURS } from './escrow.service'
+import { DeliveryService, newTrackingToken } from './delivery.service'
 import { SmsService } from '../notifications/sms.service'
 import { carrierBadge, complianceBlockers } from './compliance'
 import { truckLoadProblems } from './truck-loads.rules'
@@ -15,7 +16,7 @@ type Shipment = Awaited<ReturnType<PrismaService['shipment']['findUniqueOrThrow'
 
 @Injectable()
 export class MarketplaceService {
-  constructor(private prisma: PrismaService, private sms: SmsService, private escrow: EscrowService) {}
+  constructor(private prisma: PrismaService, private sms: SmsService, private escrow: EscrowService, private delivery: DeliveryService) {}
 
   // ── Shipper profile ─────────────────────────────────────────────────────────
 
@@ -92,6 +93,7 @@ export class MarketplaceService {
             where: { id: shipment.loadId },
             select: {
               status: true, routeDistanceM: true, routeDurationS: true,
+              lastLat: true, lastLng: true, lastSpeedKmh: true, lastLocationAt: true,
               truck: { select: { name: true, plate: true, driverName: true } },
               events: { orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, message: true, createdAt: true, actor: true } },
             },
@@ -99,10 +101,12 @@ export class MarketplaceService {
         : null,
       this.escrow.latestFor(shipment.id),
     ])
+    const myRating = await this.delivery.myRating(shipment.id, 'shipper_rates_carrier')
     return {
       ...shipment,
       bids: shipment.bids.map(b => ({ ...b, carrier: carriers.get(b.carrierId) ?? null })),
       progress: load,
+      myRating,
       payment: payment && {
         id: payment.id, status: payment.status, amount: payment.amount, provider: payment.provider,
         checkoutUrl: payment.status === 'pending' ? payment.checkoutUrl : null,
@@ -217,7 +221,10 @@ export class MarketplaceService {
     })
     await tx.bid.update({ where: { id: bid.id }, data: { status: 'accepted' } })
     await tx.bid.updateMany({ where: { shipmentId: shipment.id, status: 'active' }, data: { status: 'declined' } })
-    await tx.shipment.update({ where: { id: shipment.id }, data: { status: 'awarded', awardedBidId: bid.id, loadId: load.id } })
+    await tx.shipment.update({
+      where: { id: shipment.id },
+      data: { status: 'awarded', awardedBidId: bid.id, loadId: load.id, trackingToken: shipment.trackingToken ?? newTrackingToken() },
+    })
   }
 
   private async notifyWinner(shipment: Shipment, bid: { carrierId: string; amount: number }) {
@@ -277,6 +284,7 @@ export class MarketplaceService {
       this.myBadge(carrierId),
     ])
     const shippers = await this.shipperNames(rows.map(r => r.shipperId))
+    const shipperRatings = await this.delivery.summaries(rows.map(r => r.shipperId), 'carrier_rates_shipper')
     return {
       badge,
       feePercent: PLATFORM_FEE_PERCENT,
@@ -286,6 +294,7 @@ export class MarketplaceService {
         return {
           ...s,
           shipperName: shippers.get(shipperId) ?? 'Shipper',
+          shipperRating: shipperRatings.get(shipperId) ?? null,
           bidCount: bids.length,
           myBid: mine ? { id: mine.id, amount: mine.amount, message: mine.message } : null,
           fittingTrucks: this.fittingTrucks(trucks, s).length,
@@ -327,6 +336,10 @@ export class MarketplaceService {
       include: { shipment: true },
     })
     const shippers = await this.shipperNames(bids.map(b => b.shipment.shipperId))
+    const rated = new Set((await this.prisma.rating.findMany({
+      where: { raterId: carrierId, role: 'carrier_rates_shipper', shipmentId: { in: bids.map(b => b.shipmentId) } },
+      select: { shipmentId: true },
+    })).map(r => r.shipmentId))
     return bids.map(b => ({
       id: b.id, amount: b.amount, message: b.message, status: b.status, updatedAt: b.updatedAt,
       shipment: {
@@ -336,6 +349,7 @@ export class MarketplaceService {
         shipperName: shippers.get(b.shipment.shipperId) ?? 'Shipper',
         loadId: b.status === 'accepted' ? b.shipment.loadId : null,
         awardedToMe: b.shipment.awardedBidId === b.id,
+        ratedByMe: rated.has(b.shipmentId),
       },
     }))
   }
@@ -365,10 +379,11 @@ export class MarketplaceService {
   /** Trust signals a shipper sees next to each bid. */
   private async carrierSummaries(ids: string[]) {
     const unique = [...new Set(ids)]
-    const [profiles, fleets, delivered] = await Promise.all([
+    const [profiles, fleets, delivered, ratings] = await Promise.all([
       this.prisma.carrierProfile.findMany({ where: { ownerId: { in: unique } }, include: { documents: { select: { kind: true, expiresAt: true } } } }),
       this.prisma.truck.groupBy({ by: ['ownerId'], _count: true, where: { ownerId: { in: unique } } }),
       this.prisma.load.groupBy({ by: ['ownerId'], _count: true, where: { ownerId: { in: unique }, status: 'delivered' } }),
+      this.delivery.summaries(unique, 'shipper_rates_carrier'),
     ])
     return new Map(unique.map(id => {
       const p = profiles.find(x => x.ownerId === id) ?? null
@@ -378,6 +393,7 @@ export class MarketplaceService {
         memberSince:    p?.createdAt ?? null,
         fleetSize:      fleets.find(f => f.ownerId === id)?._count ?? 0,
         completedLoads: delivered.find(d => d.ownerId === id)?._count ?? 0,
+        rating:         ratings.get(id) ?? null,
       }]
     }))
   }

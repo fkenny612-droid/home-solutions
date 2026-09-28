@@ -333,6 +333,11 @@ model Load {
   shipmentId       String?   // set when won on the marketplace. Not @unique: adding a unique
                              // constraint to an existing table makes `db push` refuse at deploy.
   deliveredByKey   String?   // driver phone key at delivery, so history follows the driver, not the truck
+  // Live tracking: last position reported by the driver app while in transit
+  lastLat          Float?
+  lastLng          Float?
+  lastSpeedKmh     Float?
+  lastLocationAt   DateTime?
   // Cached truck route from Google Routes API (travelMode TRUCK)
   routeDistanceM   Int?
   routeDurationS   Int?
@@ -342,6 +347,8 @@ model Load {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   events           LoadEvent[]
+  pod              ProofOfDelivery?
+  trackingPoints   TrackingPoint[]
 
   @@unique([ownerId, reference])
   @@index([ownerId, status])
@@ -513,6 +520,7 @@ model Shipment {
   targetRate      Float?    // shipper's budget, shown to carriers
   verifiedOnly    Boolean   @default(true)
   biddingClosesAt DateTime?
+  trackingToken   String?   // public tracking link for the consignee (set on award)
   status          String    @default("open") // open | awaiting_payment | awarded | in_transit | delivered | cancelled
   awardedBidId    String?   @unique
   loadId          String?   @unique // the carrier's Load once awarded
@@ -523,6 +531,7 @@ model Shipment {
 
   @@index([status, createdAt])
   @@index([shipperId])
+  @@index([trackingToken])
 }
 
 model Bid {
@@ -585,4 +594,62 @@ model PaymentEvent {
   createdAt DateTime @default(now())
 
   @@index([paymentId])
+}
+
+// ── Truck Loads: proof of delivery, tracking, ratings ──────────────────────
+
+model ProofOfDelivery {
+  id           String    @id @default(uuid())
+  loadId       String    @unique
+  load         Load      @relation(fields: [loadId], references: [id], onDelete: Cascade)
+  receiverName String
+  note         String?
+  lat          Float?
+  lng          Float?
+  accuracyM    Float?
+  capturedBy   String    // driver | dispatcher
+  deliveredAt  DateTime  @default(now())
+  photos       PodPhoto[]
+}
+
+model PodPhoto {
+  id       String          @id @default(uuid())
+  podId    String
+  pod      ProofOfDelivery @relation(fields: [podId], references: [id], onDelete: Cascade)
+  fileName String
+  mimeType String
+  size     Int
+  data     Bytes
+
+  @@index([podId])
+}
+
+model TrackingPoint {
+  id        String   @id @default(uuid())
+  loadId    String
+  load      Load     @relation(fields: [loadId], references: [id], onDelete: Cascade)
+  lat       Float
+  lng       Float
+  speedKmh  Float?
+  heading   Float?
+  accuracyM Float?
+  createdAt DateTime @default(now())
+
+  @@index([loadId, createdAt])
+}
+
+// Two-way ratings after a marketplace delivery (like Alibaba's order reviews)
+model Rating {
+  id         String   @id @default(uuid())
+  shipmentId String
+  role       String   // shipper_rates_carrier | carrier_rates_shipper
+  raterId    String
+  rateeId    String
+  stars      Int      // 1–5
+  onTime     Boolean? // shipper: delivered on time? carrier: paid/loaded without delays?
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@unique([shipmentId, role])
+  @@index([rateeId, role])
 }
