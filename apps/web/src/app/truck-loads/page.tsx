@@ -4,10 +4,12 @@ import TruckLoadsMark from '@/components/truck-loads/TruckLoadsMark'
 import RouteMap from '@/components/truck-loads/RouteMap'
 import Login from '@/components/truck-loads/Login'
 import Applications from '@/components/truck-loads/Applications'
+import Company, { CarrierBadgePill } from '@/components/truck-loads/Company'
+import { ComplianceBanner, CompliancePanel, CompliancePill, TruckDatesModal } from '@/components/truck-loads/Compliance'
 import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
 import {
-  ApiError, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, fmtMoney, dispatch, getToken, hazmatLabel,
-  Load, LoadStatus, setToken, Summary, Truck, truckFitProblems,
+  ApiError, carrier, CarrierBadge, ComplianceOverview, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, fmtMoney,
+  dispatch, getToken, hazmatLabel, Load, LoadStatus, setToken, Summary, Truck, truckFitProblems,
 } from '@/lib/truck-loads'
 
 const STATUS_STYLE: Record<LoadStatus, string> = {
@@ -214,7 +216,7 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
 
 // ─── Fleet ────────────────────────────────────────────────────────────────────
 
-function Fleet({ trucks, onChanged }: { trucks: Truck[]; onChanged: () => void }) {
+function Fleet({ trucks, onChanged, onDates }: { trucks: Truck[]; onChanged: () => void; onDates: (t: Truck) => void }) {
   const [error, setError] = useState<string | null>(null)
   async function act(fn: () => Promise<unknown>) {
     setError(null)
@@ -233,6 +235,7 @@ function Fleet({ trucks, onChanged }: { trucks: Truck[]; onChanged: () => void }
               <th className="px-3 py-2 font-medium">H × L</th>
               <th className="px-3 py-2 font-medium">Payload</th>
               <th className="px-3 py-2 font-medium">Hazmat</th>
+              <th className="px-3 py-2 font-medium">Documents</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2" />
             </tr>
@@ -245,6 +248,10 @@ function Fleet({ trucks, onChanged }: { trucks: Truck[]; onChanged: () => void }
                 <td className="px-3 py-2 text-silver-600 whitespace-nowrap">{fmtLength(t.heightMm)} × {fmtLength(t.lengthMm)}</td>
                 <td className="px-3 py-2 text-silver-600 whitespace-nowrap">{fmtWeight(t.grossWeightKg - t.tareWeightKg)}</td>
                 <td className="px-3 py-2 text-xs text-silver-600">{t.hazmatTypes.map(hazmatLabel).join(', ') || '—'}</td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  <CompliancePill compliance={t.compliance} />
+                  <button onClick={() => onDates(t)} className="ml-2 text-xs text-silver-500 underline">Dates</button>
+                </td>
                 <td className="px-3 py-2"><Pill className={TRUCK_STYLE[t.status]}>{statusLabel(t.status)}</Pill></td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   {t.status === 'available' && (
@@ -272,7 +279,7 @@ const FILTERS: (LoadStatus | 'active' | 'all')[] = ['active', 'booked', 'assigne
 
 export default function DispatchPage() {
   const [authed, setAuthed] = useState<boolean | null>(null)
-  const [tab, setTab] = useState<'loads' | 'fleet' | 'applications'>('loads')
+  const [tab, setTab] = useState<'loads' | 'fleet' | 'applications' | 'company'>('loads')
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('active')
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loads, setLoads] = useState<Load[]>([])
@@ -281,6 +288,9 @@ export default function DispatchPage() {
   const [selected, setSelected] = useState<Load | null>(null)
   const [modal, setModal] = useState<'load' | 'truck' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [compliance, setCompliance] = useState<ComplianceOverview | null>(null)
+  const [badge, setBadge] = useState<CarrierBadge | null>(null)
+  const [datesTruck, setDatesTruck] = useState<Truck | null>(null)
 
   useEffect(() => { setAuthed(!!getToken('dispatch')) }, [])
 
@@ -288,6 +298,9 @@ export default function DispatchPage() {
     try {
       const [s, l, t] = await Promise.all([dispatch.summary(), dispatch.loads(), dispatch.trucks()])
       setSummary(s); setLoads(l); setTrucks(t); setError(null)
+      // Secondary panels: don't fail the board if these do
+      carrier.compliance().then(setCompliance).catch(() => {})
+      carrier.profile().then(v => setBadge(v.badge)).catch(() => {})
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) { setToken('dispatch', null); setAuthed(false); return }
       setError((e as Error).message)
@@ -330,8 +343,9 @@ export default function DispatchPage() {
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
           <TruckLoadsMark size={26} onDark />
           <span className="font-semibold hidden sm:inline">Truck Loads</span>
-          <nav className="sm:ml-6 flex gap-1">
-            {(['loads', 'fleet', 'applications'] as const).map(t => (
+          {badge === 'verified' && <span className="hidden md:inline"><CarrierBadgePill badge={badge} size="xs" /></span>}
+          <nav className="sm:ml-4 flex gap-1 overflow-x-auto">
+            {(['loads', 'fleet', 'applications', 'company'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`rounded-md px-3 py-1.5 text-sm capitalize ${tab === t ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'}`}>
                 {t}
@@ -350,6 +364,7 @@ export default function DispatchPage() {
           </p>
         )}
         {error && <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <ComplianceBanner overview={compliance} onReview={() => setTab('fleet')} />
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {kpis.map(k => (
@@ -408,6 +423,8 @@ export default function DispatchPage() {
           </div>
         ) : tab === 'applications' ? (
           <Applications onFleetChanged={refresh} />
+        ) : tab === 'company' ? (
+          <Company onChanged={v => { setBadge(v.badge); refresh() }} />
         ) : (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
@@ -416,7 +433,8 @@ export default function DispatchPage() {
                 <i className="ti ti-plus mr-1" />Add truck
               </button>
             </div>
-            <Fleet trucks={trucks} onChanged={refresh} />
+            <CompliancePanel overview={compliance} />
+            <Fleet trucks={trucks} onChanged={refresh} onDates={setDatesTruck} />
           </section>
         )}
       </div>
@@ -428,6 +446,9 @@ export default function DispatchPage() {
             setModal(null); setSelected(l); refresh()
           }} />
         </Modal>
+      )}
+      {datesTruck && (
+        <TruckDatesModal truck={datesTruck} onClose={() => setDatesTruck(null)} onSaved={() => { setDatesTruck(null); refresh() }} />
       )}
       {modal === 'truck' && (
         <Modal title="Add a truck" onClose={() => setModal(null)}>

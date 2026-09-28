@@ -88,6 +88,11 @@ export function TruckForm({ hazmatTypes, onSubmit }: { hazmatTypes: string[]; on
         tareWeightKg:  Math.round(num(f.get('tareKg'))!),
         axleCount:     num(f.get('axles'))!,
         hazmatTypes:   hazmat,
+        licenceDiscExpiry:   str(f.get('licenceDiscExpiry')) ?? null,
+        roadworthyExpiry:    str(f.get('roadworthyExpiry')) ?? null,
+        insuranceExpiry:     str(f.get('insuranceExpiry')) ?? null,
+        driverLicenceExpiry: str(f.get('driverLicenceExpiry')) ?? null,
+        driverPrdpExpiry:    str(f.get('driverPrdpExpiry')) ?? null,
       })
     } catch (err: any) {
       setError(err.message)
@@ -113,6 +118,17 @@ export function TruckForm({ hazmatTypes, onSubmit }: { hazmatTypes: string[]; on
         <Field label="Tare weight (kg)"><input name="tareKg" type="number" min="500" max="60000" required defaultValue="17000" className={inputCls} /></Field>
         <Field label="Axles"><input name="axles" type="number" min="2" max="12" required defaultValue="7" className={inputCls} /></Field>
       </div>
+      <details className="rounded-lg border border-silver-200 px-3 py-2">
+        <summary className="text-sm text-silver-700 cursor-pointer">Document expiry dates (recommended)</summary>
+        <p className="text-xs text-silver-500 mt-1">Used for compliance alerts. A truck with an expired licence disc, driver&apos;s licence or PrDP can&apos;t be dispatched.</p>
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <Field label="Licence disc"><input name="licenceDiscExpiry" type="date" className={inputCls} /></Field>
+          <Field label="Roadworthy (COR)"><input name="roadworthyExpiry" type="date" className={inputCls} /></Field>
+          <Field label="Insurance"><input name="insuranceExpiry" type="date" className={inputCls} /></Field>
+          <Field label="Driver's licence"><input name="driverLicenceExpiry" type="date" className={inputCls} /></Field>
+          <Field label="PrDP"><input name="driverPrdpExpiry" type="date" className={inputCls} /></Field>
+        </div>
+      </details>
       <Field label="Hazmat certifications" hint="Loads with hazmat can only go on trucks certified for every class.">
         <HazmatPicker types={hazmatTypes} value={hazmat} onChange={setHazmat} />
       </Field>

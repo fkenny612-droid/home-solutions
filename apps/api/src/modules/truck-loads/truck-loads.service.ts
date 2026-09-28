@@ -3,8 +3,10 @@ import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { GoogleRoutesService } from './google-routes.service'
 import { ACTIVE_LOAD_STATUSES, canTransition, phoneKey, truckLoadProblems } from './truck-loads.rules'
+import { complianceBlockers, truckCompliance } from './compliance'
 import {
   AssignLoadDto, CreateLoadDto, CreateTruckDto, DriverNavigationDto, DriverStatusDto, LoadStatus, LoadStatusDto, UpdateLoadDto, UpdateTruckDto,
+  withExpiryDates,
 } from './truck-loads.dto'
 
 const DRIVER_HISTORY_DAYS = 14
@@ -23,15 +25,16 @@ export class TruckLoadsService {
 
   // ── Trucks ──────────────────────────────────────────────────────────────────
 
-  listTrucks(ownerId: string) {
-    return this.prisma.truck.findMany({ where: { ownerId }, orderBy: { name: 'asc' } })
+  async listTrucks(ownerId: string) {
+    const trucks = await this.prisma.truck.findMany({ where: { ownerId }, orderBy: { name: 'asc' } })
+    return trucks.map(t => ({ ...t, compliance: truckCompliance(t) }))
   }
 
   async createTruck(ownerId: string, dto: CreateTruckDto) {
     this.assertTare(dto.grossWeightKg, dto.tareWeightKg)
     try {
       return await this.prisma.truck.create({
-        data: { ...dto, hazmatTypes: dto.hazmatTypes ?? [], driverPhoneKey: phoneKey(dto.driverPhone), ownerId },
+        data: { ...withExpiryDates(dto), hazmatTypes: dto.hazmatTypes ?? [], driverPhoneKey: phoneKey(dto.driverPhone), ownerId },
       })
     } catch (e) {
       throw this.mapUnique(e, `A truck with plate ${dto.plate} already exists`)
@@ -47,7 +50,7 @@ export class TruckLoadsService {
     try {
       return await this.prisma.truck.update({
         where: { id },
-        data: { ...dto, ...(dto.driverPhone !== undefined ? { driverPhoneKey: phoneKey(dto.driverPhone) } : {}) },
+        data: { ...withExpiryDates(dto), ...(dto.driverPhone !== undefined ? { driverPhoneKey: phoneKey(dto.driverPhone) } : {}) },
       })
     } catch (e) {
       throw this.mapUnique(e, `A truck with plate ${dto.plate} already exists`)
@@ -147,7 +150,7 @@ export class TruckLoadsService {
     }
     if (load.truckId === truck.id) return load
 
-    const problems = truckLoadProblems(truck, load)
+    const problems = [...truckLoadProblems(truck, load), ...complianceBlockers(truck)]
     const busy = await this.activeLoadFor(truck.id)
     if (busy) problems.push(`Truck is already on load ${busy.reference}`)
     if (problems.length) throw new BadRequestException(problems.join('; '))

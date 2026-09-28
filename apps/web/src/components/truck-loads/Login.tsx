@@ -7,6 +7,8 @@ import { login, Side } from '@/lib/truck-loads'
 const COPY: Record<Side, { title: string; switchText: string; switchHref: string }> = {
   dispatch: { title: 'Truck Loads · Dispatch', switchText: 'Driving? Open the driver app', switchHref: '/truck-loads/driver' },
   driver:   { title: 'Truck Loads · Driver',   switchText: 'Dispatcher? Open the dispatch board', switchHref: '/truck-loads' },
+  shipper:  { title: 'Truck Loads · Shippers', switchText: 'Carrier? Open the dispatch board', switchHref: '/truck-loads' },
+  admin:    { title: 'Truck Loads · Platform admin', switchText: 'Back to the dispatch board', switchHref: '/truck-loads' },
 }
 
 export default function Login({ side, onDone }: { side: Side; onDone: () => void }) {

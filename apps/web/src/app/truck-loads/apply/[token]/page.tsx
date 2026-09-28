@@ -23,9 +23,15 @@ function Section({ n, title, children, hint }: { n: number; title: string; hint?
 
 const req = <span className="text-red-600">*</span>
 
+/** Vehicle documents whose expiry we track, and the form field it goes in. */
+const EXPIRY_FIELD: Record<string, string> = {
+  licence_disc: 'discExpiry', roadworthy: 'roadworthyExpiry', git_insurance: 'insuranceExpiry',
+}
+
 function DocInput({ spec, required, file, onChange, maxBytes }: {
   spec: DocumentSpec; required: boolean; file: File | null; maxBytes: number; onChange: (f: File | null) => void
 }) {
+  const expiryField = EXPIRY_FIELD[spec.kind]
   const [error, setError] = useState<string | null>(null)
   return (
     <div className={`rounded-xl border p-3 ${file ? 'border-brand-600 bg-brand-50' : 'border-silver-200'}`}>
@@ -36,6 +42,11 @@ function DocInput({ spec, required, file, onChange, maxBytes }: {
             ? <div className="text-xs text-brand-700 truncate">✓ {file.name} · {fmtFileSize(file.size)}</div>
             : <div className="text-xs text-silver-500">PDF or photo, up to {fmtFileSize(maxBytes)}</div>}
           {error && <div className="text-xs text-red-700">{error}</div>}
+          {file && expiryField && (
+            <label className="mt-1 flex items-center gap-2 text-xs text-silver-600">Expiry date
+              <input name={expiryField} type="date" required className="rounded-md border border-silver-300 px-2 py-1 text-xs" />
+            </label>
+          )}
         </div>
         <label className="press shrink-0 cursor-pointer rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm text-silver-800">
           {file ? 'Change' : 'Upload'}
@@ -105,6 +116,9 @@ export default function ApplyPage({ params }: { params: { token: string } }) {
       tareWeightKg:   Math.round(num('tareKg')),
       axleCount:      num('axles'),
       hazmatTypes:    hazmat,
+      discExpiry:       str('discExpiry') || undefined,
+      roadworthyExpiry: str('roadworthyExpiry') || undefined,
+      insuranceExpiry:  str('insuranceExpiry') || undefined,
       consent:        f.get('consent') === 'on',
     }
     const body = new FormData()

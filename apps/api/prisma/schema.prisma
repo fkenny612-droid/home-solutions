@@ -293,6 +293,13 @@ model Truck {
   axleCount     Int      @default(5)
   hazmatTypes   String[] // hazmat classes this rig is certified to haul
   status        String   @default("available") // available | on_load | out_of_service
+  // Compliance expiry dates (null = not recorded)
+  licenceDiscExpiry   DateTime?
+  roadworthyExpiry    DateTime?
+  insuranceExpiry     DateTime?
+  driverLicenceExpiry DateTime?
+  driverPrdpExpiry    DateTime?
+  applicationId       String?   // the carrier application it was approved from
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   loads         Load[]
@@ -387,6 +394,9 @@ model TruckApplication {
   licenceCode    String
   licenceExpiry  DateTime
   prdpExpiry     DateTime?
+  discExpiry       DateTime?
+  roadworthyExpiry DateTime?
+  insuranceExpiry  DateTime?
   passwordHash   String?   // driver-app password chosen on the form; used on approval
   // Truck
   truckType      String
@@ -426,4 +436,45 @@ model ApplicationDocument {
   createdAt     DateTime @default(now())
 
   @@index([applicationId])
+}
+
+// ── Truck Loads: carrier company verification (platform level) ─────────────
+// A carrier (fleet owner / dispatcher account) submits company documents; a
+// platform admin verifies them. The Verified badge is what shippers trust.
+
+model CarrierProfile {
+  id                 String    @id @default(uuid())
+  ownerId            String    @unique
+  companyName        String
+  registrationNumber String    // CIPC
+  vatNumber          String?
+  contactName        String
+  contactPhone       String
+  contactEmail       String?
+  address            String?
+  status             String    @default("draft") // draft | pending | verified | rejected
+  reviewNote         String?
+  submittedAt        DateTime?
+  verifiedAt         DateTime?
+  lastComplianceSmsAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  documents          CarrierDocument[]
+
+  @@index([status])
+}
+
+model CarrierDocument {
+  id        String    @id @default(uuid())
+  profileId String
+  profile   CarrierProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  kind      String    // see CARRIER_DOCUMENTS
+  fileName  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([profileId, kind])
 }

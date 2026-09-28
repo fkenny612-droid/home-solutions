@@ -22,6 +22,24 @@ export class CreateTruckDto {
   @IsInt() @Min(500)   @Max(60000)  tareWeightKg: number
   @IsInt() @Min(2)     @Max(12)     axleCount: number
   @IsOptional() @IsArray() @ArrayUnique() @IsIn(HAZMAT_TYPES, { each: true }) hazmatTypes?: string[]
+  // Compliance expiry dates (YYYY-MM-DD); null clears
+  @IsOptional() @IsDateString() licenceDiscExpiry?: string | null
+  @IsOptional() @IsDateString() roadworthyExpiry?: string | null
+  @IsOptional() @IsDateString() insuranceExpiry?: string | null
+  @IsOptional() @IsDateString() driverLicenceExpiry?: string | null
+  @IsOptional() @IsDateString() driverPrdpExpiry?: string | null
+}
+
+/** Expiry fields as Dates for Prisma (date-only strings aren't valid DateTimes). */
+export const TRUCK_EXPIRY_FIELDS = [
+  'licenceDiscExpiry', 'roadworthyExpiry', 'insuranceExpiry', 'driverLicenceExpiry', 'driverPrdpExpiry',
+] as const
+export function withExpiryDates<T extends Partial<Record<(typeof TRUCK_EXPIRY_FIELDS)[number], string | null>>>(dto: T) {
+  const out: any = { ...dto }
+  for (const k of TRUCK_EXPIRY_FIELDS) {
+    if (k in dto) out[k] = dto[k] ? new Date(dto[k] as string) : null
+  }
+  return out
 }
 
 export class UpdateTruckDto extends PartialType(CreateTruckDto) {
@@ -82,6 +100,10 @@ export class ApplicationDto {
   @IsDateString() licenceExpiry: string
   @IsDateString() prdpExpiry: string
   @IsString() @MinLength(8) @MaxLength(100) password: string
+  // Optional vehicle document expiries (entered next to the uploads)
+  @IsOptional() @IsDateString() discExpiry?: string
+  @IsOptional() @IsDateString() roadworthyExpiry?: string
+  @IsOptional() @IsDateString() insuranceExpiry?: string
 
   // Truck
   @IsIn(TRUCK_TYPES) truckType: string
@@ -103,5 +125,21 @@ export class ApplicationDto {
 }
 
 export class RejectApplicationDto {
+  @IsOptional() @IsString() @MaxLength(500) note?: string
+}
+
+// ── Carrier company profile ──────────────────────────────────────────────────
+
+export class CarrierProfileDto {
+  @IsString() @MinLength(2) @MaxLength(120) companyName: string
+  @IsString() @MinLength(4) @MaxLength(30) registrationNumber: string
+  @IsOptional() @IsString() @MaxLength(20) vatNumber?: string
+  @IsString() @MinLength(2) @MaxLength(120) contactName: string
+  @Matches(PHONE, { message: 'contactPhone must be a valid phone number' }) contactPhone: string
+  @IsOptional() @IsEmail() @MaxLength(160) contactEmail?: string
+  @IsOptional() @IsString() @MaxLength(300) address?: string
+}
+
+export class ReviewNoteDto {
   @IsOptional() @IsString() @MaxLength(500) note?: string
 }

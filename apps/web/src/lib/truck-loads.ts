@@ -7,8 +7,10 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
 
 /** Dispatcher and driver sign in separately, so one device can run both. */
-export type Side = 'dispatch' | 'driver'
-const TOKEN_KEYS: Record<Side, string> = { dispatch: 'tl_dispatch_token', driver: 'tl_driver_token' }
+export type Side = 'dispatch' | 'driver' | 'shipper' | 'admin'
+const TOKEN_KEYS: Record<Side, string> = {
+  dispatch: 'tl_dispatch_token', driver: 'tl_driver_token', shipper: 'tl_shipper_token', admin: 'tl_admin_token',
+}
 
 export function getToken(side: Side) {
   try { return localStorage.getItem(TOKEN_KEYS[side]) } catch { return null }
@@ -72,6 +74,12 @@ export interface Truck {
   axleCount: number
   hazmatTypes: string[]
   status: TruckStatus
+  licenceDiscExpiry?: string | null
+  roadworthyExpiry?: string | null
+  insuranceExpiry?: string | null
+  driverLicenceExpiry?: string | null
+  driverPrdpExpiry?: string | null
+  compliance?: TruckCompliance
 }
 
 export interface LoadEvent { id: string; type: string; message: string; createdAt: string }
@@ -112,7 +120,7 @@ export interface Summary {
   routingEnabled: boolean
 }
 
-export type TruckInput = Omit<Truck, 'id' | 'status'>
+export type TruckInput = Omit<Truck, 'id' | 'status' | 'compliance'>
 export type LoadInput = Pick<Load,
   'reference' | 'shipperName' | 'commodity' | 'weightKg' | 'hazmatTypes' | 'originAddress' | 'destAddress'
 > & { rate?: number; pickupAt?: string; deliverBy?: string; notes?: string }
@@ -157,6 +165,109 @@ export const driver = {
   load:      (id: string) => dr<DriverLoad>(`/truck-loads/driver/loads/${id}`),
   setStatus: (id: string, status: 'in_transit' | 'delivered', note?: string) =>
     dr<DriverLoad>(`/truck-loads/driver/loads/${id}/status`, { method: 'POST', body: JSON.stringify({ status, note }) }),
+}
+
+// ── Compliance & carrier verification ────────────────────────────────────────
+
+export type ItemStatus = 'ok' | 'expiring' | 'expired' | 'missing'
+export interface ComplianceItem { key: string; label: string; expiresAt: string | null; status: ItemStatus; daysLeft: number | null; blocking: boolean }
+export interface TruckCompliance { overall: ItemStatus; items: ComplianceItem[]; blocked: boolean }
+export interface ComplianceIssue {
+  scope: 'truck' | 'company'; truckId?: string; subject: string; label: string
+  status: 'expired' | 'expiring' | 'missing'; expiresAt: string | null; daysLeft: number | null
+}
+export interface ComplianceOverview { issues: ComplianceIssue[]; counts: { expired: number; expiring: number; missing: number } }
+
+export type CarrierBadge = 'verified' | 'lapsed' | 'pending' | 'unverified'
+export type TruckExpiryField = 'licenceDiscExpiry' | 'roadworthyExpiry' | 'insuranceExpiry' | 'driverLicenceExpiry' | 'driverPrdpExpiry'
+export interface CarrierDocSpec { kind: string; label: string; required: boolean; expires: boolean }
+export interface CarrierDoc { id: string; kind: string; fileName: string; mimeType: string; size: number; expiresAt: string | null; createdAt: string }
+export interface CarrierProfile {
+  id: string; ownerId: string; companyName: string; registrationNumber: string; vatNumber: string | null
+  contactName: string; contactPhone: string; contactEmail: string | null; address: string | null
+  status: 'draft' | 'pending' | 'verified' | 'rejected'; reviewNote: string | null
+  submittedAt: string | null; verifiedAt: string | null; createdAt: string
+  documents?: CarrierDoc[]
+}
+export interface CarrierProfileView { profile: CarrierProfile | null; badge: CarrierBadge; documentSpecs: CarrierDocSpec[] }
+export type CarrierProfileInput = Pick<CarrierProfile, 'companyName' | 'registrationNumber' | 'contactName' | 'contactPhone'>
+  & { vatNumber?: string; contactEmail?: string; address?: string }
+
+/** Authenticated file download as a blob (documents need the bearer token). */
+export async function fetchBlob(side: Side, path: string): Promise<Blob> {
+  const token = getToken(side)
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  } catch {
+    throw new ApiError(0, `Can't reach the Truck Loads API at ${BASE} — is it running?`)
+  }
+  if (!res.ok) throw new ApiError(res.status, `Could not open document (${res.status})`)
+  return res.blob()
+}
+
+/** Open a blob in a new tab; the tab is opened synchronously so popup blockers allow it. */
+export async function openInNewTab(load: () => Promise<Blob>) {
+  const tab = window.open('', '_blank')
+  try {
+    const url = URL.createObjectURL(await load())
+    if (tab) tab.location.href = url
+    else window.location.href = url
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e) {
+    tab?.close()
+    throw e
+  }
+}
+
+async function upload<T>(side: Side, path: string, form: FormData): Promise<T> {
+  const token = getToken(side)
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  } catch {
+    throw new ApiError(0, `Can't reach the Truck Loads API at ${BASE} — is it running?`)
+  }
+  const body = await res.json().catch(() => null)
+  if (!res.ok) {
+    const msg = Array.isArray(body?.message) ? body.message.join('; ') : body?.message ?? `Upload failed (${res.status})`
+    throw new ApiError(res.status, msg)
+  }
+  return body as T
+}
+
+export const carrier = {
+  profile:    () => d<CarrierProfileView>('/truck-loads/carrier-profile'),
+  save:       (p: CarrierProfileInput) => d<CarrierProfileView>('/truck-loads/carrier-profile', { method: 'PUT', body: JSON.stringify(p) }),
+  uploadDoc(kind: string, file: File, expiresAt?: string) {
+    const f = new FormData()
+    f.append('file', file, file.name)
+    if (expiresAt) f.append('expiresAt', expiresAt)
+    return upload<CarrierProfileView>('dispatch', `/truck-loads/carrier-profile/documents/${kind}`, f)
+  },
+  document:   (docId: string) => fetchBlob('dispatch', `/truck-loads/carrier-profile/documents/${docId}`),
+  submit:     () => d<CarrierProfileView>('/truck-loads/carrier-profile/submit', { method: 'POST' }),
+  compliance: () => d<ComplianceOverview>('/truck-loads/compliance'),
+}
+
+export interface AdminCarrierRow extends CarrierProfile { badge: CarrierBadge; documentCount: number; fleetSize: number }
+export interface AdminCarrierDetail {
+  profile: CarrierProfile & { documents: CarrierDoc[] }
+  owner: { phone: string; firstName: string | null; lastName: string | null } | null
+  badge: CarrierBadge
+  documentSpecs: CarrierDocSpec[]
+  fleet: { id: string; name: string; plate: string; driverName: string | null; status: string; compliance: TruckCompliance }[]
+}
+
+const ad = <T,>(path: string, opts?: RequestInit) => req<T>('admin', path, opts)
+
+export const platformAdmin = {
+  carriers: (status?: string) => ad<AdminCarrierRow[]>(`/truck-loads/admin/carriers${status ? `?status=${status}` : ''}`),
+  carrier:  (id: string) => ad<AdminCarrierDetail>(`/truck-loads/admin/carriers/${id}`),
+  document: (id: string, docId: string) => fetchBlob('admin', `/truck-loads/admin/carriers/${id}/documents/${docId}`),
+  verify:   (id: string) => ad<AdminCarrierDetail>(`/truck-loads/admin/carriers/${id}/verify`, { method: 'POST' }),
+  reject:   (id: string, note?: string) =>
+    ad<AdminCarrierDetail>(`/truck-loads/admin/carriers/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
 }
 
 // ── Applications (carrier / driver onboarding) ────────────────────────────────

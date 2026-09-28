@@ -6,19 +6,11 @@ import { validate } from 'class-validator'
 import { PrismaService } from '../../prisma/prisma.service'
 import { HAZMAT_TYPES } from './google-routes.service'
 import { phoneKey } from './truck-loads.rules'
+import { UploadedDoc } from './documents.util'
 import { ApplicationDto, RejectApplicationDto } from './truck-loads.dto'
 import {
   ALLOWED_MIME_TYPES, APPLICATION_DOCUMENTS, DOCUMENT_KINDS, LICENCE_CODES, MAX_FILE_BYTES, TRUCK_TYPES,
 } from './applications.constants'
-
-/** The subset of a multer file we use (avoids a @types/multer dependency). */
-export interface UploadedDoc {
-  fieldname: string
-  originalname: string
-  mimetype: string
-  size: number
-  buffer: Buffer
-}
 
 const DAY_MS = 86_400_000
 const EXPIRY_WARNING_DAYS = 30
@@ -111,6 +103,9 @@ export class ApplicationsService {
         licenceExpiry:  new Date(dto.licenceExpiry),
         prdpExpiry:     new Date(dto.prdpExpiry),
         passwordHash:   bcrypt.hashSync(dto.password, 10),
+        discExpiry:       dto.discExpiry ? new Date(dto.discExpiry) : null,
+        roadworthyExpiry: dto.roadworthyExpiry ? new Date(dto.roadworthyExpiry) : null,
+        insuranceExpiry:  dto.insuranceExpiry ? new Date(dto.insuranceExpiry) : null,
         truckType:      dto.truckType,
         make:           dto.make.trim(),
         model:          dto.model?.trim() || null,
@@ -200,6 +195,12 @@ export class ApplicationsService {
           tareWeightKg:   app.tareWeightKg,
           axleCount:      app.axleCount,
           hazmatTypes:    app.hazmatTypes,
+          licenceDiscExpiry:   app.discExpiry,
+          roadworthyExpiry:    app.roadworthyExpiry,
+          insuranceExpiry:     app.insuranceExpiry,
+          driverLicenceExpiry: app.licenceExpiry,
+          driverPrdpExpiry:    app.prdpExpiry,
+          applicationId:       app.id,
         },
       })
       let driverAccount: 'created' | 'existing' = 'existing'

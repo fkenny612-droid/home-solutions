@@ -4,7 +4,8 @@ import {
 } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { AnyFilesInterceptor } from '@nestjs/platform-express'
-import { ApplicationsService, UploadedDoc } from './applications.service'
+import { ApplicationsService } from './applications.service'
+import { sendDocument, UploadedDoc } from './documents.util'
 import { RejectApplicationDto } from './truck-loads.dto'
 import { MAX_FILE_BYTES, MAX_FILES } from './applications.constants'
 
@@ -88,17 +89,7 @@ export class ApplicationsController {
 
   @Get('applications/:id/documents/:docId')
   async document(@Req() req: any, @Param('id') id: string, @Param('docId') docId: string, @Res() res: any) {
-    const doc = await this.svc.document(req.user.sub, id, docId)
-    res.set({
-      'Content-Type': doc.mimeType,
-      'Content-Length': String(doc.size),
-      'Content-Disposition': `inline; filename="${doc.fileName.replace(/[^\w.\- ]/g, '_')}"`,
-      // Uploaded files are untrusted: never let them run as a page
-      'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy': "default-src 'none'; sandbox",
-      'Cache-Control': 'private, no-store',
-    })
-    res.end(Buffer.from(doc.data))
+    sendDocument(res, await this.svc.document(req.user.sub, id, docId))
   }
 
   @Post('applications/:id/approve')
