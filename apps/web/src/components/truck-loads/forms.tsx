@@ -31,7 +31,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-function HazmatPicker({ types, value, onChange }: { types: string[]; value: string[]; onChange: (v: string[]) => void }) {
+export function HazmatPicker({ types, value, onChange }: { types: string[]; value: string[]; onChange: (v: string[]) => void }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {types.map(t => {

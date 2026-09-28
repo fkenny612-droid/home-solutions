@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import TruckLoadsMark from '@/components/truck-loads/TruckLoadsMark'
 import RouteMap from '@/components/truck-loads/RouteMap'
 import Login from '@/components/truck-loads/Login'
+import Applications from '@/components/truck-loads/Applications'
 import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
 import {
   ApiError, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, fmtMoney, dispatch, getToken, hazmatLabel,
@@ -271,7 +272,7 @@ const FILTERS: (LoadStatus | 'active' | 'all')[] = ['active', 'booked', 'assigne
 
 export default function DispatchPage() {
   const [authed, setAuthed] = useState<boolean | null>(null)
-  const [tab, setTab] = useState<'loads' | 'fleet'>('loads')
+  const [tab, setTab] = useState<'loads' | 'fleet' | 'applications'>('loads')
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('active')
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loads, setLoads] = useState<Load[]>([])
@@ -330,7 +331,7 @@ export default function DispatchPage() {
           <TruckLoadsMark size={26} onDark />
           <span className="font-semibold hidden sm:inline">Truck Loads</span>
           <nav className="sm:ml-6 flex gap-1">
-            {(['loads', 'fleet'] as const).map(t => (
+            {(['loads', 'fleet', 'applications'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`rounded-md px-3 py-1.5 text-sm capitalize ${tab === t ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'}`}>
                 {t}
@@ -405,6 +406,8 @@ export default function DispatchPage() {
                 : <div className="rounded-xl border border-dashed border-silver-300 p-10 text-center text-sm text-silver-500">Select a load to assign a truck and plan its route.</div>}
             </section>
           </div>
+        ) : tab === 'applications' ? (
+          <Applications onFleetChanged={refresh} />
         ) : (
           <section className="space-y-3">
             <div className="flex items-center justify-between">

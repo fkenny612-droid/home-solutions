@@ -153,6 +153,112 @@ export const driver = {
     dr<DriverLoad>(`/truck-loads/driver/loads/${id}/status`, { method: 'POST', body: JSON.stringify({ status, note }) }),
 }
 
+// ── Applications (carrier / driver onboarding) ────────────────────────────────
+
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected'
+
+export interface DocumentSpec { kind: string; label: string; required: boolean | 'hazmat' }
+
+export interface ApplicationFormInfo {
+  documents: DocumentSpec[]
+  truckTypes: string[]
+  licenceCodes: string[]
+  hazmatTypes: string[]
+  maxFileBytes: number
+  mimeTypes: string[]
+}
+
+export interface ApplicationDocMeta { id: string; kind: string; fileName: string; mimeType: string; size: number; createdAt: string }
+
+export interface TruckApplication {
+  id: string
+  reference: string
+  status: ApplicationStatus
+  companyName: string | null
+  contactName: string
+  contactPhone: string
+  contactEmail: string | null
+  driverName: string
+  driverPhone: string
+  driverIdNumber: string
+  licenceCode: string
+  licenceExpiry: string
+  prdpExpiry: string | null
+  truckType: string
+  make: string
+  model: string | null
+  year: number | null
+  plate: string
+  vin: string | null
+  heightMm: number
+  widthMm: number
+  lengthMm: number
+  grossWeightKg: number
+  tareWeightKg: number
+  axleCount: number
+  hazmatTypes: string[]
+  consentAt: string
+  reviewNote: string | null
+  reviewedAt: string | null
+  truckId: string | null
+  createdAt: string
+  documentCount?: number
+  documents?: ApplicationDocMeta[]
+  checks?: { warnings: string[]; driverHasAccount: boolean }
+}
+
+export const applications = {
+  link:     () => d<{ token: string }>('/truck-loads/application-link'),
+  rotate:   () => d<{ token: string }>('/truck-loads/application-link/rotate', { method: 'POST' }),
+  list:     (status?: ApplicationStatus) => d<TruckApplication[]>(`/truck-loads/applications${status ? `?status=${status}` : ''}`),
+  get:      (id: string) => d<TruckApplication>(`/truck-loads/applications/${id}`),
+  approve:  (id: string) =>
+    d<{ application: TruckApplication; truck: Truck; driverAccount: 'created' | 'existing' }>(
+      `/truck-loads/applications/${id}/approve`, { method: 'POST' }),
+  reject:   (id: string, note?: string) =>
+    d<TruckApplication>(`/truck-loads/applications/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
+  /** Documents need the dispatcher's token, so fetch them as a blob. */
+  async document(id: string, docId: string): Promise<Blob> {
+    const token = getToken('dispatch')
+    const res = await fetch(`${BASE}/truck-loads/applications/${id}/documents/${docId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new ApiError(res.status, `Could not open document (${res.status})`)
+    return res.blob()
+  },
+}
+
+/** Public application form — no login. */
+export const applyForm = {
+  info: (token: string) => fetch(`${BASE}/truck-loads/apply/${token}`).then(async res => {
+    const body = await res.json().catch(() => null)
+    if (!res.ok) throw new ApiError(res.status, body?.message ?? 'This application link is not valid')
+    return body as ApplicationFormInfo
+  }),
+  /** multipart upload with progress (XHR, since fetch can't report upload progress). */
+  submit(token: string, form: FormData, onProgress: (fraction: number) => void) {
+    return new Promise<{ reference: string }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${BASE}/truck-loads/apply/${token}`)
+      xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(e.loaded / e.total) }
+      xhr.onerror = () => reject(new ApiError(0, 'Upload failed — check your connection and try again'))
+      xhr.onload = () => {
+        let body: any = null
+        try { body = JSON.parse(xhr.responseText) } catch {}
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(body)
+        const msg = Array.isArray(body?.message) ? body.message.join('; ') : body?.message ?? `Upload failed (${xhr.status})`
+        reject(new ApiError(xhr.status, msg))
+      }
+      xhr.send(form)
+    })
+  },
+}
+
+export const truckTypeLabel = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+export const fmtFileSize = (b: number) => (b >= 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(b / 1024)} KB`)
+export const fmtDay = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+
 // ── Units (metric, South Africa) ─────────────────────────────────────────────
 
 export const mToMm = (m: number) => Math.round(m * 1000)

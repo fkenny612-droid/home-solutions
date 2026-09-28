@@ -351,3 +351,79 @@ model LoadEvent {
 
   @@index([loadId])
 }
+
+// ── Truck Loads: carrier / driver applications ──────────────────────────────
+// Each dispatcher shares a private link; anyone with it can apply with their
+// truck, driver and compliance documents. Approving creates the Truck (and a
+// driver-app login) in that dispatcher's fleet.
+
+model ApplicationLink {
+  id        String   @id @default(uuid())
+  ownerId   String
+  token     String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  applications TruckApplication[]
+
+  @@index([ownerId, active])
+}
+
+model TruckApplication {
+  id             String    @id @default(uuid())
+  ownerId        String
+  linkId         String
+  link           ApplicationLink @relation(fields: [linkId], references: [id])
+  reference      String    @unique // short code shown to the applicant, e.g. TL-7K3M9Q
+  status         String    @default("pending") // pending | approved | rejected
+  // Company / contact
+  companyName    String?
+  contactName    String
+  contactPhone   String
+  contactEmail   String?
+  // Driver
+  driverName     String
+  driverPhone    String
+  driverIdNumber String
+  licenceCode    String
+  licenceExpiry  DateTime
+  prdpExpiry     DateTime?
+  passwordHash   String?   // driver-app password chosen on the form; used on approval
+  // Truck
+  truckType      String
+  make           String
+  model          String?
+  year           Int?
+  plate          String
+  vin            String?
+  heightMm       Int
+  widthMm        Int
+  lengthMm       Int
+  grossWeightKg  Int
+  tareWeightKg   Int
+  axleCount      Int
+  hazmatTypes    String[]
+  // Review
+  consentAt      DateTime  // POPIA consent to process personal information
+  reviewNote     String?
+  reviewedAt     DateTime?
+  truckId        String?   // set when approved
+  createdAt      DateTime  @default(now())
+  documents      ApplicationDocument[]
+
+  @@index([ownerId, status])
+}
+
+model ApplicationDocument {
+  id            String   @id @default(uuid())
+  applicationId String
+  application   TruckApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  kind          String   // see APPLICATION_DOCUMENTS
+  fileName      String
+  mimeType      String
+  size          Int
+  // Stored in the database (not a public URL): these include ID documents
+  data          Bytes
+  createdAt     DateTime @default(now())
+
+  @@index([applicationId])
+}
