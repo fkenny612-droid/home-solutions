@@ -269,11 +269,16 @@ export const platformAdmin = {
   verify:   (id: string) => ad<AdminCarrierDetail>(`/truck-loads/admin/carriers/${id}/verify`, { method: 'POST' }),
   reject:   (id: string, note?: string) =>
     ad<AdminCarrierDetail>(`/truck-loads/admin/carriers/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
+  payments: (status?: string) => ad<AdminPayment[]>(`/truck-loads/admin/payments${status ? `?status=${status}` : ''}`),
+  paidOut:  (id: string, reference: string) => ad<AdminPayment>(`/truck-loads/admin/payments/${id}/paid-out`, { method: 'POST', body: JSON.stringify({ reference }) }),
+  refunded: (id: string, reference: string) => ad<AdminPayment>(`/truck-loads/admin/payments/${id}/refunded`, { method: 'POST', body: JSON.stringify({ reference }) }),
+  releaseDue: () => ad<{ released: number }>('/truck-loads/admin/payments/release-due', { method: 'POST' }),
 }
 
 // ── Marketplace (shippers post, carriers bid) ────────────────────────────────
 
-export type ShipmentStatus = 'open' | 'awarded' | 'in_transit' | 'delivered' | 'cancelled'
+export type ShipmentStatus = 'open' | 'awaiting_payment' | 'awarded' | 'in_transit' | 'delivered' | 'cancelled'
+export type PaymentStatus = 'pending' | 'held' | 'release_pending' | 'payout_due' | 'paid_out' | 'refund_due' | 'refunded' | 'failed' | 'cancelled' | 'disputed'
 export type BidStatus = 'active' | 'withdrawn' | 'accepted' | 'declined'
 
 export interface ShipperProfile {
@@ -305,6 +310,10 @@ export interface ShipperShipmentDetail extends Shipment {
     truck: { name: string; plate: string; driverName: string | null } | null
     events: { id: string; message: string; createdAt: string; actor: string }[]
   } | null
+  payment: {
+    id: string; status: PaymentStatus; amount: number; provider: 'mock' | 'peach'; checkoutUrl: string | null
+    heldAt: string | null; releaseAfter: string | null; refundedAt: string | null
+  } | null
 }
 
 const sh = <T,>(path: string, opts?: RequestInit) => req<T>('shipper', path, opts)
@@ -318,7 +327,12 @@ export const shipper = {
   shipments:   () => sh<ShipperShipmentRow[]>('/truck-loads/shipper/shipments'),
   shipment:    (id: string) => sh<ShipperShipmentDetail>(`/truck-loads/shipper/shipments/${id}`),
   create:      (s: ShipmentInput) => sh<Shipment>('/truck-loads/shipper/shipments', { method: 'POST', body: JSON.stringify(s) }),
-  accept:      (id: string, bidId: string) => sh<Shipment>(`/truck-loads/shipper/shipments/${id}/bids/${bidId}/accept`, { method: 'POST' }),
+  accept:      (id: string, bidId: string) =>
+    sh<{ shipmentId: string; checkoutUrl: string }>(`/truck-loads/shipper/shipments/${id}/bids/${bidId}/accept`, { method: 'POST' }),
+  pay:         (id: string) => sh<{ shipmentId: string; checkoutUrl: string }>(`/truck-loads/shipper/shipments/${id}/pay`, { method: 'POST' }),
+  changeCarrier: (id: string) => sh<Shipment>(`/truck-loads/shipper/shipments/${id}/change-carrier`, { method: 'POST' }),
+  testPay:     (paymentId: string, succeed: boolean) =>
+    sh<{ status: string }>(`/truck-loads/payments/test/${paymentId}`, { method: 'POST', body: JSON.stringify({ succeed }) }),
   cancel:      (id: string) => sh<Shipment>(`/truck-loads/shipper/shipments/${id}/cancel`, { method: 'POST' }),
 }
 
@@ -331,15 +345,40 @@ export interface MyBid {
   shipment: {
     id: string; reference: string; status: ShipmentStatus; originAddress: string; destAddress: string
     pickupAt: string | null; weightKg: number; commodity: string; shipperName: string; loadId: string | null
+    awardedToMe: boolean
   }
 }
 
+export interface CarrierPayment {
+  id: string; status: PaymentStatus; amount: number; feePercent: number; feeAmount: number; payoutAmount: number
+  heldAt: string | null; releaseAfter: string | null; paidOutAt: string | null; payoutReference: string | null
+  events?: { id: string; message: string; createdAt: string }[]
+  shipment?: { reference: string; originAddress: string; destAddress: string }
+}
+
 export const market = {
-  board:    (q?: string) => d<{ badge: CarrierBadge; shipments: BoardShipment[] }>(`/truck-loads/market/shipments${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  board:    (q?: string) => d<{ badge: CarrierBadge; feePercent: number; claimWindowHours: number; shipments: BoardShipment[] }>(`/truck-loads/market/shipments${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   bid:      (id: string, amount: number, message?: string) =>
     d<{ id: string }>(`/truck-loads/market/shipments/${id}/bids`, { method: 'POST', body: JSON.stringify({ amount, message }) }),
   withdraw: (id: string) => d<{ id: string }>(`/truck-loads/market/shipments/${id}/bids`, { method: 'DELETE' }),
   myBids:   () => d<MyBid[]>('/truck-loads/market/bids'),
+  payments: () => d<CarrierPayment[]>('/truck-loads/payments'),
+  loadPayment: (loadId: string) => d<CarrierPayment | null>(`/truck-loads/loads/${loadId}/payment`),
+}
+
+export interface AdminPayment {
+  id: string; status: PaymentStatus; amount: number; feeAmount: number; payoutAmount: number; provider: string
+  releaseAfter: string | null; paidOutAt: string | null; payoutReference: string | null
+  refundedAt: string | null; refundReference: string | null; createdAt: string; updatedAt: string
+  shipment: { reference: string; originAddress: string; destAddress: string }
+  carrier: { profileId: string; companyName: string; contactPhone: string; bankDocumentId: string | null } | null
+  shipper: { companyName: string; contactPhone: string; contactEmail: string | null } | null
+}
+
+export const PAYMENT_LABEL: Record<PaymentStatus, string> = {
+  pending: 'Awaiting payment', held: 'Held in escrow', release_pending: 'Delivered — claim window',
+  payout_due: 'Payout due', paid_out: 'Paid out', refund_due: 'Refund due', refunded: 'Refunded',
+  failed: 'Payment failed', cancelled: 'Cancelled', disputed: 'Disputed — on hold',
 }
 
 // ── Applications (carrier / driver onboarding) ────────────────────────────────

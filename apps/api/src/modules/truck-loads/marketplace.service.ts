@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
+import { EscrowService, PLATFORM_FEE_PERCENT, CLAIM_WINDOW_HOURS } from './escrow.service'
 import { SmsService } from '../notifications/sms.service'
 import { carrierBadge, complianceBlockers } from './compliance'
 import { truckLoadProblems } from './truck-loads.rules'
@@ -13,7 +15,7 @@ type Shipment = Awaited<ReturnType<PrismaService['shipment']['findUniqueOrThrow'
 
 @Injectable()
 export class MarketplaceService {
-  constructor(private prisma: PrismaService, private sms: SmsService) {}
+  constructor(private prisma: PrismaService, private sms: SmsService, private escrow: EscrowService) {}
 
   // ── Shipper profile ─────────────────────────────────────────────────────────
 
@@ -84,74 +86,155 @@ export class MarketplaceService {
     const shipment = await this.prisma.shipment.findFirst({ where: { id, shipperId }, include: { bids: { orderBy: { amount: 'asc' } } } })
     if (!shipment) throw new NotFoundException('Shipment not found')
     const carriers = await this.carrierSummaries(shipment.bids.map(b => b.carrierId))
-    const load = shipment.loadId
-      ? await this.prisma.load.findUnique({
-          where: { id: shipment.loadId },
-          select: {
-            status: true, routeDistanceM: true, routeDurationS: true,
-            truck: { select: { name: true, plate: true, driverName: true } },
-            events: { orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, message: true, createdAt: true, actor: true } },
-          },
-        })
-      : null
+    const [load, payment] = await Promise.all([
+      shipment.loadId
+        ? this.prisma.load.findUnique({
+            where: { id: shipment.loadId },
+            select: {
+              status: true, routeDistanceM: true, routeDurationS: true,
+              truck: { select: { name: true, plate: true, driverName: true } },
+              events: { orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, message: true, createdAt: true, actor: true } },
+            },
+          })
+        : null,
+      this.escrow.latestFor(shipment.id),
+    ])
     return {
       ...shipment,
       bids: shipment.bids.map(b => ({ ...b, carrier: carriers.get(b.carrierId) ?? null })),
       progress: load,
+      payment: payment && {
+        id: payment.id, status: payment.status, amount: payment.amount, provider: payment.provider,
+        checkoutUrl: payment.status === 'pending' ? payment.checkoutUrl : null,
+        heldAt: payment.heldAt, releaseAfter: payment.releaseAfter, refundedAt: payment.refundedAt,
+      },
     }
   }
 
+  /**
+   * Accepting a bid reserves it and sends the shipper to pay. The carrier only
+   * gets the load once the payment is held in escrow (see onPaymentResult).
+   */
   async acceptBid(shipperId: string, shipmentId: string, bidId: string) {
     const shipment = await this.prisma.shipment.findFirst({ where: { id: shipmentId, shipperId } })
     if (!shipment) throw new NotFoundException('Shipment not found')
-    if (shipment.status !== 'open') throw new ConflictException(`Shipment is already ${shipment.status}`)
+    if (shipment.status !== 'open') throw new ConflictException(`Shipment is already ${shipment.status.replace('_', ' ')}`)
     const bid = await this.prisma.bid.findFirst({ where: { id: bidId, shipmentId } })
     if (!bid || bid.status !== 'active') throw new ConflictException('That bid is no longer available')
-    const [shipper, carrierProfile] = await Promise.all([
-      this.getShipperProfile(shipperId),
-      this.prisma.carrierProfile.findUnique({ where: { ownerId: bid.carrierId } }),
-    ])
 
-    const result = await this.prisma.$transaction(async tx => {
-      const load = await tx.load.create({
-        data: {
-          ownerId:       bid.carrierId,
-          reference:     shipment.reference,
-          shipperName:   shipper?.companyName ?? 'Marketplace shipper',
-          commodity:     shipment.commodity,
-          weightKg:      shipment.weightKg,
-          hazmatTypes:   shipment.hazmatTypes,
-          rate:          bid.amount,
-          originAddress: shipment.originAddress,
-          destAddress:   shipment.destAddress,
-          pickupAt:      shipment.pickupAt,
-          deliverBy:     shipment.deliverBy,
-          notes:         [
-            shipment.notes,
-            shipper && `Shipper contact: ${shipper.contactName}, ${shipper.contactPhone}${shipper.contactEmail ? `, ${shipper.contactEmail}` : ''}`,
-          ].filter(Boolean).join('\n'),
-          shipmentId:    shipment.id,
-          events: { create: { type: 'created', message: `Won on the Truck Loads marketplace (${shipment.reference}) at R ${bid.amount.toLocaleString('en-ZA')}` } },
-        },
-      })
-      await tx.bid.update({ where: { id: bid.id }, data: { status: 'accepted' } })
-      await tx.bid.updateMany({ where: { shipmentId, status: 'active' }, data: { status: 'declined' } })
-      return tx.shipment.update({ where: { id: shipmentId }, data: { status: 'awarded', awardedBidId: bid.id, loadId: load.id } })
+    const reserved = await this.prisma.shipment.updateMany({
+      where: { id: shipmentId, status: 'open' },
+      data: { status: 'awaiting_payment', awardedBidId: bid.id },
     })
+    if (!reserved.count) throw new ConflictException('Shipment is no longer open')
+    try {
+      const payment = await this.escrow.startCheckout(shipment, bid)
+      return { shipmentId, checkoutUrl: payment.checkoutUrl }
+    } catch (e) {
+      await this.prisma.shipment.update({ where: { id: shipmentId }, data: { status: 'open', awardedBidId: null } })
+      throw e
+    }
+  }
 
+  /** Resume (or restart after a failed attempt) the checkout for an accepted bid. */
+  async payNow(shipperId: string, shipmentId: string) {
+    const shipment = await this.prisma.shipment.findFirst({ where: { id: shipmentId, shipperId } })
+    if (!shipment) throw new NotFoundException('Shipment not found')
+    if (shipment.status !== 'awaiting_payment' || !shipment.awardedBidId) throw new ConflictException('Nothing to pay for this shipment')
+    const latest = await this.escrow.latestFor(shipmentId)
+    if (latest?.status === 'pending' && latest.checkoutUrl) return { shipmentId, checkoutUrl: latest.checkoutUrl }
+    const bid = await this.prisma.bid.findUniqueOrThrow({ where: { id: shipment.awardedBidId } })
+    const payment = await this.escrow.startCheckout(shipment, bid)
+    return { shipmentId, checkoutUrl: payment.checkoutUrl }
+  }
+
+  /** Back out of an accepted-but-unpaid bid and reopen bidding. */
+  async changeCarrier(shipperId: string, shipmentId: string) {
+    const shipment = await this.prisma.shipment.findFirst({ where: { id: shipmentId, shipperId } })
+    if (!shipment) throw new NotFoundException('Shipment not found')
+    if (shipment.status !== 'awaiting_payment') throw new ConflictException('Only an unpaid award can be changed')
+    return this.prisma.$transaction(async tx => {
+      await this.escrow.cancelPending(tx, shipmentId, 'Shipper chose another carrier before paying')
+      return tx.shipment.update({ where: { id: shipmentId }, data: { status: 'open', awardedBidId: null } })
+    })
+  }
+
+  /** Payment provider (webhook or test checkout) reported the outcome. Idempotent. */
+  async onPaymentResult(paymentId: string, succeeded: boolean, providerPaymentId?: string, description?: string) {
+    const payment = await this.prisma.payment.findUnique({ where: { id: paymentId } })
+    if (!payment) throw new NotFoundException('Payment not found')
+    if (!succeeded) {
+      await this.prisma.$transaction(tx => this.escrow.markFailed(tx, paymentId, description))
+      return { status: 'failed' }
+    }
+    const shipment = await this.prisma.shipment.findUniqueOrThrow({ where: { id: payment.shipmentId } })
+    const bid = await this.prisma.bid.findUniqueOrThrow({ where: { id: payment.bidId } })
+    const shipper = await this.getShipperProfile(shipment.shipperId)
+
+    const awarded = await this.prisma.$transaction(async tx => {
+      if (!(await this.escrow.markHeld(tx, paymentId, providerPaymentId))) return false // already processed
+      if (shipment.status !== 'awaiting_payment' || shipment.awardedBidId !== bid.id || bid.status !== 'active') {
+        // Paid for an award that no longer stands (e.g. carrier changed meanwhile)
+        await this.escrow.onCancelledAfterFunding(tx, shipment.id, 'Payment arrived after the award changed')
+        return false
+      }
+      await this.award(tx, shipment, bid, shipper)
+      return true
+    })
+    if (awarded) this.notifyWinner(shipment, bid).catch(() => {})
+    return { status: awarded ? 'held' : 'ignored' }
+  }
+
+  /** Test checkout: only in test mode, only the paying shipper. */
+  async testPay(shipperId: string, paymentId: string, succeed: boolean) {
+    if (this.escrow.provider !== 'mock') throw new ForbiddenException('Test payments are disabled')
+    const payment = await this.prisma.payment.findFirst({ where: { id: paymentId, shipperId, provider: 'mock' } })
+    if (!payment) throw new NotFoundException('Payment not found')
+    return this.onPaymentResult(paymentId, succeed, `test_${Date.now()}`, succeed ? undefined : 'Declined (test)')
+  }
+
+  private async award(tx: Prisma.TransactionClient, shipment: Shipment, bid: { id: string; carrierId: string; amount: number }, shipper: { companyName: string; contactName: string; contactPhone: string; contactEmail: string | null } | null) {
+    const load = await tx.load.create({
+      data: {
+        ownerId:       bid.carrierId,
+        reference:     shipment.reference,
+        shipperName:   shipper?.companyName ?? 'Marketplace shipper',
+        commodity:     shipment.commodity,
+        weightKg:      shipment.weightKg,
+        hazmatTypes:   shipment.hazmatTypes,
+        rate:          bid.amount,
+        originAddress: shipment.originAddress,
+        destAddress:   shipment.destAddress,
+        pickupAt:      shipment.pickupAt,
+        deliverBy:     shipment.deliverBy,
+        notes:         [
+          shipment.notes,
+          shipper && `Shipper contact: ${shipper.contactName}, ${shipper.contactPhone}${shipper.contactEmail ? `, ${shipper.contactEmail}` : ''}`,
+        ].filter(Boolean).join('\n'),
+        shipmentId:    shipment.id,
+        events: { create: { type: 'created', message: `Won on the Truck Loads marketplace (${shipment.reference}) at R ${bid.amount.toLocaleString('en-ZA')} — payment secured in escrow` } },
+      },
+    })
+    await tx.bid.update({ where: { id: bid.id }, data: { status: 'accepted' } })
+    await tx.bid.updateMany({ where: { shipmentId: shipment.id, status: 'active' }, data: { status: 'declined' } })
+    await tx.shipment.update({ where: { id: shipment.id }, data: { status: 'awarded', awardedBidId: bid.id, loadId: load.id } })
+  }
+
+  private async notifyWinner(shipment: Shipment, bid: { carrierId: string; amount: number }) {
+    const carrierProfile = await this.prisma.carrierProfile.findUnique({ where: { ownerId: bid.carrierId } })
     const phone = carrierProfile?.contactPhone
       ?? (await this.prisma.user.findUnique({ where: { id: bid.carrierId }, select: { phone: true } }))?.phone
     if (phone) {
-      this.sms.send(phone, `Truck Loads: you won ${shipment.reference} (${shipment.originAddress} → ${shipment.destAddress}) at R ${bid.amount.toLocaleString('en-ZA')}. Assign a truck on your dispatch board.`)
-        .catch(() => {})
+      await this.sms.send(phone, `Truck Loads: you won ${shipment.reference} (${shipment.originAddress} → ${shipment.destAddress}) at R ${bid.amount.toLocaleString('en-ZA')}. Payment is secured. Assign a truck on your dispatch board.`)
     }
-    return result
   }
 
   async cancelShipment(shipperId: string, id: string) {
     const shipment = await this.prisma.shipment.findFirst({ where: { id, shipperId } })
     if (!shipment) throw new NotFoundException('Shipment not found')
-    if (!['open', 'awarded'].includes(shipment.status)) throw new ConflictException(`Can't cancel a shipment that is ${shipment.status.replace('_', ' ')}`)
+    if (!['open', 'awaiting_payment', 'awarded'].includes(shipment.status)) {
+      throw new ConflictException(`Can't cancel a shipment that is ${shipment.status.replace('_', ' ')}`)
+    }
     return this.prisma.$transaction(async tx => {
       await tx.bid.updateMany({ where: { shipmentId: id, status: 'active' }, data: { status: 'declined' } })
       if (shipment.loadId) {
@@ -164,6 +247,8 @@ export class MarketplaceService {
           })
         }
       }
+      // Paid already → refund due; unpaid checkout → cancelled
+      await this.escrow.onCancelledAfterFunding(tx, id, 'Shipper cancelled the shipment')
       return tx.shipment.update({ where: { id }, data: { status: 'cancelled' } })
     })
   }
@@ -194,6 +279,8 @@ export class MarketplaceService {
     const shippers = await this.shipperNames(rows.map(r => r.shipperId))
     return {
       badge,
+      feePercent: PLATFORM_FEE_PERCENT,
+      claimWindowHours: CLAIM_WINDOW_HOURS,
       shipments: rows.map(({ bids, shipperId, ...s }) => {
         const mine = bids.find(b => b.carrierId === carrierId)
         return {
@@ -248,6 +335,7 @@ export class MarketplaceService {
         pickupAt: b.shipment.pickupAt, weightKg: b.shipment.weightKg, commodity: b.shipment.commodity,
         shipperName: shippers.get(b.shipment.shipperId) ?? 'Shipper',
         loadId: b.status === 'accepted' ? b.shipment.loadId : null,
+        awardedToMe: b.shipment.awardedBidId === b.id,
       },
     }))
   }

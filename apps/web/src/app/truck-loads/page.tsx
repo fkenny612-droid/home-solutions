@@ -10,7 +10,7 @@ import { ComplianceBanner, CompliancePanel, CompliancePill, TruckDatesModal } fr
 import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
 import {
   ApiError, carrier, CarrierBadge, ComplianceOverview, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, fmtMoney,
-  dispatch, getToken, hazmatLabel, Load, LoadStatus, setToken, Summary, Truck, truckFitProblems,
+  CarrierPayment, dispatch, getToken, hazmatLabel, Load, LoadStatus, market, PAYMENT_LABEL, setToken, Summary, Truck, truckFitProblems,
 } from '@/lib/truck-loads'
 
 const STATUS_STYLE: Record<LoadStatus, string> = {
@@ -42,7 +42,12 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<Load | null>(null)
+  const [payment, setPayment] = useState<CarrierPayment | null>(null)
   useEffect(() => { setPreview(null); setError(null) }, [load.id])
+  useEffect(() => {
+    setPayment(null)
+    if (load.shipmentId) market.loadPayment(load.id).then(setPayment).catch(() => {})
+  }, [load.id, load.shipmentId, load.status])
 
   async function run(key: string, fn: () => Promise<Load>, keepPreview = false) {
     setBusy(key); setError(null)
@@ -98,6 +103,15 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
       </div>
 
       {error && <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+      {payment && (
+        <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm text-brand-900">
+          🔒 <strong>{PAYMENT_LABEL[payment.status]}</strong> · shipper paid {fmtMoney(payment.amount)} · your payout {fmtMoney(payment.payoutAmount)}
+          <span className="text-brand-700"> ({payment.feePercent}% platform fee)</span>
+          {payment.status === 'release_pending' && payment.releaseAfter && <> · releases {fmtDate(payment.releaseAfter)}</>}
+          {payment.status === 'paid_out' && payment.payoutReference && <> · paid, ref {payment.payoutReference}</>}
+        </div>
+      )}
 
       {/* Lane */}
       <div className="grid sm:grid-cols-2 gap-3 text-sm">
@@ -318,7 +332,13 @@ export default function DispatchPage() {
     if (!authed) return
     refresh()
     dispatch.hazmatTypes().then(setHazmatTypes).catch(() => {})
+    // Loads won on the marketplace, driver status changes etc. arrive in the background
+    const t = setInterval(refresh, 60_000)
+    return () => clearInterval(t)
   }, [authed, refresh])
+
+  // Switching tabs shows fresh data
+  useEffect(() => { if (authed) refresh() }, [tab, authed, refresh])
 
   async function select(id: string) {
     try { setSelected(await dispatch.load(id)) } catch (e: any) { setError(e.message) }

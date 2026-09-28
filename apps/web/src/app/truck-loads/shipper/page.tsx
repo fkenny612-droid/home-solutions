@@ -5,12 +5,13 @@ import Login from '@/components/truck-loads/Login'
 import { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { Field, HazmatPicker, inputCls, Modal } from '@/components/truck-loads/forms'
 import {
-  ApiError, fmtDate, fmtDistance, fmtMoney, fmtWeight, getToken, hazmatLabel, setToken, shipper,
+  ApiError, fmtDate, PAYMENT_LABEL, fmtDistance, fmtMoney, fmtWeight, getToken, hazmatLabel, setToken, shipper,
   ShipmentInput, ShipmentStatus, ShipperProfile, ShipperShipmentDetail, ShipperShipmentRow, truckTypeLabel,
 } from '@/lib/truck-loads'
 
 const STATUS: Record<ShipmentStatus, { label: string; cls: string }> = {
   open:       { label: 'Taking bids', cls: 'bg-blue-100 text-blue-800' },
+  awaiting_payment: { label: 'Awaiting payment', cls: 'bg-amber-100 text-amber-800' },
   awarded:    { label: 'Awarded',     cls: 'bg-brand-100 text-brand-800' },
   in_transit: { label: 'In transit',  cls: 'bg-yellow-100 text-yellow-800' },
   delivered:  { label: 'Delivered',   cls: 'bg-green-100 text-green-800' },
@@ -154,6 +155,12 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
     setBusy(true); setError(null)
     try { await fn(); onChanged() } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
+  /** Go to the (hosted) checkout for this shipment. */
+  const checkout = async (fn: () => Promise<{ checkoutUrl: string }>) => {
+    setBusy(true); setError(null)
+    try { window.location.href = (await fn()).checkoutUrl } catch (e: any) { setError(e.message); setBusy(false) }
+  }
+  const pay = s.payment
   const activeBids = s.bids.filter(b => b.status === 'active')
   const awarded = s.bids.find(b => b.status === 'accepted')
 
@@ -174,6 +181,33 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
         )}
       </div>
       {errBox(error)}
+
+      {s.status === 'awaiting_payment' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+          <div className="font-medium text-amber-900">Payment needed to confirm {s.bids.find(b => b.id === s.awardedBidId)?.carrier?.companyName ?? 'the carrier'}</div>
+          <p className="text-sm text-amber-900">
+            Pay {fmtMoney(s.bids.find(b => b.id === s.awardedBidId)?.amount ?? 0)} to lock in this carrier. Truck Loads holds it in escrow and only
+            releases it to the carrier after delivery.{pay?.status === 'failed' && ' Your last payment attempt did not go through.'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button disabled={busy} onClick={() => checkout(() => shipper.pay(s.id))} className={`${btn} px-4 py-2`}>Pay now</button>
+            <button disabled={busy} onClick={() => confirm('Choose a different carrier? Bidding reopens.') && run(() => shipper.changeCarrier(s.id))}
+              className="press rounded-lg border border-silver-300 bg-white px-3 py-2 text-sm">Choose a different carrier</button>
+          </div>
+        </div>
+      )}
+
+      {pay && ['held', 'release_pending', 'payout_due', 'paid_out', 'refund_due', 'refunded'].includes(pay.status) && (
+        <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            🔒 <strong>{PAYMENT_LABEL[pay.status]}</strong> · {fmtMoney(pay.amount)}
+            {pay.status === 'held' && ' — released to the carrier after delivery'}
+            {pay.status === 'release_pending' && pay.releaseAfter && ` — released ${fmtDate(pay.releaseAfter)} unless you report a problem`}
+            {pay.status === 'refund_due' && ' — we are refunding you'}
+          </span>
+          {pay.provider === 'mock' && <span className="text-[11px] text-silver-500">test payment</span>}
+        </div>
+      )}
 
       {s.status === 'open' && (
         <div className="rounded-xl border border-silver-200 bg-white p-4 space-y-3">
@@ -201,8 +235,8 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
                         {i === 0 && activeBids.length > 1 && <div className="text-[11px] text-brand-700">Lowest</div>}
                       </td>
                       <td className="py-3 text-right">
-                        <button disabled={busy} onClick={() => confirm(`Award ${s.reference} to ${b.carrier?.companyName} at ${fmtMoney(b.amount)}?`) && run(() => shipper.accept(s.id, b.id))}
-                          className={`${btn} px-3 py-1.5`}>Accept</button>
+                        <button disabled={busy} onClick={() => confirm(`Accept ${b.carrier?.companyName} at ${fmtMoney(b.amount)}? You'll pay now; the money is held until delivery.`) && checkout(() => shipper.accept(s.id, b.id))}
+                          className={`${btn} px-3 py-1.5`}>Accept &amp; pay</button>
                       </td>
                     </tr>
                   ))}
@@ -282,6 +316,32 @@ export default function ShipperPage() {
     try { setSelected(await shipper.shipment(id)); refresh() } catch (e: any) { setError(e.message) }
   }
 
+  // Back from checkout (?shipment=…&paid=1): open it and wait for the payment
+  // confirmation, which can land a moment after the redirect.
+  const [notice, setNotice] = useState<string | null>(null)
+  useEffect(() => {
+    if (!authed) return
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('shipment')
+    if (!id) return
+    window.history.replaceState(null, '', window.location.pathname)
+    let tries = 0
+    let stop = false
+    const check = async () => {
+      if (stop) return
+      try {
+        const d = await shipper.shipment(id)
+        setSelected(d)
+        const st = d.payment?.status
+        if (st === 'held') { setNotice('Payment received — the carrier has been confirmed and your money is held in escrow.'); refresh(); return }
+        if (st === 'failed') { setNotice('The payment did not go through. You can try again below.'); return }
+        if (params.get('paid') && ++tries < 10) { setNotice('Confirming your payment…'); setTimeout(check, 2000) }
+      } catch (e: any) { setError(e.message) }
+    }
+    check()
+    return () => { stop = true }
+  }, [authed, refresh])
+
   if (authed === null) return null
   if (!authed) {
     return signUp
@@ -304,6 +364,7 @@ export default function ShipperPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-5 space-y-4">
         {errBox(error)}
+        {notice && <p className="rounded-lg bg-brand-50 border border-brand-200 px-3 py-2 text-sm text-brand-900">{notice}</p>}
         {profile === undefined ? <p className="text-center text-silver-500 py-10">Loading…</p>
           : profile === null ? <CompanyForm onSaved={p => { setProfile(p); refresh() }} />
           : (

@@ -513,12 +513,13 @@ model Shipment {
   targetRate      Float?    // shipper's budget, shown to carriers
   verifiedOnly    Boolean   @default(true)
   biddingClosesAt DateTime?
-  status          String    @default("open") // open | awarded | in_transit | delivered | cancelled
+  status          String    @default("open") // open | awaiting_payment | awarded | in_transit | delivered | cancelled
   awardedBidId    String?   @unique
   loadId          String?   @unique // the carrier's Load once awarded
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   bids            Bid[]
+  payments        Payment[]
 
   @@index([status, createdAt])
   @@index([shipperId])
@@ -537,4 +538,51 @@ model Bid {
 
   @@unique([shipmentId, carrierId])
   @@index([carrierId])
+}
+
+// ── Truck Loads escrow ──────────────────────────────────────────────────────
+// The shipper pays when accepting a bid; funds are held until delivery, then
+// released to the carrier (less the platform fee) after the claim window.
+
+model Payment {
+  id                String    @id @default(uuid())
+  shipmentId        String
+  shipment          Shipment  @relation(fields: [shipmentId], references: [id])
+  bidId             String
+  shipperId         String
+  carrierId         String
+  amount            Float     // what the shipper pays (the accepted bid)
+  feePercent        Float
+  feeAmount         Float
+  payoutAmount      Float     // amount - fee, owed to the carrier
+  currency          String    @default("ZAR")
+  // pending | held | release_pending | payout_due | paid_out | refund_due | refunded | failed | cancelled | disputed
+  status            String    @default("pending")
+  provider          String    // mock | peach
+  checkoutId        String?
+  checkoutUrl       String?
+  providerPaymentId String?
+  heldAt            DateTime?
+  releaseAfter      DateTime? // end of the shipper's claim window after delivery
+  paidOutAt         DateTime?
+  payoutReference   String?
+  refundedAt        DateTime?
+  refundReference   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  events            PaymentEvent[]
+
+  @@index([shipmentId])
+  @@index([status])
+  @@index([carrierId])
+}
+
+model PaymentEvent {
+  id        String   @id @default(uuid())
+  paymentId String
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
 }

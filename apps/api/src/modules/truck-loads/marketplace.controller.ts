@@ -41,6 +41,16 @@ export class ShipperController {
     return this.svc.acceptBid(req.user.sub, id, bidId)
   }
 
+  @Post('shipments/:id/pay')
+  pay(@Req() req: any, @Param('id') id: string) {
+    return this.svc.payNow(req.user.sub, id)
+  }
+
+  @Post('shipments/:id/change-carrier')
+  changeCarrier(@Req() req: any, @Param('id') id: string) {
+    return this.svc.changeCarrier(req.user.sub, id)
+  }
+
   @Post('shipments/:id/cancel')
   cancel(@Req() req: any, @Param('id') id: string) {
     return this.svc.cancelShipment(req.user.sub, id)

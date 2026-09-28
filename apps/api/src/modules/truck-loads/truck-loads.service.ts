@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { GoogleRoutesService } from './google-routes.service'
+import { EscrowService } from './escrow.service'
 import { ACTIVE_LOAD_STATUSES, canTransition, phoneKey, truckLoadProblems } from './truck-loads.rules'
 import { complianceBlockers, truckCompliance } from './compliance'
 import {
@@ -21,6 +22,7 @@ export class TruckLoadsService {
   constructor(
     private prisma: PrismaService,
     private routes: GoogleRoutesService,
+    private escrow: EscrowService,
   ) {}
 
   // ── Trucks ──────────────────────────────────────────────────────────────────
@@ -220,7 +222,11 @@ export class TruckLoadsService {
       if (load.shipmentId) {
         if (status === 'in_transit' || status === 'delivered') {
           await tx.shipment.update({ where: { id: load.shipmentId }, data: { status } })
+          // Delivery starts the shipper's claim window; payout follows
+          if (status === 'delivered') await this.escrow.onDelivered(tx, load.shipmentId)
         } else if (status === 'cancelled') {
+          // The shipper paid for a job that won't happen: their money goes back
+          await this.escrow.onCancelledAfterFunding(tx, load.shipmentId, 'Carrier cancelled the load')
           // Carrier pulled out: reopen the shipment for other carriers' bids
           const shipment = await tx.shipment.findUnique({ where: { id: load.shipmentId } })
           if (shipment?.awardedBidId) await tx.bid.update({ where: { id: shipment.awardedBidId }, data: { status: 'withdrawn' } })

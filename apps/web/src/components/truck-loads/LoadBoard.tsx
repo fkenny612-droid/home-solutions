@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { inputCls } from '@/components/truck-loads/forms'
 import {
-  BoardShipment, CarrierBadge, fmtDate, fmtMoney, fmtWeight, hazmatLabel, market, MyBid, truckTypeLabel,
+  BoardShipment, CarrierBadge, CarrierPayment, fmtDate, fmtMoney, fmtWeight, hazmatLabel, market, MyBid,
+  PAYMENT_LABEL, truckTypeLabel,
 } from '@/lib/truck-loads'
 
 const BID_STATUS: Record<MyBid['status'], string> = {
@@ -13,7 +14,7 @@ const BID_STATUS: Record<MyBid['status'], string> = {
   withdrawn: 'bg-silver-100 text-silver-600',
 }
 
-function BidBox({ s, onChanged }: { s: BoardShipment; onChanged: () => void }) {
+function BidBox({ s, feePercent, onChanged }: { s: BoardShipment; feePercent: number; onChanged: () => void }) {
   const [amount, setAmount] = useState(s.myBid ? String(s.myBid.amount) : '')
   const [message, setMessage] = useState(s.myBid?.message ?? '')
   const [busy, setBusy] = useState(false)
@@ -50,6 +51,11 @@ function BidBox({ s, onChanged }: { s: BoardShipment; onChanged: () => void }) {
         </button>
         {s.myBid && <button type="button" onClick={withdraw} disabled={busy} className="text-xs text-silver-500 underline">Withdraw</button>}
       </div>
+      {Number(amount) > 0 && (
+        <p className="text-[11px] text-silver-500">
+          Shipper pays {fmtMoney(Number(amount))} into escrow · you receive {fmtMoney(Number(amount) * (1 - feePercent / 100))} after delivery ({feePercent}% platform fee)
+        </p>
+      )}
       {error && <p className="text-xs text-red-700">{error}</p>}
     </form>
   )
@@ -57,14 +63,15 @@ function BidBox({ s, onChanged }: { s: BoardShipment; onChanged: () => void }) {
 
 export default function LoadBoard({ onWon }: { onWon: () => void }) {
   const [q, setQ] = useState('')
-  const [data, setData] = useState<{ badge: CarrierBadge; shipments: BoardShipment[] } | null>(null)
+  const [data, setData] = useState<{ badge: CarrierBadge; feePercent: number; shipments: BoardShipment[] } | null>(null)
   const [bids, setBids] = useState<MyBid[]>([])
+  const [payments, setPayments] = useState<CarrierPayment[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async (query?: string) => {
     try {
-      const [b, mine] = await Promise.all([market.board(query), market.myBids()])
-      setData(b); setBids(mine); setError(null)
+      const [b, mine, pays] = await Promise.all([market.board(query), market.myBids(), market.payments()])
+      setData(b); setBids(mine); setPayments(pays); setError(null)
       if (mine.some(x => x.status === 'accepted')) onWon()
     } catch (e: any) { setError(e.message) }
   }, [onWon])
@@ -110,7 +117,7 @@ export default function LoadBoard({ onWon }: { onWon: () => void }) {
               </div>
               {s.notes && <p className="text-sm text-silver-600 bg-silver-50 rounded-lg px-3 py-2">{s.notes}</p>}
               {s.myBid && <p className="text-xs text-blue-800">Your bid: <strong>{fmtMoney(s.myBid.amount)}</strong></p>}
-              <BidBox s={s} onChanged={() => refresh(q.trim() || undefined)} />
+              <BidBox s={s} feePercent={data.feePercent} onChanged={() => refresh(q.trim() || undefined)} />
             </li>
           ))}
           {data && !data.shipments.length && <li className="rounded-xl border border-dashed border-silver-300 p-10 text-center text-sm text-silver-500">No open shipments right now.</li>}
@@ -125,14 +132,38 @@ export default function LoadBoard({ onWon }: { onWon: () => void }) {
               <li key={b.id} className="py-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate">{b.shipment.originAddress} → {b.shipment.destAddress}</span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${BID_STATUS[b.status]}`}>{b.status === 'accepted' ? 'Won' : b.status}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${BID_STATUS[b.status]}`}>
+                    {b.status === 'accepted' ? 'Won' : b.shipment.awardedToMe && b.shipment.status === 'awaiting_payment' ? 'Accepted' : b.status}
+                  </span>
                 </div>
                 <div className="text-xs text-silver-500">{b.shipment.reference} · {fmtMoney(b.amount)} · {b.shipment.shipperName}</div>
-                {b.status === 'accepted' && <div className="text-xs text-green-700">Added to your Loads — assign a truck.</div>}
+                {b.status === 'accepted' && <div className="text-xs text-green-700">Payment secured · added to your Loads — assign a truck.</div>}
+                {b.status === 'active' && b.shipment.awardedToMe && b.shipment.status === 'awaiting_payment' && (
+                  <div className="text-xs text-amber-700">Shipper accepted your bid — waiting for their payment.</div>
+                )}
               </li>
             ))}
           </ul>
         ) : <p className="text-sm text-silver-500">You haven&apos;t bid on anything yet.</p>}
+
+        <div className="font-medium text-silver-900 pt-3 border-t border-silver-100">Payouts</div>
+        {payments.length ? (
+          <ul className="divide-y divide-silver-100">
+            {payments.map(p => (
+              <li key={p.id} className="py-2 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate">{p.shipment?.reference}</span>
+                  <span className="font-medium">{fmtMoney(p.payoutAmount)}</span>
+                </div>
+                <div className="text-xs text-silver-500">
+                  {PAYMENT_LABEL[p.status]}
+                  {p.status === 'release_pending' && p.releaseAfter && ` · releases ${fmtDate(p.releaseAfter)}`}
+                  {p.status === 'paid_out' && p.payoutReference && ` · ref ${p.payoutReference}`}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="text-sm text-silver-500">Payouts for loads won on the marketplace show here.</p>}
       </aside>
     </div>
   )

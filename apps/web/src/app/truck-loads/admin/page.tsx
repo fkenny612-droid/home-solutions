@@ -5,8 +5,8 @@ import Login from '@/components/truck-loads/Login'
 import { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { CompliancePill } from '@/components/truck-loads/Compliance'
 import {
-  AdminCarrierDetail, AdminCarrierRow, ApiError, fmtDate, fmtDay, fmtFileSize, getToken, openInNewTab,
-  platformAdmin, setToken,
+  AdminCarrierDetail, AdminCarrierRow, AdminPayment, ApiError, fmtDate, fmtDay, fmtFileSize, fmtMoney, getToken,
+  openInNewTab, PAYMENT_LABEL, platformAdmin, setToken,
 } from '@/lib/truck-loads'
 
 const FILTERS = ['pending', 'verified', 'rejected', 'all'] as const
@@ -96,7 +96,95 @@ function Detail({ d, onChanged }: { d: AdminCarrierDetail; onChanged: (d: AdminC
   )
 }
 
+const PAY_FILTERS = [
+  { id: 'payout_due', label: 'Payouts due' }, { id: 'refund_due', label: 'Refunds due' },
+  { id: 'held', label: 'Held' }, { id: 'release_pending', label: 'Claim window' },
+  { id: 'paid_out', label: 'Paid out' }, { id: 'refunded', label: 'Refunded' }, { id: '', label: 'All' },
+]
+
+function Payments() {
+  const [filter, setFilter] = useState('payout_due')
+  const [rows, setRows] = useState<AdminPayment[] | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const refresh = useCallback(async () => {
+    try { setRows(await platformAdmin.payments(filter || undefined)); setError(null) } catch (e: any) { setError(e.message) }
+  }, [filter])
+  useEffect(() => { refresh() }, [refresh])
+
+  async function settle(p: AdminPayment, kind: 'payout' | 'refund') {
+    const what = kind === 'payout'
+      ? `Mark ${fmtMoney(p.payoutAmount)} as paid to ${p.carrier?.companyName}? Enter the EFT reference:`
+      : `Mark ${fmtMoney(p.amount)} as refunded to ${p.shipper?.companyName}? Enter the refund reference:`
+    const ref = prompt(what)
+    if (!ref) return
+    try {
+      await (kind === 'payout' ? platformAdmin.paidOut(p.id, ref) : platformAdmin.refunded(p.id, ref))
+      refresh()
+    } catch (e: any) { setError(e.message) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1">
+          {PAY_FILTERS.map(f => (
+            <button key={f.id} onClick={() => setFilter(f.id)}
+              className={`rounded-full px-2.5 py-1 text-xs ${filter === f.id ? 'bg-brand-700 text-white' : 'bg-white text-silver-600 border border-silver-200'}`}>{f.label}</button>
+          ))}
+        </div>
+        <button onClick={async () => {
+          try { const r = await platformAdmin.releaseDue(); setNotice(`${r.released} payment(s) released from the claim window`); refresh() } catch (e: any) { setError(e.message) }
+        }} className="text-sm text-silver-600 underline">Release payments past the claim window now</button>
+      </div>
+      {notice && <p className="rounded-lg bg-brand-50 border border-brand-200 px-3 py-2 text-sm text-brand-900">{notice}</p>}
+      {error && <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</p>}
+      <div className="overflow-x-auto rounded-xl border border-silver-200 bg-white">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs text-silver-500 border-b border-silver-200">
+            <tr>
+              <th className="px-3 py-2 font-medium">Shipment</th><th className="px-3 py-2 font-medium">Carrier</th>
+              <th className="px-3 py-2 font-medium">Shipper</th><th className="px-3 py-2 font-medium">Paid / fee / payout</th>
+              <th className="px-3 py-2 font-medium">Status</th><th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-silver-100">
+            {rows?.map(p => (
+              <tr key={p.id} className="align-top">
+                <td className="px-3 py-2"><div className="font-medium">{p.shipment.reference}</div><div className="text-xs text-silver-500">{p.shipment.originAddress} → {p.shipment.destAddress}</div></td>
+                <td className="px-3 py-2">
+                  <div>{p.carrier?.companyName ?? '—'}</div>
+                  {p.carrier?.bankDocumentId && (
+                    <button className="text-xs underline text-silver-600"
+                      onClick={() => openInNewTab(() => platformAdmin.document(p.carrier!.profileId, p.carrier!.bankDocumentId!)).catch(e => setError(e.message))}>
+                      Bank confirmation letter
+                    </button>
+                  )}
+                </td>
+                <td className="px-3 py-2"><div>{p.shipper?.companyName ?? '—'}</div><div className="text-xs text-silver-500">{p.shipper?.contactPhone}</div></td>
+                <td className="px-3 py-2 whitespace-nowrap">{fmtMoney(p.amount)} / {fmtMoney(p.feeAmount)} / <strong>{fmtMoney(p.payoutAmount)}</strong>{p.provider === 'mock' && <div className="text-[11px] text-amber-700">test payment</div>}</td>
+                <td className="px-3 py-2 text-xs">
+                  {PAYMENT_LABEL[p.status]}
+                  {p.status === 'release_pending' && p.releaseAfter && <div className="text-silver-500">until {fmtDate(p.releaseAfter)}</div>}
+                  {p.payoutReference && <div className="text-silver-500">ref {p.payoutReference}</div>}
+                  {p.refundReference && <div className="text-silver-500">ref {p.refundReference}</div>}
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  {p.status === 'payout_due' && <button onClick={() => settle(p, 'payout')} className="press rounded-md bg-brand-700 text-white px-2.5 py-1 text-xs">Mark paid out</button>}
+                  {p.status === 'refund_due' && <button onClick={() => settle(p, 'refund')} className="press rounded-md bg-brand-700 text-white px-2.5 py-1 text-xs">Mark refunded</button>}
+                </td>
+              </tr>
+            ))}
+            {rows && !rows.length && <tr><td colSpan={6} className="px-3 py-8 text-center text-silver-500">Nothing here.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function PlatformAdminPage() {
+  const [section, setSection] = useState<'carriers' | 'payments'>('carriers')
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('pending')
   const [rows, setRows] = useState<AdminCarrierRow[] | null>(null)
@@ -136,11 +224,18 @@ export default function PlatformAdminPage() {
           <TruckLoadsMark size={26} onDark />
           <span className="font-semibold">Truck Loads</span>
           <span className="text-xs rounded-full bg-white/15 px-2 py-0.5">Platform admin</span>
+          <nav className="ml-4 flex gap-1">
+            {(['carriers', 'payments'] as const).map(t => (
+              <button key={t} onClick={() => setSection(t)}
+                className={`rounded-md px-3 py-1.5 text-sm capitalize ${section === t ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'}`}>{t}</button>
+            ))}
+          </nav>
           <button onClick={() => { setToken('admin', null); setAuthed(false) }} className="ml-auto text-sm text-white/60 hover:text-white">Sign out</button>
         </div>
       </header>
       <div className="max-w-7xl mx-auto px-4 py-5 space-y-4">
         {error && <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {section === 'payments' ? <Payments /> : (
         <div className="grid lg:grid-cols-[380px_1fr] gap-5 items-start">
           <section className="space-y-3">
             <h1 className="font-semibold">Carrier verification</h1>
@@ -172,6 +267,7 @@ export default function PlatformAdminPage() {
               : <div className="rounded-xl border border-dashed border-silver-300 p-10 text-center text-sm text-silver-500">Select a carrier to review.</div>}
           </section>
         </div>
+        )}
       </div>
     </main>
   )
