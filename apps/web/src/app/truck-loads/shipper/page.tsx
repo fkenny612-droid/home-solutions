@@ -6,8 +6,10 @@ import { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { Field, HazmatPicker, inputCls, Modal } from '@/components/truck-loads/forms'
 import RouteMap from '@/components/truck-loads/RouteMap'
 import { LastSeen, PodView, RatingBadge, RatingForm } from '@/components/truck-loads/Delivery'
+import Chat, { UnreadDot } from '@/components/truck-loads/Chat'
+import { ClaimCard, ClaimForm } from '@/components/truck-loads/Claims'
 import {
-  ApiError, fmtDate, PAYMENT_LABEL, Pod, Tracking, fmtDistance, fmtMoney, fmtWeight, getToken, hazmatLabel, setToken, shipper,
+  ApiError, Claim, claimForm, fmtDate, PAYMENT_LABEL, Pod, ShipperBid, Tracking, fmtDistance, fmtMoney, fmtWeight, getToken, hazmatLabel, setToken, shipper,
   ShipmentInput, ShipmentStatus, ShipperProfile, ShipperShipmentDetail, ShipperShipmentRow, truckTypeLabel,
 } from '@/lib/truck-loads'
 
@@ -150,7 +152,7 @@ function ShipmentForm({ truckTypes, hazmatTypes, onCreated }: { truckTypes: stri
 
 // ─── Shipment detail: compare bids, award, track ──────────────────────────────
 
-function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => void }) {
+function Detail({ s, onChanged, onSeen }: { s: ShipperShipmentDetail; onChanged: () => void; onSeen: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const run = async (fn: () => Promise<unknown>) => {
@@ -165,6 +167,15 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
   const [pod, setPod] = useState<Pod | null>(null)
   const [track, setTrack] = useState<Tracking | null>(null)
   const [copied, setCopied] = useState(false)
+  const [chatWith, setChatWith] = useState<ShipperBid | null>(null)
+  const [claims, setClaims] = useState<Claim[]>([])
+  const [claiming, setClaiming] = useState(false)
+  useEffect(() => { setChatWith(null); setClaiming(false) }, [s.id])
+  useEffect(() => {
+    setClaims([])
+    if (s.status === 'delivered') shipper.claims(s.id).then(setClaims).catch(() => {})
+  }, [s.id, s.status, s.payment?.status])
+  const claimPhoto = useCallback((claimId: string) => (photoId: string) => shipper.claimPhoto(s.id, claimId, photoId), [s.id])
   const live = s.status === 'awarded' || s.status === 'in_transit'
   useEffect(() => {
     setPod(null)
@@ -217,13 +228,14 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
         </div>
       )}
 
-      {pay && ['held', 'release_pending', 'payout_due', 'paid_out', 'refund_due', 'refunded'].includes(pay.status) && (
+      {pay && ['held', 'release_pending', 'disputed', 'payout_due', 'paid_out', 'refund_due', 'refunded'].includes(pay.status) && (
         <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 flex flex-wrap items-center justify-between gap-2">
           <span>
             🔒 <strong>{PAYMENT_LABEL[pay.status]}</strong> · {fmtMoney(pay.amount)}
             {pay.status === 'held' && ' — released to the carrier after delivery'}
             {pay.status === 'release_pending' && pay.releaseAfter && ` — released ${fmtDate(pay.releaseAfter)} unless you report a problem`}
             {pay.status === 'refund_due' && ' — we are refunding you'}
+            {pay.status === 'disputed' && ' — on hold while Truck Loads reviews your claim'}
           </span>
           {pay.provider === 'mock' && <span className="text-[11px] text-silver-500">test payment</span>}
         </div>
@@ -255,7 +267,10 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
                         <div className="font-semibold">{fmtMoney(b.amount)}</div>
                         {i === 0 && activeBids.length > 1 && <div className="text-[11px] text-brand-700">Lowest</div>}
                       </td>
-                      <td className="py-3 text-right">
+                      <td className="py-3 text-right space-y-1.5">
+                        <button onClick={() => setChatWith(b)} className="press inline-flex items-center gap-1 rounded-lg border border-silver-300 bg-white px-3 py-1.5 text-sm mr-2">
+                          Message <UnreadDot n={b.unread} />
+                        </button>
                         <button disabled={busy} onClick={() => confirm(`Accept ${b.carrier?.companyName} at ${fmtMoney(b.amount)}? You'll pay now; the money is held until delivery.`) && checkout(() => shipper.accept(s.id, b.id))}
                           className={`${btn} px-3 py-1.5`}>Accept &amp; pay</button>
                       </td>
@@ -276,6 +291,9 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
               <div className="font-medium">{awarded.carrier?.companyName} {awarded.carrier && <CarrierBadgePill badge={awarded.carrier.badge} size="xs" />}</div>
               <RatingBadge rating={awarded.carrier?.rating} />
             </div>
+            <button onClick={() => setChatWith(awarded)} className="press inline-flex items-center gap-1 rounded-lg border border-silver-300 bg-white px-3 py-1.5 text-sm">
+              Message carrier <UnreadDot n={awarded.unread} />
+            </button>
             <div className="text-right"><div className="text-xs uppercase text-silver-400">Price</div><div className="font-semibold">{fmtMoney(awarded.amount)}</div></div>
           </div>
           {s.progress && (
@@ -314,6 +332,28 @@ function Detail({ s, onChanged }: { s: ShipperShipmentDetail; onChanged: () => v
       )}
 
       {pod && <PodView pod={pod} loadPhoto={podPhoto} />}
+
+      {claims.map(c => <ClaimCard key={c.id} claim={c} loadPhoto={claimPhoto(c.id)} />)}
+      {pay?.status === 'release_pending' && !claims.length && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-silver-200 bg-white px-4 py-3 text-sm">
+          <span className="text-silver-600">Something wrong with this delivery? Report it before {fmtDate(pay.releaseAfter)} and we&apos;ll hold the carrier&apos;s payment.</span>
+          <button onClick={() => setClaiming(true)} className="press rounded-lg border border-red-300 text-red-700 bg-white px-3 py-1.5 text-sm">Report a problem</button>
+        </div>
+      )}
+      {claiming && (
+        <Modal title={`Report a problem · ${s.reference}`} onClose={() => setClaiming(false)}>
+          <ClaimForm maxAmount={pay?.amount ?? 0} onSubmit={async (input, photos) => {
+            await shipper.raiseClaim(s.id, claimForm(input, photos))
+            setClaiming(false); onChanged()
+          }} />
+        </Modal>
+      )}
+      {chatWith && (
+        <Modal title={`Messages · ${chatWith.carrier?.companyName ?? 'Carrier'}`} onClose={() => { setChatWith(null); onChanged() }}>
+          <Chat threadKey={`${s.id}:${chatWith.carrierId}`} me="shipper" otherName={chatWith.carrier?.companyName ?? 'the carrier'}
+            load={() => shipper.messages(s.id, chatWith.carrierId)} send={body => shipper.sendMessage(s.id, chatWith.carrierId, body)} onRead={onSeen} />
+        </Modal>
+      )}
 
       {s.status === 'delivered' && awarded && (s.myRating
         ? <div className="rounded-xl border border-silver-200 bg-white px-4 py-3 text-sm text-silver-600">
@@ -430,9 +470,9 @@ export default function ShipperPage() {
                         className={`press w-full text-left rounded-xl border bg-white p-3 ${selected?.id === r.id ? 'border-brand-600 ring-2 ring-brand-600/20' : 'border-silver-200 hover:border-silver-300'}`}>
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium text-sm truncate">{r.originAddress} → {r.destAddress}</span>
-                          <Pill s={r.status} />
+                          <span className="flex items-center gap-1 shrink-0"><UnreadDot n={r.unread} /><Pill s={r.status} /></span>
                         </div>
-                        <div className="text-xs text-silver-600 mt-1">{r.commodity} · {fmtWeight(r.weightKg)}</div>
+                        <div className="text-xs text-silver-600 mt-1">{r.commodity} · {fmtWeight(r.weightKg)}{r.claimOpen && <span className="ml-1 text-red-700">· claim open</span>}</div>
                         <div className="text-[11px] text-silver-400 mt-1">
                           {r.reference} · {r.status === 'open'
                             ? `${r.bidCount} bid${r.bidCount === 1 ? '' : 's'}${r.lowestBid != null ? ` · lowest ${fmtMoney(r.lowestBid)}` : ''}`
@@ -446,7 +486,7 @@ export default function ShipperPage() {
               </section>
               <section>
                 {selected
-                  ? <Detail s={selected} onChanged={() => { refresh(); open(selected.id) }} />
+                  ? <Detail s={selected} onChanged={() => { refresh(); open(selected.id) }} onSeen={refresh} />
                   : <div className="rounded-xl border border-dashed border-silver-300 p-10 text-center text-sm text-silver-500">Select a shipment to compare bids.</div>}
               </section>
             </div>

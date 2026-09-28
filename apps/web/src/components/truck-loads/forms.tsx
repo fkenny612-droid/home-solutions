@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { hazmatLabel, LoadInput, mToMm, TruckInput } from '@/lib/truck-loads'
 
 export const inputCls =
@@ -15,9 +16,23 @@ export function Field({ label, children, hint }: { label: string; children: Reac
   )
 }
 
+/**
+ * Rendered into <body>: an ancestor with a transform (e.g. .screen-enter) would
+ * otherwise become the containing block for `fixed` and trap its z-index.
+ */
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  if (!mounted) return null
+  return createPortal(
+    // React events bubble through portals to the parent tree; stop them here
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-4 overflow-y-auto"
+      onClick={e => { e.stopPropagation(); onClose() }}>
       <div className="screen-enter w-full max-w-xl rounded-2xl bg-white shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-silver-200">
           <h2 className="font-semibold text-silver-900">{title}</h2>
@@ -27,7 +42,8 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

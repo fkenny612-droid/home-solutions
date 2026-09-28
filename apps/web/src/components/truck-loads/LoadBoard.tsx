@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { inputCls } from '@/components/truck-loads/forms'
 import { RatingBadge, RatingForm } from '@/components/truck-loads/Delivery'
+import Chat, { UnreadDot } from '@/components/truck-loads/Chat'
+import { Modal } from '@/components/truck-loads/forms'
 import {
   BoardShipment, CarrierBadge, CarrierPayment, fmtDate, fmtMoney, fmtWeight, hazmatLabel, market, MyBid,
   PAYMENT_LABEL, truckTypeLabel,
@@ -69,6 +71,7 @@ export default function LoadBoard({ onWon }: { onWon: () => void }) {
   const [payments, setPayments] = useState<CarrierPayment[]>([])
   const [error, setError] = useState<string | null>(null)
   const [rating, setRating] = useState<string | null>(null)
+  const [chat, setChat] = useState<MyBid | null>(null)
 
   const refresh = useCallback(async (query?: string) => {
     try {
@@ -139,7 +142,14 @@ export default function LoadBoard({ onWon }: { onWon: () => void }) {
                     {b.status === 'accepted' ? 'Won' : b.shipment.awardedToMe && b.shipment.status === 'awaiting_payment' ? 'Accepted' : b.status}
                   </span>
                 </div>
-                <div className="text-xs text-silver-500">{b.shipment.reference} · {fmtMoney(b.amount)} · {b.shipment.shipperName}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-silver-500">{b.shipment.reference} · {fmtMoney(b.amount)} · {b.shipment.shipperName}</span>
+                  {b.status !== 'withdrawn' && (
+                    <button onClick={() => setChat(b)} className="press inline-flex shrink-0 items-center gap-1 text-xs text-brand-700 underline">
+                      Message <UnreadDot n={b.unread} />
+                    </button>
+                  )}
+                </div>
                 {b.status === 'accepted' && b.shipment.status !== 'delivered' && <div className="text-xs text-green-700">Payment secured · added to your Loads — assign a truck.</div>}
                 {b.status === 'accepted' && b.shipment.status === 'delivered' && (b.shipment.ratedByMe
                   ? <div className="text-xs text-silver-500">Delivered · you rated this shipper</div>
@@ -174,6 +184,13 @@ export default function LoadBoard({ onWon }: { onWon: () => void }) {
           </ul>
         ) : <p className="text-sm text-silver-500">Payouts for loads won on the marketplace show here.</p>}
       </aside>
+
+      {chat && (
+        <Modal title={`Messages · ${chat.shipment.shipperName} · ${chat.shipment.reference}`} onClose={() => { setChat(null); refresh(q.trim() || undefined) }}>
+          <Chat threadKey={chat.shipment.id} me="carrier" otherName={chat.shipment.shipperName}
+            load={() => market.messages(chat.shipment.id)} send={body => market.sendMessage(chat.shipment.id, body)} />
+        </Modal>
+      )}
     </div>
   )
 }

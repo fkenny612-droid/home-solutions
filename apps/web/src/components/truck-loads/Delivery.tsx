@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Field, inputCls } from '@/components/truck-loads/forms'
 import { fmtDate, fmtFileSize, Pod, PodInput, RatingSummary } from '@/lib/truck-loads'
 
@@ -80,18 +80,40 @@ export function DeliverForm({ onSubmit, defaultLocation = true, submitLabel = 'C
   )
 }
 
-/** Show a proof of delivery with its photos (fetched with the viewer's token). */
-export function PodView({ pod, loadPhoto }: { pod: Pod; loadPhoto: (photoId: string) => Promise<Blob> }) {
+type PhotoMeta = { id: string; fileName: string; mimeType: string }
+
+/** Thumbnails of stored photos/PDFs, fetched with the viewer's token. */
+export function PhotoStrip({ photos, loadPhoto, alt }: { photos: PhotoMeta[]; loadPhoto: (photoId: string) => Promise<Blob>; alt: string }) {
   const [urls, setUrls] = useState<Record<string, string>>({})
+  // Callers often pass inline functions/arrays; fetch only when the photo set changes
+  const load = useRef(loadPhoto)
+  load.current = loadPhoto
+  const ids = photos.map(p => p.id).join(',')
   useEffect(() => {
     let alive = true
     const made: string[] = []
-    Promise.all(pod.photos.map(async p => {
-      try { const u = URL.createObjectURL(await loadPhoto(p.id)); made.push(u); return [p.id, u] as const } catch { return null }
+    Promise.all((ids ? ids.split(',') : []).map(async id => {
+      try { const u = URL.createObjectURL(await load.current(id)); made.push(u); return [id, u] as const } catch { return null }
     })).then(rows => { if (alive) setUrls(Object.fromEntries(rows.filter(Boolean) as [string, string][])) })
     return () => { alive = false; made.forEach(u => URL.revokeObjectURL(u)) }
-  }, [pod, loadPhoto])
+  }, [ids])
+  if (!photos.length) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {photos.map(p => urls[p.id] ? (
+        <a key={p.id} href={urls[p.id]} target="_blank" rel="noreferrer" className="block">
+          {p.mimeType.startsWith('image/')
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={urls[p.id]} alt={`${alt} ${p.fileName}`} className="h-24 w-24 object-cover rounded-lg border border-silver-200" />
+            : <span className="flex h-24 w-24 items-center justify-center rounded-lg border border-silver-200 text-xs text-silver-600">PDF</span>}
+        </a>
+      ) : <span key={p.id} className="h-24 w-24 rounded-lg bg-silver-100 animate-pulse" />)}
+    </div>
+  )
+}
 
+/** Show a proof of delivery with its photos (fetched with the viewer's token). */
+export function PodView({ pod, loadPhoto }: { pod: Pod; loadPhoto: (photoId: string) => Promise<Blob> }) {
   return (
     <div className="rounded-xl border border-silver-200 bg-white p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -108,18 +130,7 @@ export function PodView({ pod, loadPhoto }: { pod: Pod; loadPhoto: (photoId: str
             : 'Not recorded'}
         </div>
       </div>
-      {pod.photos.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {pod.photos.map(p => urls[p.id] ? (
-            <a key={p.id} href={urls[p.id]} target="_blank" rel="noreferrer" className="block">
-              {p.mimeType.startsWith('image/')
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={urls[p.id]} alt={`Delivery photo ${p.fileName}`} className="h-24 w-24 object-cover rounded-lg border border-silver-200" />
-                : <span className="flex h-24 w-24 items-center justify-center rounded-lg border border-silver-200 text-xs text-silver-600">PDF</span>}
-            </a>
-          ) : <span key={p.id} className="h-24 w-24 rounded-lg bg-silver-100 animate-pulse" />)}
-        </div>
-      )}
+      <PhotoStrip photos={pod.photos} loadPhoto={loadPhoto} alt="Delivery photo" />
     </div>
   )
 }

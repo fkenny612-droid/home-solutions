@@ -9,9 +9,11 @@ import Company, { CarrierBadgePill } from '@/components/truck-loads/Company'
 import { ComplianceBanner, CompliancePanel, CompliancePill, TruckDatesModal } from '@/components/truck-loads/Compliance'
 import { LoadForm, Modal, TruckForm } from '@/components/truck-loads/forms'
 import { DeliverForm, LastSeen, PodView } from '@/components/truck-loads/Delivery'
+import Chat from '@/components/truck-loads/Chat'
+import { ClaimCard } from '@/components/truck-loads/Claims'
 import {
   ApiError, carrier, CarrierBadge, ComplianceOverview, fmtDate, fmtDuration, fmtLength, fmtWeight, fmtDistance, fmtMoney,
-  CarrierPayment, dispatch, getToken, hazmatLabel, Load, LoadStatus, market, PAYMENT_LABEL, Pod, podForm, setToken, Summary, Truck, truckFitProblems,
+  CarrierPayment, Claim, dispatch, getToken, hazmatLabel, Load, LoadStatus, market, PAYMENT_LABEL, Pod, podForm, setToken, Summary, Truck, truckFitProblems,
 } from '@/lib/truck-loads'
 
 const STATUS_STYLE: Record<LoadStatus, string> = {
@@ -52,6 +54,13 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
     if (load.status === 'delivered') dispatch.pod(load.id).then(setPod).catch(() => {})
   }, [load.id, load.status])
   const podPhoto = useCallback((photoId: string) => dispatch.podPhoto(load.id, photoId), [load.id])
+  const [claims, setClaims] = useState<Claim[]>([])
+  const [showChat, setShowChat] = useState(false)
+  useEffect(() => { setShowChat(false) }, [load.id])
+  useEffect(() => {
+    setClaims([])
+    if (load.shipmentId && load.status === 'delivered') market.claims(load.shipmentId).then(setClaims).catch(() => {})
+  }, [load.id, load.shipmentId, load.status, payment?.status])
   useEffect(() => {
     setPayment(null)
     if (load.shipmentId) market.loadPayment(load.id).then(setPayment).catch(() => {})
@@ -125,7 +134,24 @@ function LoadDetail({ load, trucks, routingEnabled, onChange }: {
         <p className="text-sm text-silver-600"><i className="ti ti-map-pin mr-1" /><LastSeen at={load.lastLocationAt ?? null} lat={load.lastLat ?? null} lng={load.lastLng ?? null} speedKmh={load.lastSpeedKmh} /></p>
       )}
 
+      {claims.map(c => (
+        <ClaimCard key={c.id} claim={c} loadPhoto={photoId => market.claimPhoto(c.id, photoId)}
+          onRespond={async text => { const next = await market.respondClaim(c.id, text); setClaims(cs => cs.map(x => x.id === next.id ? next : x)) }} />
+      ))}
+
       {pod && <PodView pod={pod} loadPhoto={podPhoto} />}
+
+      {load.shipmentId && (
+        <div className="space-y-2">
+          <button onClick={() => setShowChat(v => !v)} className="press rounded-lg border border-silver-300 bg-white px-3 py-1.5 text-sm">
+            <i className="ti ti-message mr-1" />{showChat ? 'Hide messages' : `Messages with ${load.shipperName}`}
+          </button>
+          {showChat && (
+            <Chat threadKey={load.shipmentId} me="carrier" otherName={load.shipperName} className="h-[280px]"
+              load={() => market.messages(load.shipmentId!)} send={body => market.sendMessage(load.shipmentId!, body)} />
+          )}
+        </div>
+      )}
 
       {delivering && (
         <Modal title={`Deliver ${load.reference}`} onClose={() => setDelivering(false)}>

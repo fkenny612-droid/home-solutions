@@ -283,6 +283,48 @@ export const platformAdmin = {
   paidOut:  (id: string, reference: string) => ad<AdminPayment>(`/truck-loads/admin/payments/${id}/paid-out`, { method: 'POST', body: JSON.stringify({ reference }) }),
   refunded: (id: string, reference: string) => ad<AdminPayment>(`/truck-loads/admin/payments/${id}/refunded`, { method: 'POST', body: JSON.stringify({ reference }) }),
   releaseDue: () => ad<{ released: number }>('/truck-loads/admin/payments/release-due', { method: 'POST' }),
+  claims:   (status?: string) => ad<AdminClaim[]>(`/truck-loads/admin/claims${status ? `?status=${status}` : ''}`),
+  claim:    (id: string) => ad<AdminClaimDetail>(`/truck-loads/admin/claims/${id}`),
+  resolveClaim: (id: string, r: { outcome: ClaimOutcome; refundAmount?: number; note?: string }) =>
+    ad<Claim>(`/truck-loads/admin/claims/${id}/resolve`, { method: 'POST', body: JSON.stringify(r) }),
+  claimRefunded: (id: string, reference: string) =>
+    ad<Claim>(`/truck-loads/admin/claims/${id}/refunded`, { method: 'POST', body: JSON.stringify({ reference }) }),
+  claimPhoto: (id: string, photoId: string) => fetchBlob('admin', `/truck-loads/admin/claims/${id}/photos/${photoId}`),
+  claimPodPhoto: (id: string, photoId: string) => fetchBlob('admin', `/truck-loads/admin/claims/${id}/pod-photos/${photoId}`),
+}
+
+// ── Chat & claims ────────────────────────────────────────────────────────────
+
+export interface ChatMessage { id: string; fromRole: 'shipper' | 'carrier' | 'admin'; body: string; createdAt: string }
+export interface ChatThread { messages: ChatMessage[]; otherReadAt: string | null }
+
+export type ClaimType = 'damaged' | 'short' | 'late' | 'not_delivered' | 'other'
+export type ClaimOutcome = 'carrier' | 'shipper' | 'split'
+export const CLAIM_TYPE_LABEL: Record<ClaimType, string> = {
+  damaged: 'Goods damaged', short: 'Short delivery', late: 'Delivered late', not_delivered: 'Not delivered', other: 'Other problem',
+}
+export interface Claim {
+  id: string; shipmentId: string; type: ClaimType; description: string; amountClaimed: number | null
+  carrierResponse: string | null; status: 'open' | 'refund_due' | 'closed'; outcome: ClaimOutcome | null
+  refundAmount: number | null; adminNote: string | null; refundReference: string | null
+  resolvedAt: string | null; closedAt: string | null; createdAt: string
+  photos: { id: string; fileName: string; mimeType: string; size: number }[]
+}
+export interface AdminClaim extends Claim {
+  paymentId: string
+  shipment: { reference: string; originAddress: string; destAddress: string }
+  shipper: { companyName: string; contactPhone: string } | null
+  carrier: { companyName: string; contactPhone: string } | null
+  payment: { id: string; status: PaymentStatus; amount: number; payoutAmount: number; feeAmount: number } | null
+}
+export interface AdminClaimDetail { messages: ChatMessage[]; pod: (Pod & { id: string }) | null }
+export interface ClaimInput { type: ClaimType; description: string; amountClaimed?: number }
+
+export function claimForm(input: ClaimInput, photos: File[]) {
+  const f = new FormData()
+  f.append('data', JSON.stringify(input))
+  for (const p of photos) f.append('photos', p, p.name)
+  return f
 }
 
 // ── Marketplace (shippers post, carriers bid) ────────────────────────────────
@@ -344,8 +386,8 @@ export function podForm(input: PodInput, photos: File[]) {
   for (const p of photos) f.append('photos', p, p.name)
   return f
 }
-export interface ShipperBid { id: string; amount: number; message: string | null; status: BidStatus; createdAt: string; updatedAt: string; carrier: CarrierSummary | null }
-export interface ShipperShipmentRow extends Shipment { bidCount: number; lowestBid: number | null; awardedAmount: number | null; trackingToken?: string | null }
+export interface ShipperBid { id: string; carrierId: string; amount: number; message: string | null; status: BidStatus; createdAt: string; updatedAt: string; carrier: CarrierSummary | null; unread: number }
+export interface ShipperShipmentRow extends Shipment { bidCount: number; lowestBid: number | null; awardedAmount: number | null; trackingToken?: string | null; unread: number; claimOpen: boolean }
 export interface ShipperShipmentDetail extends Shipment {
   bids: ShipperBid[]
   trackingToken: string | null
@@ -380,6 +422,12 @@ export const shipper = {
   pod:         (id: string) => sh<Pod | null>(`/truck-loads/shipper/shipments/${id}/pod`),
   podPhoto:    (id: string, photoId: string) => fetchBlob('shipper', `/truck-loads/shipper/shipments/${id}/pod/photos/${photoId}`),
   tracking:    (id: string) => sh<Tracking>(`/truck-loads/shipper/shipments/${id}/tracking`),
+  messages:    (id: string, carrierId: string) => sh<ChatThread>(`/truck-loads/shipper/shipments/${id}/messages?carrierId=${encodeURIComponent(carrierId)}`),
+  sendMessage: (id: string, carrierId: string, body: string) =>
+    sh<ChatMessage>(`/truck-loads/shipper/shipments/${id}/messages`, { method: 'POST', body: JSON.stringify({ carrierId, body }) }),
+  claims:      (id: string) => sh<Claim[]>(`/truck-loads/shipper/shipments/${id}/claims`),
+  raiseClaim:  (id: string, form: FormData) => upload<Claim>('shipper', `/truck-loads/shipper/shipments/${id}/claims`, form),
+  claimPhoto:  (id: string, claimId: string, photoId: string) => fetchBlob('shipper', `/truck-loads/shipper/shipments/${id}/claims/${claimId}/photos/${photoId}`),
   rate:        (id: string, r: { stars: number; onTime?: boolean; comment?: string }) =>
     sh<Rating>(`/truck-loads/shipper/shipments/${id}/rating`, { method: 'POST', body: JSON.stringify(r) }),
   testPay:     (paymentId: string, succeed: boolean) =>
@@ -392,6 +440,7 @@ export interface BoardShipment extends Shipment {
   myBid: { id: string; amount: number; message: string | null } | null
 }
 export interface MyBid {
+  unread: number
   id: string; amount: number; message: string | null; status: BidStatus; updatedAt: string
   shipment: {
     id: string; reference: string; status: ShipmentStatus; originAddress: string; destAddress: string
@@ -416,6 +465,13 @@ export const market = {
   myBids:   () => d<MyBid[]>('/truck-loads/market/bids'),
   payments: () => d<CarrierPayment[]>('/truck-loads/payments'),
   loadPayment: (loadId: string) => d<CarrierPayment | null>(`/truck-loads/loads/${loadId}/payment`),
+  messages:    (shipmentId: string) => d<ChatThread>(`/truck-loads/market/shipments/${shipmentId}/messages`),
+  sendMessage: (shipmentId: string, body: string) =>
+    d<ChatMessage>(`/truck-loads/market/shipments/${shipmentId}/messages`, { method: 'POST', body: JSON.stringify({ body }) }),
+  claims:      (shipmentId: string) => d<Claim[]>(`/truck-loads/market/shipments/${shipmentId}/claims`),
+  respondClaim: (claimId: string, response: string) =>
+    d<Claim>(`/truck-loads/market/claims/${claimId}/response`, { method: 'POST', body: JSON.stringify({ response }) }),
+  claimPhoto:  (claimId: string, photoId: string) => fetchBlob('dispatch', `/truck-loads/market/claims/${claimId}/photos/${photoId}`),
   rateShipper: (shipmentId: string, r: { stars: number; onTime?: boolean; comment?: string }) =>
     d<Rating>(`/truck-loads/market/shipments/${shipmentId}/rating`, { method: 'POST', body: JSON.stringify(r) }),
 }

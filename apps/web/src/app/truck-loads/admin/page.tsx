@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
+import ClaimsAdmin from '@/components/truck-loads/ClaimsAdmin'
 import TruckLoadsMark from '@/components/truck-loads/TruckLoadsMark'
 import Login from '@/components/truck-loads/Login'
 import { CarrierBadgePill } from '@/components/truck-loads/Company'
@@ -98,7 +99,7 @@ function Detail({ d, onChanged }: { d: AdminCarrierDetail; onChanged: (d: AdminC
 
 const PAY_FILTERS = [
   { id: 'payout_due', label: 'Payouts due' }, { id: 'refund_due', label: 'Refunds due' },
-  { id: 'held', label: 'Held' }, { id: 'release_pending', label: 'Claim window' },
+  { id: 'held', label: 'Held' }, { id: 'release_pending', label: 'Claim window' }, { id: 'disputed', label: 'Disputed' },
   { id: 'paid_out', label: 'Paid out' }, { id: 'refunded', label: 'Refunded' }, { id: '', label: 'All' },
 ]
 
@@ -184,7 +185,7 @@ function Payments() {
 }
 
 export default function PlatformAdminPage() {
-  const [section, setSection] = useState<'carriers' | 'payments'>('carriers')
+  const [section, setSection] = useState<'carriers' | 'payments' | 'claims'>('carriers')
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('pending')
   const [rows, setRows] = useState<AdminCarrierRow[] | null>(null)
@@ -225,7 +226,7 @@ export default function PlatformAdminPage() {
           <span className="font-semibold">Truck Loads</span>
           <span className="text-xs rounded-full bg-white/15 px-2 py-0.5">Platform admin</span>
           <nav className="ml-4 flex gap-1">
-            {(['carriers', 'payments'] as const).map(t => (
+            {(['carriers', 'payments', 'claims'] as const).map(t => (
               <button key={t} onClick={() => setSection(t)}
                 className={`rounded-md px-3 py-1.5 text-sm capitalize ${section === t ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'}`}>{t}</button>
             ))}
@@ -235,7 +236,7 @@ export default function PlatformAdminPage() {
       </header>
       <div className="max-w-7xl mx-auto px-4 py-5 space-y-4">
         {error && <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</p>}
-        {section === 'payments' ? <Payments /> : (
+        {section === 'payments' ? <Payments /> : section === 'claims' ? <ClaimsAdmin /> : (
         <div className="grid lg:grid-cols-[380px_1fr] gap-5 items-start">
           <section className="space-y-3">
             <h1 className="font-semibold">Carrier verification</h1>
