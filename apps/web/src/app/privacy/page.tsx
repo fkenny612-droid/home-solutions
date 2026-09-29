@@ -15,7 +15,7 @@ export default function PrivacyPolicy() {
       </div>
 
       <section>
-        <p>Easyfix (Pty) Ltd ("Easyfix", "we", "us") operates the Easyfix mobile application and website. This Privacy Policy explains how we collect, use, disclose, and safeguard your personal information in compliance with the Protection of Personal Information Act 4 of 2013 (POPIA) and applicable South African law.</p>
+        <p>Easyfix (Pty) Ltd (&ldquo;Easyfix&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates the Easyfix mobile application and website. This Privacy Policy explains how we collect, use, disclose, and safeguard your personal information in compliance with the Protection of Personal Information Act 4 of 2013 (POPIA) and applicable South African law.</p>
         <p>By using the Easyfix platform you consent to the practices described in this policy.</p>
       </section>
 
