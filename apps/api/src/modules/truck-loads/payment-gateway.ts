@@ -128,10 +128,23 @@ export class PeachCheckoutGateway implements PaymentGateway {
   }
 }
 
+/**
+ * PAYMENTS_MODE: "peach" (live), "test" (test checkout, no real money) or "off".
+ * Production defaults to off so a missing setting can never let shippers
+ * "pay" with the test checkout; development defaults to test.
+ */
+export function paymentsMode(env = process.env): 'peach' | 'test' | 'off' {
+  const m = (env.PAYMENTS_MODE ?? '').toLowerCase()
+  if (m === 'peach' || m === 'off') return m
+  if (m === 'test' || m === 'mock') return 'test'
+  return env.NODE_ENV === 'production' ? 'off' : 'test'
+}
+
 @Injectable()
 export class PaymentGatewayProvider {
-  readonly gateway: PaymentGateway =
-    process.env.PAYMENTS_MODE === 'peach'
-      ? new PeachCheckoutGateway()
-      : new MockGateway(process.env.WEB_URL ?? 'http://localhost:3000')
+  readonly mode = paymentsMode()
+  readonly gateway: PaymentGateway | null =
+    this.mode === 'peach' ? new PeachCheckoutGateway()
+    : this.mode === 'test' ? new MockGateway(process.env.WEB_URL ?? 'http://localhost:3000')
+    : null
 }

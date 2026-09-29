@@ -136,6 +136,7 @@ export class MarketplaceService {
     if (shipment.status !== 'open') throw new ConflictException(`Shipment is already ${shipment.status.replace('_', ' ')}`)
     const bid = await this.prisma.bid.findFirst({ where: { id: bidId, shipmentId } })
     if (!bid || bid.status !== 'active') throw new ConflictException('That bid is no longer available')
+    this.escrow.assertEnabled()
 
     const reserved = await this.prisma.shipment.updateMany({
       where: { id: shipmentId, status: 'open' },

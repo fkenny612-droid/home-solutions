@@ -18,7 +18,7 @@ export class PaymentsWebhookController {
   @Post('webhook')
   @HttpCode(200)
   async webhook(@Req() req: any, @Body() body: any) {
-    const result = this.gateways.gateway.verifyWebhook(req.headers, req.rawBody, body)
+    const result = this.gateways.gateway?.verifyWebhook(req.headers, req.rawBody, body)
     if (!result) throw new UnauthorizedException('Invalid webhook signature')
     await this.market.onPaymentResult(result.paymentId, result.succeeded, result.providerPaymentId, result.description)
     return { ok: true }

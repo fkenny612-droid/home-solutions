@@ -1,5 +1,5 @@
 import {
-  BadRequestException, ConflictException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit,
+  BadRequestException, ConflictException, ServiceUnavailableException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -23,25 +23,34 @@ export class EscrowService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private prisma: PrismaService, private gateways: PaymentGatewayProvider, private sms: SmsService) {}
 
-  get provider() { return this.gateways.gateway.name }
+  get provider() { return this.gateways.gateway?.name ?? 'off' }
+
+  /** Fails fast before a bid is reserved when online payment isn't switched on. */
+  assertEnabled() {
+    if (!this.gateways.gateway) {
+      throw new ServiceUnavailableException("Online payment isn't switched on yet — please contact Truck Loads to book this carrier")
+    }
+    return this.gateways.gateway
+  }
 
   // ── Checkout ────────────────────────────────────────────────────────────────
 
   /** Creates a pending payment for an accepted bid and a hosted checkout for it. */
   async startCheckout(shipment: { id: string; reference: string; shipperId: string }, bid: { id: string; carrierId: string; amount: number }) {
+    const gateway = this.assertEnabled()
     const feeAmount = round2(bid.amount * PLATFORM_FEE_PERCENT / 100)
     const payment = await this.prisma.payment.create({
       data: {
         shipmentId: shipment.id, bidId: bid.id, shipperId: shipment.shipperId, carrierId: bid.carrierId,
         amount: bid.amount, feePercent: PLATFORM_FEE_PERCENT, feeAmount, payoutAmount: round2(bid.amount - feeAmount),
-        provider: this.provider,
+        provider: gateway.name,
         events: { create: { message: `Checkout started for ${rand(bid.amount)}` } },
       },
     })
     const web = process.env.WEB_URL ?? 'http://localhost:3000'
     const api = process.env.API_PUBLIC_URL ?? 'http://localhost:4000'
     try {
-      const checkout = await this.gateways.gateway.createCheckout({
+      const checkout = await gateway.createCheckout({
         paymentId: payment.id,
         amount: bid.amount,
         description: `Truck Loads ${shipment.reference}`,
