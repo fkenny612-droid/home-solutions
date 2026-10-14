@@ -82,8 +82,8 @@ export default function AdminPortal() {
   const [authed,   setAuthed]   = useState(false)
   const [loading,  setLoading]  = useState(true)
   const [section,  setSection]  = useState<Section>('dashboard')
-  const [phone,    setPhone]    = useState('+27800000000')
-  const [password, setPassword] = useState('admin123')
+  const [phone,    setPhone]    = useState('')
+  const [password, setPassword] = useState('')
   const [loginErr, setLoginErr] = useState('')
 
   useEffect(() => {
@@ -126,12 +126,11 @@ export default function AdminPortal() {
         <h2 style={styles.loginTitle}>Sign in</h2>
         <p style={styles.loginSub}>Admin access only</p>
         <label style={styles.label}>Phone number</label>
-        <input style={styles.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="+27800000000" />
+        <input style={styles.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="Admin phone number" />
         <label style={styles.label}>Password</label>
         <input style={styles.input} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && login()} />
         {loginErr && <p style={styles.error}>{loginErr}</p>}
         <button style={styles.loginBtn} onClick={login}>Sign in →</button>
-        <p style={styles.loginHint}>Default: +27800000000 / admin123</p>
       </div>
     </div>
   )

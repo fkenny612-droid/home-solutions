@@ -78,7 +78,8 @@ export default function LoginScreen() {
                 : <Text style={s.btnText}>Continue</Text>}
             </TouchableOpacity>
 
-            {/* Quick test logins */}
+            {/* Quick test logins — development builds only; must never ship in a store build */}
+            {__DEV__ && (
             <View style={s.quickRow}>
               <Text style={s.quickLabel}>Test:</Text>
               <TouchableOpacity activeOpacity={0.8} onPress={() => { setError(''); setPhone('+27821234567'); setPassword('pass123') }}>
@@ -88,6 +89,7 @@ export default function LoginScreen() {
                 <Text style={s.quickBtn}>Provider</Text>
               </TouchableOpacity>
             </View>
+            )}
           </View>
 
           <View style={s.footer}>
