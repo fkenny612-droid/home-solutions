@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, type ColorValue } from 'react-native'
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
@@ -15,7 +15,7 @@ const CLIENT_TABS: { name: string; label: string; icon: IconName; iconActive: Ic
   { name: 'profile',  label: 'Profile',   icon: 'person-outline',       iconActive: 'person'       },
 ]
 
-function BadgeIcon({ name, color, size, count }: { name: IconName; color: string; size: number; count: number }) {
+function BadgeIcon({ name, color, size, count }: { name: IconName; color: ColorValue; size: number; count: number }) {
   return (
     <View>
       <Ionicons name={name} size={size} color={color} />

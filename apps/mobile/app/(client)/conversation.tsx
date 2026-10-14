@@ -325,7 +325,7 @@ const s = StyleSheet.create({
   pendingImg:       { width: '100%', height: '100%' },
   pendingFile:      { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 6, gap: 4 },
   pendingFileName:  { fontSize: 8, color: colors.gray400, textAlign: 'center' },
-  pendingOverlay:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  pendingOverlay:   { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
   pendingRemove:    {
     position: 'absolute', top: 4, right: 4,
     backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,

@@ -10,11 +10,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "easyfix",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0C0A09"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "co.za.homesolutions.app",
@@ -58,6 +53,16 @@
           "icon": "./assets/icon.png",
           "color": "#0F1923",
           "sounds": []
+        }
+      ],
+      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#0C0A09",
+          "resizeMode": "contain",
+          "imageWidth": 200
         }
       ]
     ],
