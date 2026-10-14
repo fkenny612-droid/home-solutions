@@ -92,4 +92,10 @@ export class AuthController {
   verifyId(@Req() req: any, @Body('idNumber') idNumber: string) {
     return this.svc.verifyId(req.user.sub, idNumber)
   }
+
+  @Delete('account')
+  @UseGuards(AuthGuard('jwt'))
+  deleteAccount(@Req() req: any) {
+    return this.svc.deleteAccount(req.user.sub)
+  }
 }

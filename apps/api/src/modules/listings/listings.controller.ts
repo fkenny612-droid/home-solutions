@@ -42,7 +42,7 @@ export class ListingsController {
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'))
   remove(@Param('id') id: string, @Req() req: any) {
-    return this.svc.remove(id, req.user.sub)
+    return this.svc.remove(id, req.user.sub, req.user.role)
   }
 
   @Post(':id/save')

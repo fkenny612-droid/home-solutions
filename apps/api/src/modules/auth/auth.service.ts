@@ -1,4 +1,5 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcryptjs'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -196,5 +197,65 @@ export class AuthService {
       data:  { idVerified: true, idVerifiedAt: new Date() },
     })
     return { idVerified: true, age }
+  }
+
+  /**
+   * Permanently deletes the caller's account and personal data.
+   *
+   * Kept on purpose: bookings (and the address on them) are financial records we hold for
+   * 5 years per the privacy policy, and a provider's Provider row is anonymised rather than
+   * removed so completed jobs and reviews stay consistent. Chat messages are kept but lose
+   * the sender's name and any attachments.
+   */
+  async deleteAccount(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    if (!user) throw new NotFoundException('Account not found')
+    if (user.role === 'admin') throw new ForbiddenException('Admin accounts cannot be deleted from the app')
+
+    const activeBookings = await this.prisma.booking.count({
+      where: {
+        status: { in: ['pending', 'accepted', 'en_route', 'in_progress', 'emergency'] },
+        OR: [{ clientId: userId }, { providerId: userId }],
+      },
+    })
+    if (activeBookings > 0) {
+      throw new ConflictException('You have bookings in progress. Complete or cancel them before deleting your account.')
+    }
+
+    if (user.role === 'provider') {
+      const provider = await this.prisma.provider.findUnique({ where: { id: userId } })
+      if (provider && provider.earningsBalance > 0) {
+        throw new ConflictException('You have an unpaid earnings balance. Withdraw it before deleting your account.')
+      }
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.savedCard.deleteMany({ where: { userId } }),
+      this.prisma.savedAddress.deleteMany({ where: { userId } }),
+      this.prisma.bankAccount.deleteMany({ where: { userId } }),
+      this.prisma.notification.deleteMany({ where: { userId } }),
+      this.prisma.loyaltyRedemption.deleteMany({ where: { userId } }),
+      this.prisma.subscription.deleteMany({ where: { userId } }),
+      this.prisma.listing.deleteMany({ where: { sellerId: userId } }),
+      this.prisma.kycDocument.deleteMany({ where: { providerId: userId } }),
+      this.prisma.report.deleteMany({ where: { reporterId: userId } }),
+      this.prisma.review.updateMany({ where: { clientId: userId }, data: { clientId: 'deleted' } }),
+      this.prisma.message.updateMany({
+        where: { senderId: userId },
+        data:  { senderName: 'Deleted user', attachments: Prisma.DbNull },
+      }),
+      this.prisma.provider.updateMany({
+        where: { id: userId },
+        data: {
+          name: 'Deleted provider', phone: `deleted-${userId}`, email: null, skills: [],
+          status: 'suspended', lat: null, lng: null, serviceAreas: [], hireInventory: Prisma.DbNull,
+        },
+      }),
+      // Un-save this user's bookmark from everyone else's listings
+      this.prisma.$executeRaw`UPDATE "Listing" SET "savedBy" = array_remove("savedBy", ${userId}) WHERE ${userId} = ANY("savedBy")`,
+      this.prisma.user.delete({ where: { id: userId } }),
+    ])
+
+    return { ok: true }
   }
 }

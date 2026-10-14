@@ -272,3 +272,17 @@ model Listing {
   @@index([sellerId])
   @@index([city])
 }
+
+model Report {
+  id         String   @id @default(uuid())
+  reporterId String
+  targetType String   // 'listing' | 'message'
+  targetId   String
+  reason     String
+  details    String?
+  status     String   @default("open") // open | resolved | dismissed
+  createdAt  DateTime @default(now())
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([status])
+}

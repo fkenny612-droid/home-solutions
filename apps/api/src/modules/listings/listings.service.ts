@@ -78,10 +78,10 @@ export class ListingsService {
     return this.toDto(updated, userId)
   }
 
-  async remove(id: string, userId: string) {
+  async remove(id: string, userId: string, role?: string) {
     const row = await this.prisma.listing.findUnique({ where: { id } })
     if (!row)              throw new NotFoundException('Listing not found')
-    if (row.sellerId !== userId) throw new ForbiddenException('Not your listing')
+    if (row.sellerId !== userId && role !== 'admin') throw new ForbiddenException('Not your listing')
     await this.prisma.listing.delete({ where: { id } })
     return { ok: true }
   }
