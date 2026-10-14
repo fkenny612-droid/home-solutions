@@ -1,9 +1,9 @@
 /**
  * Easyfix — React Native API client
- * Set API_BASE to your deployed API URL (Railway) once live.
+ * Set API_BASE to your deployed API URL (Render) once live.
  * In Expo Go on a physical device, use your machine's LAN IP.
  */
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
+const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'https://home-solutions-ds5b.onrender.com/api/v1'
 
 let _token: string | null = null
 

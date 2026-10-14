@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import LogoMark from '../../components/Logo'
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://railway-up-deploy-production.up.railway.app/api/v1'
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://home-solutions-ds5b.onrender.com/api/v1'
 
 // Human-readable labels for every service type
 const SERVICE_LABELS: Record<string, string> = {
