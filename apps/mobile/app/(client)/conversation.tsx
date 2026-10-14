@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, Image, ActivityIndicator, Linking } from 'react-native'
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, Image, ActivityIndicator, Linking, Pressable } from 'react-native'
 import { Alert } from '../../lib/alert'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -10,6 +10,7 @@ import { colors } from '../../constants/theme'
 import { api, Message, ChatAttachment } from '../../lib/api'
 import { useAuth } from '../../context/auth'
 import { uploadToCloudinary } from '../../lib/cloudinary'
+import ReportSheet from '../../components/ReportSheet'
 
 interface PendingAttachment {
   localUri:  string
@@ -26,6 +27,7 @@ export default function ChatScreen() {
   const [text,      setText]      = useState('')
   const [sending,   setSending]   = useState(false)
   const [pending,   setPending]   = useState<PendingAttachment[]>([])
+  const [reportId,  setReportId]  = useState<string | null>(null)
   const listRef = useRef<FlatList>(null)
 
   const load = async () => {
@@ -132,7 +134,11 @@ export default function ChatScreen() {
     const isMe = item.senderId === user?.id
     const attachments: ChatAttachment[] = Array.isArray(item.attachments) ? item.attachments : []
     return (
-      <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleThem]}>
+      <Pressable
+        style={[s.bubble, isMe ? s.bubbleMe : s.bubbleThem]}
+        onLongPress={!isMe && !item.id.startsWith('opt-') ? () => setReportId(item.id) : undefined}
+        delayLongPress={400}
+      >
         {!isMe && (
           <Text style={s.senderName}>{item.senderName}</Text>
         )}
@@ -156,7 +162,7 @@ export default function ChatScreen() {
         <Text style={[s.time, isMe && s.timeMe]}>
           {new Date(item.createdAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
         </Text>
-      </View>
+      </Pressable>
     )
   }
 
@@ -261,6 +267,8 @@ export default function ChatScreen() {
         </View>
 
       </KeyboardAvoidingView>
+
+      <ReportSheet visible={reportId !== null} targetType="message" targetId={reportId} onClose={() => setReportId(null)} />
     </SafeAreaView>
   )
 }

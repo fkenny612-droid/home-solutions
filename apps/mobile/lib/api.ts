@@ -119,6 +119,7 @@ export const api = {
       req<{ id: string; phone: string; role: string; firstName: string | null; lastName: string | null; email: string | null }>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
     me:              () =>
       req<{ id: string; phone: string; role: string; firstName: string | null; lastName: string | null; email: string | null; idVerified: boolean }>('/auth/me'),
+    deleteAccount:   () => req<{ ok: boolean }>('/auth/account', { method: 'DELETE' }),
     verifyId:        (idNumber: string) =>
       req<{ idVerified: boolean; age: number }>('/auth/verify-id', { method: 'POST', body: JSON.stringify({ idNumber }) }),
     getBankAccount:  () => req<BankAccount | null>('/auth/bank-account'),
@@ -257,6 +258,11 @@ export const api = {
     save:    (id: string)          => req<{ saved: boolean }>(`/listings/${id}/save`, { method: 'POST' }),
   },
 
+  reports: {
+    create: (dto: { targetType: ReportTarget; targetId: string; reason: ReportReason; details?: string }) =>
+      req<{ id: string; status: string }>('/reports', { method: 'POST', body: JSON.stringify(dto) }),
+  },
+
   paymentMethods: {
     list:       ()                                                                       => req<SavedCard[]>('/payment-methods'),
     add:        (dto: { brand: string; last4: string; expiry: string; holderName: string }) => req<SavedCard>('/payment-methods', { method: 'POST', body: JSON.stringify(dto) }),
@@ -363,6 +369,9 @@ export interface LoyaltyRedemption {
   used:           boolean
   createdAt:      string
 }
+
+export type ReportTarget = 'listing' | 'message'
+export type ReportReason = 'spam_or_scam' | 'prohibited_item' | 'inappropriate' | 'harassment' | 'other'
 
 export type ListingCategory = 'goods' | 'property' | 'jobs'
 

@@ -8,6 +8,8 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { api, Listing } from '../../lib/api'
+import { useAuth } from '../../context/auth'
+import ReportSheet from '../../components/ReportSheet'
 
 const { width: SW } = Dimensions.get('window')
 
@@ -38,6 +40,8 @@ export default function ListingDetailScreen() {
   const [saved,    setSaved]    = useState(false)
   const [imgIdx,   setImgIdx]   = useState(0)
   const [lightbox, setLightbox] = useState(false)
+  const [reporting, setReporting] = useState(false)
+  const { user } = useAuth()
 
   const load = useCallback(async () => {
     if (!id) return
@@ -195,6 +199,14 @@ export default function ListingDetailScreen() {
             </View>
           </View>
 
+          {/* Report — hidden on your own listing */}
+          {listing.sellerId !== user?.id && (
+            <TouchableOpacity style={s.reportRow} onPress={() => setReporting(true)} activeOpacity={0.7}>
+              <Ionicons name="flag-outline" size={14} color={colors.gray400} />
+              <Text style={s.reportText}>Report this listing</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Safety tip */}
           <View style={s.safetyCard}>
             <Ionicons name="shield-checkmark-outline" size={16} color={colors.amber} />
@@ -216,6 +228,8 @@ export default function ListingDetailScreen() {
           <Text style={s.callBtnText}>Call</Text>
         </TouchableOpacity>
       </View>
+
+      <ReportSheet visible={reporting} targetType="listing" targetId={listing.id} onClose={() => setReporting(false)} />
 
       {/* Lightbox */}
       <Modal visible={lightbox} transparent animationType="fade" onRequestClose={() => setLightbox(false)}>
@@ -277,6 +291,8 @@ const s = StyleSheet.create({
   sellerName:          { fontSize: 14, fontWeight: '700', color: colors.black },
   sellerSub:           { fontSize: 11, color: colors.gray400, marginTop: 2 },
 
+  reportRow:           { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, marginBottom: 8 },
+  reportText:          { fontSize: 12, color: colors.gray400 },
   safetyCard:          { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: colors.amberBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.amber + '30' },
   safetyText:          { flex: 1, fontSize: 12, color: colors.amber, lineHeight: 18 },
 

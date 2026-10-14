@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
 import { api } from '../../lib/api'
+import { confirmDeleteAccount } from '../../lib/deleteAccount'
 import { useEffect, useState } from 'react'
 
 const MENU = [
@@ -132,6 +133,9 @@ export default function ProviderProfile() {
         <TouchableOpacity activeOpacity={0.8} style={s.signout} onPress={handleLogout}>
           <Text style={s.signoutText}>Sign out</Text>
         </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.8} style={s.deleteAcct} onPress={() => confirmDeleteAccount(handleLogout)}>
+          <Text style={s.deleteAcctText}>Delete account</Text>
+        </TouchableOpacity>
         <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
@@ -165,4 +169,6 @@ const s = StyleSheet.create({
   switchText:   { fontSize: 14, fontWeight: '600', color: colors.gold },
   signout:      { padding: 16, alignItems: 'center', marginTop: 4 },
   signoutText:  { fontSize: 14, color: colors.red, fontWeight: '500' },
+  deleteAcct:    { paddingVertical: 8, alignItems: 'center' },
+  deleteAcctText:{ fontSize: 12, color: colors.gray400 },
 })

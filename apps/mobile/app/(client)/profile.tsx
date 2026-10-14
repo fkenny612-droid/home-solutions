@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
 import { api, ActiveSubscription } from '../../lib/api'
+import { confirmDeleteAccount } from '../../lib/deleteAccount'
 
 const MENU = [
   { label: 'Edit profile',      sub: 'Name, email & photo',          route: '/(client)/edit-profile'  },
@@ -124,6 +125,10 @@ export default function ProfileTab() {
           <Text style={s.signoutText}>Sign out</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity activeOpacity={0.8} style={s.deleteAcct} onPress={() => confirmDeleteAccount(handleLogout)}>
+          <Text style={s.deleteAcctText}>Delete account</Text>
+        </TouchableOpacity>
+
         <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
@@ -167,4 +172,6 @@ const s = StyleSheet.create({
   switchText:    { fontSize: 14, fontWeight: '600', color: colors.black },
   signout:       { padding: 16, alignItems: 'center' },
   signoutText:   { fontSize: 14, color: colors.red, fontWeight: '500' },
+  deleteAcct:    { paddingVertical: 8, alignItems: 'center' },
+  deleteAcctText:{ fontSize: 12, color: colors.gray400 },
 })
