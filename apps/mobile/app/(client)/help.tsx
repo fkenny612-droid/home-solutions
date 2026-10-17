@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
+import { SUPPORT, supportEmailUrl, supportPhoneUrl, supportWhatsAppUrl } from '../../constants/support'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -15,31 +16,31 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const FAQS = [
   {
     q: 'How do I book a service?',
-    a: 'Tap the service you need on the home screen. You\'ll be shown available providers near you. Select one, confirm your address and payment, and your booking is created instantly.',
+    a: 'Tap the service you need, answer a few questions about the job, then choose a provider and pay. Your card is held and the provider is asked to accept — your booking is only confirmed once they do.',
   },
   {
     q: 'How does payment work?',
-    a: 'Your card is held (not charged) when you book. The amount is only captured once you confirm the job is complete. This protects you — you only pay when you\'re satisfied.',
+    a: 'Your card is held (not charged) when you book. The amount is only taken once your provider marks the job complete. If the booking is cancelled, or no provider accepts in time, the hold is released.',
   },
   {
     q: 'What is the 90-day warranty?',
-    a: 'Every completed job includes a 90-day workmanship warranty. If the same problem recurs within 90 days, the provider will return at no additional charge. Report issues via the "Active warranties" screen.',
+    a: 'Warranty length depends on your plan (30 days on Basic Home, 90 days on Premium Home and Estate / Business). If the same problem comes back within your warranty period, contact us and we\'ll arrange for it to be put right. You can see your warranties under "Active warranties" in your profile.',
   },
   {
     q: 'Can I cancel a booking?',
-    a: 'Yes — you can cancel from the Bookings tab before the provider arrives. Cancellations within 30 minutes of arrival may incur a call-out fee.',
+    a: 'Yes — you can cancel from the booking screen until the work has started, and the payment held on your card is released.',
   },
   {
     q: 'How do I track my provider?',
-    a: 'Once the provider accepts your booking, you\'ll see real-time status updates in the Bookings tab. You can also message them directly from the booking detail screen.',
+    a: 'Once the provider accepts your booking you\'ll see its status update as they set off, start work and finish. You can also message them from the booking screen.',
   },
   {
     q: 'What if I\'m not happy with the work?',
-    a: 'First, contact the provider through the in-app chat — most issues are resolved quickly. If unresolved, tap "Report an issue" in the booking detail or contact our support team.',
+    a: 'First, message the provider in the app — most issues are sorted quickly. If it isn\'t resolved, contact our support team and we\'ll help.',
   },
   {
     q: 'Is the provider verified?',
-    a: 'Yes. All providers undergo KYC verification including ID, trade certifications, and proof of bank account before being listed. Verified status is shown on their profile.',
+    a: 'Providers are reviewed and approved by our team before they appear in the app (ID and, for trades, a trade certificate). Providers you see here have been approved.',
   },
   {
     q: 'How do loyalty points work?',
@@ -65,9 +66,9 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export default function HelpScreen() {
-  const openWhatsApp = () => Linking.openURL('https://wa.me/27810000000?text=Hi%2C%20I%20need%20help%20with%20Home%20Solutions')
-  const openEmail    = () => Linking.openURL('mailto:support@homesolutions.co.za?subject=Support%20request')
-  const openCall     = () => Linking.openURL('tel:+27810000000')
+  const waUrl   = supportWhatsAppUrl('I need help with Easyfix')
+  const callUrl = supportPhoneUrl()
+
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -83,39 +84,45 @@ export default function HelpScreen() {
         {/* Contact options */}
         <Text style={s.sectionLabel}>CONTACT US</Text>
         <View style={s.contactRow}>
-          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: '#25D366' }]} onPress={openWhatsApp}>
-            <View style={[s.contactIcon, { backgroundColor: '#25D36615' }]}>
-              <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
-            </View>
-            <Text style={s.contactLabel}>WhatsApp</Text>
-            <Text style={s.contactSub}>Fastest reply</Text>
-          </TouchableOpacity>
+          {waUrl && (
+            <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: '#25D366' }]} onPress={() => Linking.openURL(waUrl)}>
+              <View style={[s.contactIcon, { backgroundColor: '#25D36615' }]}>
+                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+              </View>
+              <Text style={s.contactLabel}>WhatsApp</Text>
+              <Text style={s.contactSub}>Fastest reply</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gold }]} onPress={openCall}>
-            <View style={[s.contactIcon, { backgroundColor: colors.gold + '15' }]}>
-              <Ionicons name="call-outline" size={22} color={colors.gold} />
-            </View>
-            <Text style={s.contactLabel}>Call us</Text>
-            <Text style={s.contactSub}>081 000 0000</Text>
-          </TouchableOpacity>
+          {callUrl && (
+            <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gold }]} onPress={() => Linking.openURL(callUrl)}>
+              <View style={[s.contactIcon, { backgroundColor: colors.gold + '15' }]}>
+                <Ionicons name="call-outline" size={22} color={colors.gold} />
+              </View>
+              <Text style={s.contactLabel}>Call us</Text>
+              <Text style={s.contactSub}>{SUPPORT.phone}</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gray200 }]} onPress={openEmail}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gray200 }]} onPress={() => Linking.openURL(supportEmailUrl('Support request'))}>
             <View style={[s.contactIcon, { backgroundColor: colors.gray50 }]}>
               <Ionicons name="mail-outline" size={22} color={colors.gray400} />
             </View>
             <Text style={s.contactLabel}>Email</Text>
-            <Text style={s.contactSub}>1–2 business days</Text>
+            <Text style={s.contactSub}>{SUPPORT.email}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Operating hours */}
-        <View style={s.hoursBox}>
+        {SUPPORT.hours && (
+          <View style={s.hoursBox}>
           <Ionicons name="time-outline" size={16} color={colors.gray400} />
           <View style={{ flex: 1 }}>
             <Text style={s.hoursTitle}>Support hours</Text>
-            <Text style={s.hoursSub}>Mon – Fri: 07:00 – 20:00 · Sat: 08:00 – 17:00 · Sun: Emergency only</Text>
+            <Text style={s.hoursSub}>{SUPPORT.hours}</Text>
           </View>
         </View>
+        )}
 
         {/* FAQ */}
         <Text style={[s.sectionLabel, { marginTop: 24 }]}>FREQUENTLY ASKED QUESTIONS</Text>

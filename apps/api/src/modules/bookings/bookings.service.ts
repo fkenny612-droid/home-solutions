@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadGatewayException, BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { SmsService } from '../notifications/sms.service'
@@ -8,6 +8,7 @@ import { BookingStatus, ServiceType } from './booking.types'
 import { POINTS_PER_RAND_SPENT, REFERRAL_BONUS_POINTS } from '../loyalty/loyalty.constants'
 import { isKnownService, priceBooking, unansweredQuestions } from './pricing'
 import { ALL_STATUSES, Actor, canTransition, nextStatuses } from './booking-status'
+import { cutoffs } from './booking-expiry'
 
 const PAYMENT_METHODS = ['card', 'eft', 'payfast']
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -33,7 +34,10 @@ export interface CreateBookingDto {
 }
 
 @Injectable()
-export class BookingsService {
+export class BookingsService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(BookingsService.name)
+  private expiryTimer?: NodeJS.Timeout
+
   constructor(
     private prisma:         PrismaService,
     private notifications:  NotificationsService,
@@ -41,6 +45,15 @@ export class BookingsService {
     private subscriptions:  SubscriptionsService,
     private peach:           PeachPaymentsService,
   ) {}
+
+  onModuleInit() {
+    // Unanswered requests are cancelled (and refunded) automatically, so a customer's money is never stuck waiting.
+    // Single API instance; the conditional update inside expireStale makes a second instance harmless anyway.
+    this.expiryTimer = setInterval(() => { this.expireStale().catch(err => this.logger.error('Expiry sweep failed', err)) }, 60_000)
+    this.expiryTimer.unref?.()
+  }
+
+  onModuleDestroy() { if (this.expiryTimer) clearInterval(this.expiryTimer) }
 
   /** Clients see only their own bookings, providers see their assigned + open pending jobs, admins see all. */
   async findAll(user: RequestUser, status?: BookingStatus, serviceType?: ServiceType) {
@@ -58,14 +71,38 @@ export class BookingsService {
       orderBy: { createdAt: 'desc' },
       include: { provider: true },
     })
-    return bookings.map(b => this.present(b, user))
+    const contacts = await this.clientContacts(bookings, user)
+    return bookings.map(b => ({ ...this.present(b, user), ...contacts.get(b.id) }))
   }
 
   async findOne(id: string, user: RequestUser) {
     const booking = await this.prisma.booking.findUnique({ where: { id }, include: { provider: true } })
     if (!booking) throw new NotFoundException(`Booking ${id} not found`)
     this.assertParty(booking, user)
-    return this.present(booking, user)
+    const contacts = await this.clientContacts([booking], user)
+    return { ...this.present(booking, user), ...contacts.get(booking.id) }
+  }
+
+  /**
+   * Only the provider who has ACCEPTED a job gets the customer's name and phone (the privacy policy says we share
+   * these with the assigned provider), and only while the job is live. A mere request, other providers and other
+   * customers get nothing.
+   */
+  private async clientContacts(bookings: Array<{ id: string; clientId: string; providerId: string | null; status: string }>, user: RequestUser) {
+    const out = new Map<string, { clientName: string | null; clientPhone: string | null }>()
+    if (user.role !== 'provider') return out
+    const live = bookings.filter(b => b.providerId === user.sub && ['accepted', 'en_route', 'in_progress'].includes(b.status))
+    if (live.length === 0) return out
+    const clients = await this.prisma.user.findMany({
+      where:  { id: { in: [...new Set(live.map(b => b.clientId))] } },
+      select: { id: true, phone: true, firstName: true, lastName: true },
+    })
+    const byId = new Map(clients.map(c => [c.id, c]))
+    for (const b of live) {
+      const c = byId.get(b.clientId)
+      out.set(b.id, { clientName: c ? [c.firstName, c.lastName].filter(Boolean).join(' ') || null : null, clientPhone: c?.phone ?? null })
+    }
+    return out
   }
 
   /** Flattens the joined provider relation into a plain providerName field, matching the client's expected shape. */
@@ -124,10 +161,33 @@ export class BookingsService {
   async notifyClientOnAssign(clientId: string, providerName: string, serviceType: string, bookingId: string) {
     const client = await this.prisma.user.findUnique({ where: { id: clientId } })
     if (!client) return
-    const title = '✅ Provider on the way!'
-    const body  = `${providerName} accepted your ${serviceType} request`
+    const title = '✅ Booking accepted'
+    const body  = `${providerName} accepted your ${serviceType} booking`
     await this.notifications.notifyOne(client.pushToken, clientId, title, body, 'provider_assigned', { bookingId })
     if (!client.pushToken) await this.sms.notifyBookingConfirmed(client.phone, providerName, serviceType, bookingId)
+  }
+
+  /** Tells a provider a customer has chosen them. */
+  async notifyProviderOfRequest(providerId: string, serviceType: string, address: string, bookingId: string, emergency: boolean) {
+    const provider = await this.prisma.provider.findUnique({ where: { id: providerId } })
+    if (!provider) return
+    const user = await this.prisma.user.findFirst({ where: { phone: provider.phone } })
+    if (!user) return
+    const title = emergency ? '🚨 Emergency job request' : '🔧 New job request'
+    const body  = `${serviceType.replace(/_/g, ' ')} — ${address}. Open the app to accept.`
+    await this.notifications.notifyOne(user.pushToken, user.id, title, body, 'new_job', { bookingId })
+    if (!user.pushToken) await this.sms.notifyNewJob([user.phone], serviceType, address)
+  }
+
+  /** Tells a customer their request won't be fulfilled and their payment is being returned. */
+  async notifyClientOfNoShow(clientId: string, providerName: string | null, bookingId: string, why: 'declined' | 'expired') {
+    const client = await this.prisma.user.findUnique({ where: { id: clientId } })
+    if (!client) return
+    const title = '❌ Booking cancelled'
+    const body  = why === 'declined'
+      ? `${providerName ?? 'The provider'} couldn't take your job. Your payment is being returned — please choose another provider.`
+      : `No provider accepted your booking in time. Your payment is being returned.`
+    await this.notifications.notifyOne(client.pushToken, clientId, title, body, 'cancelled', { bookingId })
   }
 
   async notifyClientOnComplete(clientId: string, serviceType: string, amount: number, bookingId: string) {
@@ -213,6 +273,7 @@ export class BookingsService {
           images,
           discountCode,
           discountAmount: price.discount,
+          isEmergency:    dto.emergency === true,
           status:         'pending',
         },
       })
@@ -377,48 +438,93 @@ export class BookingsService {
     ])
   }
 
+  /**
+   * Who is doing what:
+   *  - the customer picking a provider makes a REQUEST — the booking stays pending until that provider accepts;
+   *  - a provider accepting (a request addressed to them, or an open job) makes it ACCEPTED;
+   *  - an admin dispatching a job on the phone makes it ACCEPTED.
+   */
   async assignProvider(id: string, providerId: string, user: RequestUser) {
     if (typeof providerId !== 'string' || !providerId) throw new BadRequestException('providerId is required')
     const existing = await this.prisma.booking.findUnique({ where: { id } })
     if (!existing) throw new NotFoundException(`Booking ${id} not found`)
 
-    const isAdmin           = user.role === 'admin'
-    const isOwningClient    = existing.clientId === user.sub
-    const isSelfAssigning   = user.role === 'provider' && providerId === user.sub && existing.providerId === null
-    if (!isAdmin && !isOwningClient && !isSelfAssigning) {
-      throw new ForbiddenException('Not allowed to assign this booking')
-    }
+    const isAdmin        = user.role === 'admin'
+    const isOwningClient = existing.clientId === user.sub
+    const isAccepting    = user.role === 'provider' && providerId === user.sub && (existing.providerId === null || existing.providerId === user.sub)
+    if (!isAdmin && !isOwningClient && !isAccepting) throw new ForbiddenException('Not allowed to assign this booking')
 
     const open = existing.status === 'pending' || existing.status === 'emergency'
-    if (!open && !(isAdmin && existing.status === 'accepted')) {
-      throw new ConflictException('This booking can no longer be assigned')
-    }
+    if (!open && !(isAdmin && existing.status === 'accepted')) throw new ConflictException('This booking can no longer be assigned')
 
     const target = await this.prisma.provider.findUnique({ where: { id: providerId } })
     if (!target) throw new NotFoundException('Provider not found')
     if (!isAdmin && target.status !== 'active') throw new ForbiddenException('That provider has not been approved yet')
 
-    // A job whose payment was never secured can't be taken (admins excepted, e.g. for invoiced or cash jobs).
+    // A card job whose payment was never secured can't be requested or taken (admins excepted, e.g. invoiced or cash jobs).
     if (!isAdmin && existing.paymentMethod === 'card' && !existing.paymentHeld) {
       throw new ConflictException("Payment hasn't been secured for this booking yet — try again in a moment")
     }
 
-    // Claim atomically: if two providers tap Accept together, exactly one wins.
+    const accepted = isAdmin || isAccepting          // the customer only ever requests
     const claimed = await this.prisma.booking.updateMany({
       where: { id, status: existing.status, providerId: existing.providerId },
-      data:  { providerId, status: 'accepted' },
+      data:  { providerId, status: accepted ? 'accepted' : 'pending' },
     })
-    if (claimed.count !== 1) throw new ConflictException('Someone else just took this job')
+    if (claimed.count !== 1) throw new ConflictException(accepted ? 'Someone else just took this job' : 'This booking was just updated — please refresh')
 
     const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id }, include: { provider: true } })
-    // Notify client — push or SMS
-    this.notifyClientOnAssign(
-      booking.clientId,
-      booking.provider?.name ?? 'Your provider',
-      booking.serviceType,
-      booking.id,
-    ).catch(() => {})
+    if (accepted) {
+      this.notifyClientOnAssign(booking.clientId, booking.provider?.name ?? 'Your provider', booking.serviceType, booking.id).catch(() => {})
+    } else {
+      this.notifyProviderOfRequest(providerId, booking.serviceType, booking.address, booking.id, booking.isEmergency).catch(() => {})
+    }
     return this.withProviderName(booking)   // never return the provider's full record (phone, earnings) to the caller
+  }
+
+  /**
+   * A provider turning down a request addressed to them. The customer is the one waiting, so this cancels the
+   * booking — which returns their payment and any reward — and tells them, rather than leaving them stranded.
+   */
+  async declineJob(id: string, user: RequestUser) {
+    const existing = await this.prisma.booking.findUnique({ where: { id } })
+    if (!existing) throw new NotFoundException(`Booking ${id} not found`)
+    if (user.role !== 'provider' || existing.providerId !== user.sub) throw new ForbiddenException('This job was not requested from you')
+    if (existing.status !== 'pending' && existing.status !== 'emergency') throw new ConflictException('This job can no longer be declined')
+
+    const done = await this.prisma.booking.updateMany({ where: { id, status: existing.status, providerId: user.sub }, data: { status: 'cancelled' } })
+    if (done.count !== 1) throw new ConflictException('This booking was just updated — please refresh')
+
+    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id }, include: { provider: true } })
+    await this.reconcilePayment(id).catch(err => console.error(`Payment reconciliation failed for declined booking ${id} — needs manual follow-up:`, err))
+    this.notifyClientOfNoShow(booking.clientId, booking.provider?.name ?? 'Your provider', booking.id, 'declined').catch(() => {})
+    return this.withProviderName(booking)
+  }
+
+  /** Cancels (and refunds) bookings that nobody accepted in time. Runs every minute; safe to run twice. */
+  async expireStale(now: Date = new Date()): Promise<number> {
+    const c = cutoffs(now)
+    const stale = await this.prisma.booking.findMany({
+      where: {
+        status: { in: ['pending', 'emergency'] },
+        OR: [
+          { isEmergency: true,  createdAt: { lt: c.emergency } },
+          { isEmergency: false, createdAt: { lt: c.standard } },
+        ],
+      },
+      include: { provider: true },
+      take: 50,
+    })
+    let expired = 0
+    for (const b of stale) {
+      const done = await this.prisma.booking.updateMany({ where: { id: b.id, status: b.status }, data: { status: 'cancelled' } })
+      if (done.count !== 1) continue
+      expired++
+      await this.reconcilePayment(b.id).catch(err => console.error(`Payment reconciliation failed for expired booking ${b.id} — needs manual follow-up:`, err))
+      this.notifyClientOfNoShow(b.clientId, b.provider?.name ?? null, b.id, 'expired').catch(() => {})
+    }
+    if (expired) this.logger.log(`Expired ${expired} unaccepted booking(s)`)
+    return expired
   }
 
   async stats() {

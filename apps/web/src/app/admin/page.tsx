@@ -473,15 +473,24 @@ function ProvidersSection() {
   const [selected,  setSelected]  = useState<any>(null)
   const [docs,      setDocs]      = useState<any[]>([])
   const [filter,    setFilter]    = useState('all')
+  const [bank,      setBank]      = useState<any>(null)
+  const [pendingPayouts, setPendingPayouts] = useState<any[]>([])
+
+  const loadPayouts = () => apiFetch('/providers/payouts/pending').then(setPendingPayouts).catch(() => setPendingPayouts([]))
 
   useEffect(() => {
     apiFetch('/providers').then(setProviders).catch(() => {})
+    loadPayouts()
   }, [])
 
   const selectProvider = async (p: any) => {
     setSelected(p)
+    setBank(null)
     apiFetch(`/providers/${p.id}/documents`).then(setDocs).catch(() => setDocs([]))
+    apiFetch(`/providers/${p.id}/bank-details`).then(setBank).catch(() => setBank(null))
   }
+
+  const payoutFor = (id: string) => pendingPayouts.find(x => x.providerId === id)
 
   const updateKyc = async (id: string, status: string) => {
     await apiFetch(`/providers/${id}/kyc`, { method: 'PATCH', body: JSON.stringify({ status }) })
@@ -510,6 +519,7 @@ function ProvidersSection() {
                 <div style={styles.rowTitle}>{p.name}</div>
                 <div style={styles.rowSub}>{p.skills?.join(', ')} · {p.jobCount} jobs · ★ {p.rating}</div>
               </div>
+              {payoutFor(p.id) && <span style={{ fontSize: 10, fontWeight: 600, color: '#92400E', background: '#FEF3C7', borderRadius: 10, padding: '2px 8px' }}>💳 R{payoutFor(p.id).amount.toLocaleString()} payout</span>}
               <StatusBadge status={p.kycStatus} />
               <StatusBadge status={p.status} />
             </div>
@@ -565,23 +575,40 @@ function ProvidersSection() {
               </div>
             </div>
 
-            {selected.earningsBalance > 0 && (
-              <div style={{ marginTop: 14, padding: 12, background: '#FFFBF0', borderRadius: 8, border: '1px solid #F0EEEC' }}>
-                <div style={{ fontSize: 11, color: '#9C9CA0', marginBottom: 4 }}>PENDING WITHDRAWAL</div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>R {selected.earningsBalance?.toLocaleString()}</div>
-                <button
-                  style={{ ...styles.actionBtn, background: '#CA8A04', color: '#fff', border: 'none' }}
-                  onClick={async () => {
-                    if (!confirm(`Mark R ${selected.earningsBalance} as paid out to ${selected.name}?`)) return
-                    await apiFetch(`/providers/${selected.id}/withdraw`, { method: 'POST', body: JSON.stringify({ amount: selected.earningsBalance }) })
-                    setSelected((s: any) => ({ ...s, earningsBalance: 0 }))
-                    setProviders(prev => prev.map(p => p.id === selected.id ? { ...p, earningsBalance: 0 } : p))
-                  }}
-                >
-                  💳 Mark as paid out
-                </button>
-              </div>
-            )}
+            {selected.earningsBalance > 0 && (() => {
+              const req = payoutFor(selected.id)
+              const amount = req ? req.amount : selected.earningsBalance
+              return (
+                <div style={{ marginTop: 14, padding: 12, background: req ? '#FFFBF0' : '#FAFAF9', borderRadius: 8, border: '1px solid #F0EEEC' }}>
+                  <div style={{ fontSize: 11, color: '#9C9CA0', marginBottom: 4 }}>{req ? `PAYOUT REQUESTED ${new Date(req.createdAt).toLocaleDateString('en-ZA')}` : 'EARNINGS BALANCE (no payout requested)'}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>R {amount.toLocaleString()}</div>
+                  {bank ? (
+                    <div style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 10 }}>
+                      <div><strong>{bank.accountHolder}</strong> · {bank.bankName} ({bank.accountType})</div>
+                      <div>Account {bank.accountNumber} · Branch {bank.branchCode}</div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#E63946', marginBottom: 10 }}>No bank account on file — they cannot be paid yet.</div>
+                  )}
+                  <button
+                    disabled={!bank}
+                    style={{ ...styles.actionBtn, background: '#CA8A04', color: '#fff', border: 'none', opacity: bank ? 1 : 0.5 }}
+                    onClick={async () => {
+                      if (!confirm(`Only continue AFTER you have paid R ${amount} to ${selected.name} by EFT. This reduces their balance. Mark as paid?`)) return
+                      try {
+                        await apiFetch(`/providers/${selected.id}/withdraw`, { method: 'POST', body: JSON.stringify({ amount }) })
+                        const left = selected.earningsBalance - amount
+                        setSelected((s: any) => ({ ...s, earningsBalance: left }))
+                        setProviders(prev => prev.map(p => p.id === selected.id ? { ...p, earningsBalance: left } : p))
+                        loadPayouts()
+                      } catch (e: any) { alert(e.message) }
+                    }}
+                  >
+                    ✅ I've paid this — mark as paid out
+                  </button>
+                </div>
+              )
+            })()}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
               <button style={{ ...styles.actionBtn, background: '#DCF0E8', color: '#1A5C38', border: 'none' }} onClick={() => updateKyc(selected.id, 'approved')}>✓ Approve KYC</button>

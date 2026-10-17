@@ -66,25 +66,65 @@ export default function ProviderJobs() {
     try { await api.bookings.assignProvider(id, user.id); await load() } catch (e) { explain("Couldn't accept this job", e); await load() }
   }
 
-  // Declining just hides the job from *this* provider. It must never cancel it — the booking belongs to the
-  // client and other providers can still take it. (This used to call updateStatus('cancelled'), which would have
-  // cancelled the client's booking for everyone; the server now refuses, so the button silently did nothing.)
-  const declineJob = (id: string) => setPassed(prev => [...prev, id])
+  // An OPEN job (nobody chosen) — declining just hides it from this provider; other providers can still take it.
+  const passOnJob = (id: string) => setPassed(prev => [...prev, id])
 
-  const activeJobs  = jobs.filter(j => j.providerId === user?.id && !['completed', 'cancelled'].includes(j.status))
-  const pendingJobs = jobs.filter(j => j.status === 'pending' && !j.providerId && !passed.includes(j.id))
+  // A job the customer REQUESTED from me — declining cancels it and returns the customer's payment, so they're
+  // asked to confirm and the customer is told straight away.
+  const declineRequest = (id: string) => Alert.alert(
+    'Decline this job?',
+    "The customer will be told you can't take it and their payment will be returned.",
+    [
+      { text: 'Keep it', style: 'cancel' },
+      { text: 'Decline', style: 'destructive', onPress: async () => { try { await api.bookings.decline(id); await load() } catch (e) { explain("Couldn't decline this job", e); await load() } } },
+    ],
+  )
+
+  const waiting     = (j: Booking) => j.status === 'pending' || j.status === 'emergency'
+  const requested   = jobs.filter(j => j.providerId === user?.id && waiting(j))
+  const activeJobs  = jobs.filter(j => j.providerId === user?.id && !waiting(j) && !['completed', 'cancelled'].includes(j.status))
+  const pendingJobs = jobs.filter(j => waiting(j) && !j.providerId && !passed.includes(j.id))
 
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <Text style={s.title}>Jobs</Text>
-        <Text style={s.sub}>{activeJobs.length} active · {pendingJobs.length} available</Text>
+        <Text style={s.sub}>{activeJobs.length} active · {requested.length} requested · {pendingJobs.length} available</Text>
       </View>
 
       <ScrollView
         style={s.body}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />}
       >
+        {requested.length > 0 && (
+          <>
+            <Text style={s.sectionLabel}>REQUESTED FOR YOU</Text>
+            {requested.map(j => (
+              <View key={j.id} style={[s.card, j.isEmergency && { borderColor: colors.red, borderWidth: 1.5 }]}>
+                <View style={s.cardTop}>
+                  <View style={s.icon}>
+                    <Text style={{ fontSize: 20 }}>{SERVICE_EMOJI[j.serviceType] ?? '🔧'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.service}>{j.isEmergency ? '🚨 ' : ''}{j.serviceType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Text>
+                    <Text style={s.address} numberOfLines={1}>{j.address}</Text>
+                  </View>
+                  <Text style={s.amt}>R {j.quotedAmount.toLocaleString()}</Text>
+                </View>
+                {j.notes ? <Text style={[s.jobMetaText, { marginBottom: 10 }]} numberOfLines={2}>{j.notes}</Text> : null}
+                <View style={s.jobActions}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.declineBtn} onPress={() => declineRequest(j.id)}>
+                    <Text style={s.declineBtnText}>Decline</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity activeOpacity={0.8} style={s.acceptBtn} onPress={() => acceptJob(j.id)}>
+                    <Text style={s.acceptBtnText}>Accept →</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
         {activeJobs.length > 0 && (
           <>
             <Text style={s.sectionLabel}>ACTIVE</Text>
@@ -96,7 +136,7 @@ export default function ProviderJobs() {
 
         {pendingJobs.length > 0 && (
           <>
-            <Text style={[s.sectionLabel, activeJobs.length > 0 && { marginTop: 8 }]}>AVAILABLE TO ACCEPT</Text>
+            <Text style={[s.sectionLabel, (activeJobs.length > 0 || requested.length > 0) && { marginTop: 8 }]}>AVAILABLE TO ACCEPT</Text>
             {pendingJobs.map(j => (
               <View key={j.id} style={s.card}>
                 <View style={s.cardTop}>
@@ -129,7 +169,7 @@ export default function ProviderJobs() {
                 </View>
 
                 <View style={s.jobActions}>
-                  <TouchableOpacity activeOpacity={0.8} style={s.declineBtn} onPress={() => declineJob(j.id)}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.declineBtn} onPress={() => passOnJob(j.id)}>
                     <Text style={s.declineBtnText}>Decline</Text>
                   </TouchableOpacity>
                   <TouchableOpacity activeOpacity={0.8} style={s.acceptBtn} onPress={() => acceptJob(j.id)}>
@@ -185,9 +225,11 @@ function JobCard({ job, onUpdateStatus }: { job: Booking; onUpdateStatus: (s: 'e
       </View>
 
       <View style={s.cardActions}>
-        <TouchableOpacity activeOpacity={0.8} style={s.actionBtn} onPress={() => Linking.openURL('tel:+27821234567')}>
-          <Text style={s.actionBtnText}>Call</Text>
-        </TouchableOpacity>
+        {job.clientPhone ? (
+          <TouchableOpacity activeOpacity={0.8} style={s.actionBtn} onPress={() => Linking.openURL(`tel:${job.clientPhone}`)}>
+            <Text style={s.actionBtnText}>Call {job.clientName ? job.clientName.split(' ')[0] : 'customer'}</Text>
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity activeOpacity={0.8}
           style={s.actionBtn}
           onPress={() => router.push({ pathname: '/(client)/conversation', params: { bookingId: job.id, providerName: 'Client' } } as any)}

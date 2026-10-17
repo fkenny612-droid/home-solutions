@@ -20,7 +20,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
 const REVIEW_TAGS = ['On time', 'Professional', 'Great work', 'Tidy', 'Friendly', 'Highly skilled', 'Good value']
 
 const STATUS_META: Record<string, { label: string; bg: string; fg: string; step: number }> = {
-  pending:     { label: 'Pending',     bg: colors.amberBg, fg: colors.amber, step: 0 },
+  pending:     { label: 'Awaiting provider', bg: colors.amberBg, fg: colors.amber, step: 0 },
   accepted:    { label: 'Accepted',    bg: colors.greenBg, fg: colors.green, step: 1 },
   en_route:    { label: 'En route',    bg: colors.greenBg, fg: colors.green, step: 2 },
   in_progress: { label: 'In progress', bg: '#FFF8EC',      fg: colors.gold,  step: 3 },
@@ -256,7 +256,7 @@ export default function BookingDetail() {
             { icon: 'location-outline',  label: 'Address',   value: booking.address },
             { icon: 'calendar-outline',  label: 'Booked',    value: new Date(booking.createdAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' }) },
             { icon: 'construct-outline', label: 'Service',   value: label },
-            { icon: 'person-outline',    label: 'Provider',  value: booking.providerName ?? (booking.providerId ? `Provider #${booking.providerId.slice(-6).toUpperCase()}` : 'Awaiting assignment') },
+            { icon: 'person-outline',    label: 'Provider',  value: booking.providerName ? (booking.status === 'pending' ? `${booking.providerName} (hasn't accepted yet)` : booking.providerName) : (booking.providerId ? `Provider #${booking.providerId.slice(-6).toUpperCase()}` : 'Not chosen yet') },
           ].map(row => (
             <View key={row.label} style={s.detailRow}>
               <Ionicons name={row.icon as any} size={16} color={colors.gray400} style={{ marginTop: 1 }} />

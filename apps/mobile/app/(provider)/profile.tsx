@@ -5,7 +5,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
-import { api, Provider } from '../../lib/api'
+import { api, ApiError, Provider } from '../../lib/api'
 import { confirmDeleteAccount } from '../../lib/deleteAccount'
 import { useEffect, useState } from 'react'
 
@@ -25,12 +25,13 @@ const MENU = [
 export default function ProviderProfile() {
   const { user, logout, switchMode } = useAuth()
   const [balance,      setBalance]      = useState(0)
+  const [pending,      setPending]      = useState<{ amount: number } | null>(null)
   const [me,           setMe]           = useState<Provider | null>(null)
   const [withdrawing,  setWithdrawing]  = useState(false)
 
   useEffect(() => {
     if (user?.id) {
-      api.providers.earnings(user.id).then(e => setBalance(e.available)).catch(() => {})
+      api.providers.earnings(user.id).then(e => { setBalance(e.available); setPending(e.pendingPayout) }).catch(() => {})
       api.providers.get(user.id).then(setMe).catch(() => {})
     }
   }, [user?.id])
@@ -41,22 +42,23 @@ export default function ProviderProfile() {
   }
 
   const handleWithdraw = () => {
-    if (balance <= 0) { Alert.alert('No balance', 'You have no available balance to withdraw.'); return }
+    if (balance <= 0) { Alert.alert('No balance', 'You have no earnings available to withdraw yet.'); return }
     Alert.alert(
-      'Withdraw funds',
-      `Withdraw R ${balance.toLocaleString('en-ZA')} to your registered bank account?`,
+      'Request a payout',
+      `Ask us to pay R ${balance.toLocaleString('en-ZA')} to your bank account? Your balance stays the same until our team has paid you.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Withdraw', style: 'default',
+          text: 'Request payout', style: 'default',
           onPress: async () => {
             setWithdrawing(true)
             try {
-              const updated = await api.providers.withdraw(user!.id, balance)
-              setBalance(updated.earningsBalance)
-              Alert.alert('Withdrawal requested', 'Funds will be paid out within 1–2 business days.')
-            } catch { Alert.alert('Error', 'Could not process withdrawal. Please ensure your bank account is saved in your profile.') }
-            finally { setWithdrawing(false) }
+              const r = await api.providers.requestPayout(user!.id, balance)
+              setPending({ amount: r.amount })
+              Alert.alert('Payout requested', 'Our team will pay it to your bank account. Your balance will go down once it has been paid.')
+            } catch (e) {
+              Alert.alert("Couldn't request a payout", e instanceof ApiError && e.status !== 0 ? e.message : 'Please check your connection and try again.')
+            } finally { setWithdrawing(false) }
           },
         },
       ]
@@ -103,13 +105,17 @@ export default function ProviderProfile() {
       <ScrollView style={s.body}>
         {/* Payout balance */}
         <View style={s.balanceCard}>
-          <Text style={s.balanceLabel}>Available to withdraw</Text>
+          <Text style={s.balanceLabel}>Your earnings balance</Text>
           <Text style={s.balanceAmt}>R {balance.toLocaleString('en-ZA')}</Text>
-          <TouchableOpacity activeOpacity={0.8} style={[s.withdrawBtn, (withdrawing || balance <= 0) && { opacity: 0.5 }]} onPress={handleWithdraw} disabled={withdrawing || balance <= 0}>
-            {withdrawing
-              ? <ActivityIndicator color={colors.navy} />
-              : <Text style={s.withdrawText}>💳  Withdraw via Peach Payments</Text>}
-          </TouchableOpacity>
+          {pending ? (
+            <Text style={s.balanceNote}>Payout of R {pending.amount.toLocaleString('en-ZA')} requested — waiting for our team to pay it.</Text>
+          ) : (
+            <TouchableOpacity activeOpacity={0.8} style={[s.withdrawBtn, (withdrawing || balance <= 0) && { opacity: 0.5 }]} onPress={handleWithdraw} disabled={withdrawing || balance <= 0}>
+              {withdrawing
+                ? <ActivityIndicator color={colors.navy} />
+                : <Text style={s.withdrawText}>💳  Request a payout</Text>}
+            </TouchableOpacity>
+          )}
         </View>
 
         {MENU.map((item, i) => (
@@ -162,6 +168,7 @@ const s = StyleSheet.create({
   balanceAmt:   { fontSize: 30, fontWeight: '300', color: '#fff', marginBottom: 12 },
   withdrawBtn:  { backgroundColor: colors.gold, borderRadius: 10, padding: 12, alignItems: 'center' },
   withdrawText: { fontSize: 13, fontWeight: '600', color: colors.navy },
+  balanceNote:  { fontSize: 12, color: colors.gray400, textAlign: 'center', lineHeight: 18 },
   menuItem:     { backgroundColor: '#fff', borderRadius: 10, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.creamMid },
   menuEmoji:    { fontSize: 20 },
   menuLabel:    { fontSize: 13, fontWeight: '600', color: colors.text },

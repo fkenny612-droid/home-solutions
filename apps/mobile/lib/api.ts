@@ -98,6 +98,10 @@ export interface Booking {
   providerName: string | null
   discountCode?: string | null
   discountAmount?: number
+  isEmergency?: boolean
+  /** Only present for the provider who has accepted the job — so they can reach the customer. */
+  clientName?: string | null
+  clientPhone?: string | null
   /** Statuses the signed-in user may move this booking to right now — decided by the server. */
   allowedNext?: BookingStatus[]
   createdAt: string
@@ -147,6 +151,9 @@ export const api = {
       req<Booking>('/bookings', { method: 'POST', body: JSON.stringify(dto) }),
     updateStatus:   (id: string, status: BookingStatus) =>
       req<Booking>(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    // A provider turns down a job requested from them — cancels it and returns the customer's payment.
+    decline:        (id: string) => req<Booking>(`/bookings/${id}/decline`, { method: 'POST' }),
+    // Customers REQUEST a provider (stays pending); a provider calling this for themselves ACCEPTS.
     assignProvider: (id: string, providerId: string) =>
       req<Booking>(`/bookings/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ providerId }) }),
   },
@@ -160,7 +167,7 @@ export const api = {
       return req<Provider[]>(`/providers?${params}`)
     },
     get:            (id: string)             => req<Provider>(`/providers/${id}`),
-    earnings:       (id: string)             => req<{ available: number; thisMonth: number; total: number }>(`/providers/${id}/earnings`),
+    earnings:       (id: string)             => req<{ available: number; thisMonth: number; total: number; pendingPayout: { id: string; amount: number; requestedAt: string } | null }>(`/providers/${id}/earnings`),
     updateLocation: (id: string, lat: number, lng: number) =>
       req<Provider>(`/providers/${id}/location`, { method: 'PATCH', body: JSON.stringify({ lat, lng }) }),
     getDocuments: (id: string) =>
@@ -176,8 +183,9 @@ export const api = {
       req<Provider>(`/providers/${id}/review`, { method: 'POST', body: JSON.stringify({ stars, tags, comment, clientId, bookingId }) }),
     updateKyc:  (id: string, status: 'pending' | 'in_review' | 'approved' | 'rejected') =>
       req<Provider>(`/providers/${id}/kyc`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-    withdraw:   (id: string, amount: number) =>
-      req<{ earningsBalance: number }>(`/providers/${id}/withdraw`, { method: 'POST', body: JSON.stringify({ amount }) }),
+    // Asks for a payout. Your balance only goes down once our team has actually paid you.
+    requestPayout: (id: string, amount: number) =>
+      req<{ id: string; amount: number; status: string }>(`/providers/${id}/payout-request`, { method: 'POST', body: JSON.stringify({ amount }) }),
     updateAvailability: (id: string, dto: { monFri?: boolean; saturday?: boolean; sunday?: boolean; emergency?: boolean }) =>
       req<Provider>(`/providers/${id}/availability`, { method: 'PATCH', body: JSON.stringify(dto) }),
     updateServiceAreas: (id: string, areas: string[]) =>

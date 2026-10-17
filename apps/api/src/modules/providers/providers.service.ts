@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { ConflictException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { SubscriptionsService } from '../subscriptions/subscriptions.service'
 
@@ -113,10 +113,13 @@ export class ProvidersService {
     const grossThisMonth = completedThisMonth.reduce((sum, b) => sum + (b.finalAmount ?? b.quotedAmount), 0)
     const commissionPct  = await this.subscriptions.getProviderCommissionPct(id)
 
+    const pending = await this.prisma.payoutRequest.findFirst({ where: { providerId: id, status: 'pending' }, orderBy: { createdAt: 'desc' } })
+
     return {
-      available:  p.earningsBalance,
-      thisMonth:  Math.round(grossThisMonth * (1 - commissionPct / 100)),
-      total:      p.jobCount,
+      available:     p.earningsBalance,
+      thisMonth:     Math.round(grossThisMonth * (1 - commissionPct / 100)),
+      total:         p.jobCount,
+      pendingPayout: pending ? { id: pending.id, amount: pending.amount, requestedAt: pending.createdAt } : null,
     }
   }
 
@@ -168,13 +171,43 @@ export class ProvidersService {
     })
   }
 
-  async requestWithdrawal(id: string, amount: number) {
+  /**
+   * A provider asks to be paid. This does NOT touch their balance — it records a request for an admin to pay by EFT
+   * to the bank account on file. (It used to just subtract the balance and pay nobody.)
+   */
+  async requestPayout(id: string, amount: number) {
     const p = await this.findOne(id)
-    if (amount > p.earningsBalance) throw new Error('Insufficient balance')
-    return this.prisma.provider.update({
-      where: { id },
-      data:  { earningsBalance: { decrement: amount } },
-    })
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) throw new BadRequestException('Enter a valid amount')
+    if (amount > p.earningsBalance) throw new ConflictException('That is more than your available balance')
+    const bank = await this.prisma.bankAccount.findUnique({ where: { userId: id } })
+    if (!bank) throw new ConflictException('Add your bank account details first so we know where to pay you')
+    const existing = await this.prisma.payoutRequest.findFirst({ where: { providerId: id, status: 'pending' } })
+    if (existing) throw new ConflictException(`You already have a payout of R${existing.amount.toLocaleString('en-ZA')} waiting to be paid`)
+    return this.prisma.payoutRequest.create({ data: { providerId: id, amount }, select: { id: true, amount: true, status: true, createdAt: true } })
+  }
+
+  /**
+   * Admin: record that a provider has been paid. Reduces their balance by the amount actually paid and closes any
+   * open request. Safe against overdrawing: the balance can never go below zero.
+   */
+  async markPaidOut(id: string, amount: number) {
+    const p = await this.findOne(id)
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) throw new BadRequestException('Enter a valid amount')
+    if (amount > p.earningsBalance) throw new ConflictException('That is more than the provider\'s balance')
+    const updated = await this.prisma.provider.update({ where: { id }, data: { earningsBalance: { decrement: amount } } })
+    await this.prisma.payoutRequest.updateMany({ where: { providerId: id, status: 'pending' }, data: { status: 'paid', paidAt: new Date() } })
+    return updated
+  }
+
+  /** Admin only — the details needed to actually send the money. */
+  async getBankDetails(id: string) {
+    await this.findOne(id)
+    return this.prisma.bankAccount.findUnique({ where: { userId: id } })
+  }
+
+  /** Admin: providers with a payout waiting, oldest first. */
+  pendingPayouts() {
+    return this.prisma.payoutRequest.findMany({ where: { status: 'pending' }, orderBy: { createdAt: 'asc' } })
   }
 
   saveDocument(providerId: string, type: string, fileName: string, fileUrl: string) {

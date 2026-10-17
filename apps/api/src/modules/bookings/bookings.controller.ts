@@ -42,6 +42,12 @@ export class BookingsController {
     return this.svc.reconcilePayment(id)
   }
 
+  /** A provider turns down a job requested from them — cancels it and returns the customer's payment. */
+  @Post(':id/decline')
+  declineJob(@Param('id') id: string, @Req() req: any) {
+    return this.svc.declineJob(id, req.user)
+  }
+
   @Patch(':id/assign')
   assignProvider(@Param('id') id: string, @Body('providerId') providerId: string, @Req() req: any) {
     return this.svc.assignProvider(id, providerId, req.user)

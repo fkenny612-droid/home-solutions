@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
+import { SUPPORT, supportEmailUrl, supportPhoneUrl, supportWhatsAppUrl } from '../../constants/support'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -19,31 +20,31 @@ const FAQS = [
   },
   {
     q: 'How does payment work?',
-    a: 'The client\'s card is held when they book. Once the job is done and the client releases payment, the amount (minus our commission) is added to your available balance. You can withdraw at any time.',
+    a: 'The customer\'s card is held when they book. When you mark the job complete, the payment is taken and the amount (minus our commission) is added to your earnings balance. You can then request a payout.',
   },
   {
-    q: 'When are withdrawals paid out?',
-    a: 'Withdrawal requests are processed within 1–2 business days to your registered bank account. Ensure your bank details are saved and correct under "Bank account" in your profile.',
+    q: 'How do I get paid out?',
+    a: 'Save your bank details under "Bank account" in your profile, then tap "Request a payout". Our team pays it to your bank account, and your balance goes down once it has been paid.',
   },
   {
     q: 'What is the commission rate?',
-    a: 'Commission varies by your plan: Free plan — 15%, Pro plan — 10%, Elite plan — 7%. You can upgrade your plan from the "Provider plan" section in your profile.',
+    a: 'Commission depends on your plan — a higher plan means a lower commission. See "Provider plan" in your profile for the exact rate on each plan.',
   },
   {
     q: 'How do I improve my rating?',
-    a: 'Arrive on time, communicate clearly, and do quality work. After each completed job, clients are prompted to leave a review. Consistently high ratings unlock priority listing in search results.',
+    a: 'Arrive on time, communicate clearly, and do quality work. After each completed job the customer is asked to leave a review, and higher-rated providers are listed first.',
   },
   {
     q: 'What does KYC verification involve?',
-    a: 'You need to upload a copy of your ID, your trade certificate or proof of skill, and a bank confirmation letter. Verification usually takes 1–2 business days.',
+    a: 'You upload a copy of your ID and, for trades, your trade certificate. Our team reviews them and approves your profile before you can receive jobs.',
   },
   {
     q: 'Can I set my own prices?',
-    a: 'Yes — when accepting a job you can update the quoted amount if the scope differs from the initial request. Discuss any changes with the client before starting work.',
+    a: 'No — the price of each job is set by Easyfix from the customer\'s answers, so the customer pays what they were quoted. If the work turns out to be very different, talk to our support team.',
   },
   {
     q: 'What is the emergency callout feature?',
-    a: 'If you have emergency availability enabled, you\'ll receive emergency job alerts at any time. These are billed at a higher rate with a reduced commission as an incentive.',
+    a: 'If you have emergency availability switched on, customers with an emergency can request you. You\'ll be alerted, and you must accept within 15 minutes or the request is cancelled. Emergency call-outs are a flat R850.',
   },
 ]
 
@@ -65,9 +66,9 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export default function ProviderHelpScreen() {
-  const openWhatsApp = () => Linking.openURL('https://wa.me/27810000000?text=Hi%2C%20I%27m%20a%20provider%20and%20need%20help')
-  const openEmail    = () => Linking.openURL('mailto:providers@homesolutions.co.za?subject=Provider%20support')
-  const openCall     = () => Linking.openURL('tel:+27810000000')
+  const waUrl   = supportWhatsAppUrl("I'm an Easyfix provider and need help")
+  const callUrl = supportPhoneUrl()
+
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -82,38 +83,44 @@ export default function ProviderHelpScreen() {
 
         <Text style={s.sectionLabel}>CONTACT US</Text>
         <View style={s.contactRow}>
-          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: '#25D366' }]} onPress={openWhatsApp}>
-            <View style={[s.contactIcon, { backgroundColor: '#25D36615' }]}>
-              <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
-            </View>
-            <Text style={s.contactLabel}>WhatsApp</Text>
-            <Text style={s.contactSub}>Fastest reply</Text>
-          </TouchableOpacity>
+          {waUrl && (
+            <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: '#25D366' }]} onPress={() => Linking.openURL(waUrl)}>
+              <View style={[s.contactIcon, { backgroundColor: '#25D36615' }]}>
+                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+              </View>
+              <Text style={s.contactLabel}>WhatsApp</Text>
+              <Text style={s.contactSub}>Fastest reply</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gold }]} onPress={openCall}>
-            <View style={[s.contactIcon, { backgroundColor: colors.gold + '15' }]}>
-              <Ionicons name="call-outline" size={22} color={colors.gold} />
-            </View>
-            <Text style={s.contactLabel}>Call us</Text>
-            <Text style={s.contactSub}>081 000 0000</Text>
-          </TouchableOpacity>
+          {callUrl && (
+            <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gold }]} onPress={() => Linking.openURL(callUrl)}>
+              <View style={[s.contactIcon, { backgroundColor: colors.gold + '15' }]}>
+                <Ionicons name="call-outline" size={22} color={colors.gold} />
+              </View>
+              <Text style={s.contactLabel}>Call us</Text>
+              <Text style={s.contactSub}>{SUPPORT.phone}</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gray200 }]} onPress={openEmail}>
+          <TouchableOpacity activeOpacity={0.8} style={[s.contactCard, { borderColor: colors.gray200 }]} onPress={() => Linking.openURL(supportEmailUrl('Provider support'))}>
             <View style={[s.contactIcon, { backgroundColor: colors.gray50 }]}>
               <Ionicons name="mail-outline" size={22} color={colors.gray400} />
             </View>
             <Text style={s.contactLabel}>Email</Text>
-            <Text style={s.contactSub}>Provider line</Text>
+            <Text style={s.contactSub}>{SUPPORT.email}</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={s.hoursBox}>
+        {SUPPORT.hours && (
+          <View style={s.hoursBox}>
           <Ionicons name="time-outline" size={16} color={colors.gray400} />
           <View style={{ flex: 1 }}>
             <Text style={s.hoursTitle}>Support hours</Text>
-            <Text style={s.hoursSub}>Mon – Fri: 07:00 – 20:00 · Sat: 08:00 – 17:00 · Sun: Emergency only</Text>
+            <Text style={s.hoursSub}>{SUPPORT.hours}</Text>
           </View>
         </View>
+        )}
 
         <Text style={[s.sectionLabel, { marginTop: 24 }]}>FREQUENTLY ASKED QUESTIONS</Text>
         <View style={s.faqSection}>

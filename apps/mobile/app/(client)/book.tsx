@@ -115,7 +115,7 @@ export default function BookScreen() {
         }
         if (updated.status === 'cancelled' && !cancelledRef.current) {
           cancelledRef.current = true
-          Alert.alert('Booking cancelled', 'This booking was cancelled. Any payment held for it is being returned.')
+          Alert.alert('Booking cancelled', "This booking didn't go ahead — the provider couldn't take it, nobody accepted in time, or it was cancelled. Any payment held for it is being returned.")
           router.replace('/(client)/bookings' as any)
         }
       } catch {}
@@ -560,12 +560,14 @@ export default function BookScreen() {
               <Text style={s.headerTitle}>
                 {liveStatus === 'en_route'    ? `${prov?.name.split(' ')[0]} is on the way`
                  : liveStatus === 'in_progress' ? 'Job in progress'
-                 : `${prov?.name.split(' ')[0]} accepted your booking`}
+                 : liveStatus === 'accepted'    ? `${prov?.name.split(' ')[0]} accepted your booking`
+                 : `Waiting for ${prov?.name.split(' ')[0]} to accept`}
               </Text>
               <Text style={[s.headerSub, { color: colors.accent }]}>
                 {liveStatus === 'en_route'    ? 'Your provider has set off'
                  : liveStatus === 'in_progress' ? 'Work has started'
-                 : 'Waiting for your provider to set off'}
+                 : liveStatus === 'accepted'    ? 'Waiting for your provider to set off'
+                 : 'Your payment is held, not charged, until the job is done'}
               </Text>
             </View>
             <Text style={s.bookingId}>#{booking?.id.slice(-6).toUpperCase() ?? 'B-NEW'}</Text>
@@ -589,8 +591,8 @@ export default function BookScreen() {
 
             <View style={s.stepsCard}>
               {[
-                { label: 'Booking confirmed & payment held',                    done: true },
-                { label: `${prov?.name.split(' ')[0]} accepted your request`,   done: ['accepted','en_route','in_progress','completed'].includes(liveStatus ?? '') },
+                { label: `Request sent to ${prov?.name.split(' ')[0]} · payment held`, done: true },
+                { label: `${prov?.name.split(' ')[0]} accepts`,                 done: ['accepted','en_route','in_progress','completed'].includes(liveStatus ?? ''), active: !liveStatus || liveStatus === 'pending' },
                 { label: 'On the way',                                          done: liveStatus === 'in_progress' || liveStatus === 'completed', active: liveStatus === 'en_route' },
                 { label: liveStatus === 'in_progress' ? 'Job in progress 🔧' : 'Job in progress', done: liveStatus === 'completed', active: liveStatus === 'in_progress' },
                 { label: 'Complete & payment released',                          todo: liveStatus !== 'completed', done: liveStatus === 'completed' },
@@ -608,7 +610,11 @@ export default function BookScreen() {
             </View>
           </ScrollView>
           <View style={s.ctaBar}>
-            <Text style={s.waitNote}>Your provider marks the job complete when the work is done — you'll then be asked to rate them and your payment is released.</Text>
+            <Text style={s.waitNote}>
+              {(liveStatus ?? 'pending') === 'pending'
+                ? "If your provider doesn't accept in time, the booking is cancelled and your payment is returned automatically."
+                : "Your provider marks the job complete when the work is done — you'll then be asked to rate them and your payment is released."}
+            </Text>
             {['pending', 'accepted', 'en_route'].includes(liveStatus ?? booking?.status ?? '') && (
               <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtnSec, loading && { opacity: 0.6 }]} onPress={handleCancel} disabled={loading}>
                 {loading ? <ActivityIndicator color={colors.text} /> : <Text style={s.ctaBtnSecText}>Cancel booking</Text>}

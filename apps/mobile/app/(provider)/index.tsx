@@ -29,7 +29,7 @@ function formatRelativeDate(iso: string) {
 export default function ProviderEarnings() {
   const { user, logout } = useAuth()
   const [online,      setOnline]      = useState(true)
-  const [earnings,    setEarnings]    = useState({ available: 0, thisMonth: 0, total: 0 })
+  const [earnings,    setEarnings]    = useState<{ available: number; thisMonth: number; total: number; pendingPayout: { amount: number } | null }>({ available: 0, thisMonth: 0, total: 0, pendingPayout: null })
   const [me,          setMe]          = useState<Provider | null>(null)
   const [reviews,     setReviews]     = useState<Review[] | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -159,10 +159,10 @@ export default function ProviderEarnings() {
         </View>
 
         {/* Withdraw */}
-        <TouchableOpacity activeOpacity={0.8} style={s.withdrawBtn}>
-          <Text style={s.withdrawText}>Withdraw R {earnings.available.toLocaleString()} via Peach Payments</Text>
+        <TouchableOpacity activeOpacity={0.8} style={s.withdrawBtn} onPress={() => router.push('/(provider)/profile')}>
+          <Text style={s.withdrawText}>Balance R {earnings.available.toLocaleString()} · Request a payout</Text>
         </TouchableOpacity>
-        <Text style={s.withdrawSub}>Transfers within 1–2 business days</Text>
+        <Text style={s.withdrawSub}>{earnings.pendingPayout ? `Payout of R ${earnings.pendingPayout.amount.toLocaleString()} requested` : 'Our team pays out to your bank account'}</Text>
 
         <TouchableOpacity activeOpacity={0.8} style={s.logoutRow} onPress={async () => { await logout(); router.replace('/login') }}>
           <Text style={s.logoutText}>Sign out</Text>

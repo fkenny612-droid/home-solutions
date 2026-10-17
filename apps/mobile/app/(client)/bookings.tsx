@@ -6,7 +6,7 @@ import { colors } from '../../constants/theme'
 import { api, Booking } from '../../lib/api'
 
 const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
-  pending:     { label: 'Pending',     bg: colors.amberBg,  fg: colors.amber  },
+  pending:     { label: 'Awaiting provider', bg: colors.amberBg,  fg: colors.amber  },
   accepted:    { label: 'Accepted',    bg: colors.greenBg,  fg: colors.green  },
   en_route:    { label: 'En route',    bg: colors.greenBg,  fg: colors.green  },
   in_progress: { label: 'In progress', bg: '#FFF8EC',       fg: colors.gold   },

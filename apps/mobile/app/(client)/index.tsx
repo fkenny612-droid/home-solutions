@@ -380,7 +380,7 @@ export default function ClientHome() {
           <SliderButton
             key={sliderKey}
             label="⚡  EMERGENCY CALLOUT"
-            sublabel="Hold to dispatch — technician in <15 min"
+            sublabel="Hold to request an emergency technician"
             trackColor="#1A0000"
             thumbColor="#C0392B"
             onConfirm={() => router.push('/(client)/emergency' as any)}

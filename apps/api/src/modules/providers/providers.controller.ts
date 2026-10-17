@@ -27,6 +27,13 @@ export class ProvidersController {
     return providers.map(p => presentProvider(p, req.user))
   }
 
+  /** Admin: every provider with a payout waiting (declared before ':id' so it isn't read as a provider id). */
+  @Get('payouts/pending')
+  @UseGuards(AdminGuard)
+  pendingPayouts() {
+    return this.svc.pendingPayouts()
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string, @Req() req: any) {
     return presentProvider(await this.svc.findOne(id), req.user)
@@ -84,10 +91,24 @@ export class ProvidersController {
     return this.svc.addReview(id, body.stars, body.tags, body.comment, req.user.sub, body.bookingId)
   }
 
+  /** Provider: ask to be paid out. Does not change the balance. */
+  @Post(':id/payout-request')
+  requestPayout(@Param('id') id: string, @Body('amount') amount: number, @Req() req: any) {
+    if (req.user.sub !== id) throw new ForbiddenException()
+    return this.svc.requestPayout(id, amount)
+  }
+
+  /** Admin: mark an amount as paid out (reduces the balance, closes the request). */
   @Post(':id/withdraw')
-  requestWithdrawal(@Param('id') id: string, @Body('amount') amount: number, @Req() req: any) {
-    assertSelfOrAdmin(req, id)
-    return this.svc.requestWithdrawal(id, amount)
+  @UseGuards(AdminGuard)
+  markPaidOut(@Param('id') id: string, @Body('amount') amount: number) {
+    return this.svc.markPaidOut(id, amount)
+  }
+
+  @Get(':id/bank-details')
+  @UseGuards(AdminGuard)
+  bankDetails(@Param('id') id: string) {
+    return this.svc.getBankDetails(id)
   }
 
   @Patch(':id/kyc')
