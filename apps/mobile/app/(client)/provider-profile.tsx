@@ -85,8 +85,6 @@ export default function ProviderProfileScreen() {
             <Text style={s.ratingText}>{provider.rating.toFixed(1)} · {provider.reviewCount} reviews</Text>
           </View>
           <View style={s.badgeRow}>
-            <View style={s.badge}><Text style={s.badgeText}>🏅 Certified</Text></View>
-            <View style={s.badge}><Text style={s.badgeText}>✓ Insured</Text></View>
             {provider.kycStatus === 'approved' && <View style={[s.badge, s.badgeGreen]}><Text style={[s.badgeText, { color: colors.green }]}>✓ Verified</Text></View>}
             {provider.availability?.emergency && <View style={[s.badge, s.badgeRed]}><Text style={[s.badgeText, { color: colors.red }]}>⚡ Emergency</Text></View>}
           </View>

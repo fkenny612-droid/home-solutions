@@ -20,7 +20,7 @@ export default function RoleSelector() {
 
         <Text style={s.eyebrow}>Durban · KwaZulu-Natal</Text>
         <Text style={s.headline}>Home services,{'\n'}<Text style={s.headlineAccent}>on demand</Text></Text>
-        <Text style={s.sub}>Vetted tradespeople. Live tracking.{'\n'}90-day warranty. Peach Payments.</Text>
+        <Text style={s.sub}>Vetted tradespeople.{'\n'}Your payment is held until the job is done.</Text>
 
         <View style={s.btnGroup}>
           <TouchableOpacity activeOpacity={0.8} style={s.btnPrimary} onPress={() => router.push('/(client)')}>

@@ -35,7 +35,7 @@ export default function HomePage() {
         </h1>
         <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', maxWidth: 520, margin: '0 auto 28px', lineHeight: 1.7 }}>
           A vetted marketplace connecting homeowners with certified plumbers, electricians,
-          cleaners, and tradespeople — with live tracking, secure payments, and a 90-day warranty.
+          cleaners, and tradespeople — with secure payments held until the job is done, and a 90-day warranty.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="btn-gold" onClick={() => setActiveSection('client')}>

@@ -5,7 +5,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
-import { api } from '../../lib/api'
+import { api, Provider } from '../../lib/api'
 import { confirmDeleteAccount } from '../../lib/deleteAccount'
 import { useEffect, useState } from 'react'
 
@@ -25,11 +25,13 @@ const MENU = [
 export default function ProviderProfile() {
   const { user, logout, switchMode } = useAuth()
   const [balance,      setBalance]      = useState(0)
+  const [me,           setMe]           = useState<Provider | null>(null)
   const [withdrawing,  setWithdrawing]  = useState(false)
 
   useEffect(() => {
     if (user?.id) {
       api.providers.earnings(user.id).then(e => setBalance(e.available)).catch(() => {})
+      api.providers.get(user.id).then(setMe).catch(() => {})
     }
   }, [user?.id])
 
@@ -82,18 +84,18 @@ export default function ProviderProfile() {
         {/* Stats row */}
         <View style={s.statsRow}>
           <View style={s.statBox}>
-            <Text style={s.statVal}>4.9</Text>
+            <Text style={s.statVal}>{me && me.reviewCount > 0 ? me.rating.toFixed(1) : '—'}</Text>
             <Text style={s.statLabel}>Rating</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.statBox}>
-            <Text style={s.statVal}>892</Text>
+            <Text style={s.statVal}>{me?.jobCount ?? 0}</Text>
             <Text style={s.statLabel}>Jobs done</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.statBox}>
-            <Text style={s.statVal}>✓</Text>
-            <Text style={s.statLabel}>KYC verified</Text>
+            <Text style={s.statVal}>{me?.kycStatus === 'approved' ? '✓' : '…'}</Text>
+            <Text style={s.statLabel}>{me?.kycStatus === 'approved' ? 'KYC verified' : 'KYC pending'}</Text>
           </View>
         </View>
       </View>

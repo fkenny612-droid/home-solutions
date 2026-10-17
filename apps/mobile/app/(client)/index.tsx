@@ -30,9 +30,8 @@ const HIRE_TILES = [
 
 // ─── Promos carousel ─────────────────────────────────────────────────────────
 const PROMOS = [
-  { id: '1', tag: 'LIMITED OFFER',  headline: '20% off\nyour first fix',    sub: 'Code WELCOME20',          gold: true  },
-  { id: '2', tag: 'SPONSORED',      headline: 'Solar panels\nfrom R8,000',  sub: 'GreenHome · Nationwide', gold: false },
-  { id: '3', tag: 'EASY-HIRE',      headline: 'Tent hire\nfrom R1,500',     sub: 'Events sorted in minutes', gold: false },
+  // Only real offers belong here: no invented discount codes or fake sponsors. Prices must match serviceConfig.
+  { id: '3', tag: 'EASY-HIRE',      headline: 'Tent hire\nfrom R1,500',     sub: 'Book your event hire in the app', gold: false },
 ]
 
 const SERVICE_EMOJI: Record<string, string> = {
@@ -139,7 +138,7 @@ export default function ClientHome() {
 
   // Auto-scroll promos
   useEffect(() => {
-    if (searchActive) return
+    if (searchActive || PROMOS.length < 2) return
     const id = setInterval(() => {
       const next = (promoIdx + 1) % PROMOS.length
       promoRef.current?.scrollToOffset({ offset: next * (SW - 20), animated: true })
@@ -485,11 +484,13 @@ export default function ClientHome() {
               </View>
             )}
           />
-          <View style={s.promoDots}>
-            {PROMOS.map((_, i) => (
-              <View key={i} style={[s.promoDot, i === promoIdx && s.promoDotActive]} />
-            ))}
-          </View>
+          {PROMOS.length > 1 && (
+            <View style={s.promoDots}>
+              {PROMOS.map((_, i) => (
+                <View key={i} style={[s.promoDot, i === promoIdx && s.promoDotActive]} />
+              ))}
+            </View>
+          )}
         </View>
 
         {/* ── Why Easyfix ── */}
@@ -497,10 +498,10 @@ export default function ClientHome() {
           <Text style={s.sectionTitle}>Why Easyfix?</Text>
           <View style={s.whyGrid}>
             {[
-              { emoji: '⚡', title: 'Fast dispatch',    sub: 'Technician confirmed in minutes' },
-              { emoji: '🛡️', title: 'Vetted providers', sub: 'KYC-verified, rated & insured'  },
+              { emoji: '⚡', title: 'Easy booking',     sub: 'Choose a provider and book in minutes' },
+              { emoji: '🛡️', title: 'Vetted providers', sub: 'KYC-verified and rated by customers' },
               { emoji: '💳', title: 'Pay on completion', sub: 'Funds held until job is done'   },
-              { emoji: '📋', title: '90-day warranty',  sub: 'Parts & labour guaranteed'       },
+              { emoji: '📋', title: '90-day warranty',  sub: 'Included with Premium'           },
             ].map(item => (
               <View key={item.title} style={s.whyCard}>
                 <Text style={s.whyEmoji}>{item.emoji}</Text>
@@ -533,17 +534,14 @@ export default function ClientHome() {
         <TouchableOpacity
           style={s.referStrip}
           activeOpacity={0.85}
-          onPress={() => Share.share({
-            message: `Join me on Easyfix — the fastest way to find trusted home services in Durban! Use my code to get R100 off your first booking. Download: https://easy-fix.co.za`,
-            title:   'Easyfix — refer a friend',
-          })}
+          onPress={() => router.push('/(client)/referral' as any)}
         >
           <View style={{ flex: 1 }}>
-            <Text style={s.referTitle}>Refer a friend, earn R100</Text>
-            <Text style={s.referSub}>Both of you get rewarded</Text>
+            <Text style={s.referTitle}>Refer a friend, earn 200 points</Text>
+            <Text style={s.referSub}>When their first job is completed</Text>
           </View>
           <View style={s.referBtn}>
-            <Text style={s.referBtnText}>Share →</Text>
+            <Text style={s.referBtnText}>Get my code →</Text>
           </View>
         </TouchableOpacity>
 
@@ -578,17 +576,6 @@ export default function ClientHome() {
             ))}
           </View>
         )}
-
-        {/* ── Advertise ── */}
-        <TouchableOpacity
-          style={s.adStrip}
-          activeOpacity={0.85}
-          onPress={() => Linking.openURL('mailto:hello@easyfix.co.za')}
-        >
-          <Text style={s.adTag}>ADVERTISE WITH EASYFIX</Text>
-          <Text style={s.adText}>Reach 100,000+ homeowners nationwide</Text>
-          <Text style={s.adCta}>hello@easyfix.co.za →</Text>
-        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>

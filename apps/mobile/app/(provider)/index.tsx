@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
-import { api, Booking } from '../../lib/api'
+import { api, Booking, Provider, Review } from '../../lib/api'
 import { useAuth } from '../../context/auth'
 
 const SERVICE_EMOJI: Record<string, string> = {
@@ -29,7 +29,9 @@ function formatRelativeDate(iso: string) {
 export default function ProviderEarnings() {
   const { user, logout } = useAuth()
   const [online,      setOnline]      = useState(true)
-  const [earnings,    setEarnings]    = useState({ available: 4840, thisMonth: 28440, total: 892 })
+  const [earnings,    setEarnings]    = useState({ available: 0, thisMonth: 0, total: 0 })
+  const [me,          setMe]          = useState<Provider | null>(null)
+  const [reviews,     setReviews]     = useState<Review[] | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [recentJobs,  setRecentJobs]  = useState<Booking[]>([])
   const [weeklyCompleted, setWeeklyCompleted] = useState<number | null>(null)
@@ -37,6 +39,8 @@ export default function ProviderEarnings() {
   useEffect(() => {
     if (user?.id) {
       api.providers.earnings(user.id).then(setEarnings).catch(() => {})
+      api.providers.get(user.id).then(setMe).catch(() => {})
+      api.providers.reviews(user.id).then(setReviews).catch(() => {})
       api.bookings.list('completed').then(all => {
         const mine = all
           .filter(b => b.providerId === user.id)
@@ -101,8 +105,8 @@ export default function ProviderEarnings() {
           </View>
           <View style={s.statDivider} />
           <View style={s.statBox}>
-            <Text style={[s.statVal, { color: colors.gold }]}>★ 4.9</Text>
-            <Text style={s.statLabel}>214 reviews</Text>
+            <Text style={[s.statVal, { color: colors.gold }]}>{me && me.reviewCount > 0 ? `★ ${me.rating.toFixed(1)}` : '—'}</Text>
+            <Text style={s.statLabel}>{me?.reviewCount ?? 0} {me?.reviewCount === 1 ? 'review' : 'reviews'}</Text>
           </View>
         </View>
       </View>
@@ -112,15 +116,18 @@ export default function ProviderEarnings() {
         {/* Rating breakdown */}
         <View style={s.card}>
           <Text style={s.cardTitle}>Rating breakdown</Text>
-          {[{ n: 5, pct: 0.88 }, { n: 4, pct: 0.10 }, { n: 3, pct: 0.02 }].map(r => (
-            <View key={r.n} style={s.rbarRow}>
-              <Text style={s.rbarN}>{r.n} ★</Text>
-              <View style={s.rbarTrack}>
-                <View style={[s.rbarFill, { width: `${r.pct * 100}%` as any }]} />
+          {reviews && reviews.length > 0 ? [5, 4, 3, 2, 1].map(n => {
+            const pct = reviews.filter(r => r.stars === n).length / reviews.length
+            return (
+              <View key={n} style={s.rbarRow}>
+                <Text style={s.rbarN}>{n} ★</Text>
+                <View style={s.rbarTrack}>
+                  <View style={[s.rbarFill, { width: `${pct * 100}%` as any }]} />
+                </View>
+                <Text style={s.rbarPct}>{Math.round(pct * 100)}%</Text>
               </View>
-              <Text style={s.rbarPct}>{Math.round(r.pct * 100)}%</Text>
-            </View>
-          ))}
+            )
+          }) : <Text style={s.noJobsText}>No reviews yet</Text>}
         </View>
 
         {/* Recent jobs */}

@@ -241,7 +241,7 @@ export default function BookingDetail() {
                 <Text style={s.locationTitle}>Provider on the way</Text>
                 {providerKm != null
                   ? <Text style={s.locationSub}>{providerKm < 1 ? `${Math.round(providerKm * 1000)} m away` : `${providerKm.toFixed(1)} km away`} · ~{Math.max(1, Math.round(providerKm * 2))} min ETA</Text>
-                  : <Text style={s.locationSub}>Locating provider…</Text>
+                  : <Text style={s.locationSub}>Your provider has set off</Text>
                 }
               </View>
             </View>

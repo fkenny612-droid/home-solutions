@@ -44,7 +44,8 @@ export default function BookScreen() {
   const [liveStatus,     setLiveStatus]  = useState<string | null>(null)
   const [txnId,          setTxnId]       = useState<string | null>(null)
   const [loading,        setLoading]     = useState(false)
-  const [eta,            setEta]         = useState(12)
+  const [pointsBefore,   setPointsBefore] = useState<number | null>(null)
+  const [pointsNow,      setPointsNow]    = useState<number | null>(null)
   const [rating,         setRating]      = useState(5)
   const [tags,           setTags]        = useState(['Punctual', 'Professional', 'Friendly'])
   const [clientCoords,   setClientCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -54,10 +55,13 @@ export default function BookScreen() {
   const [redemptions,    setRedemptions]  = useState<import('../../lib/api').LoyaltyRedemption[]>([])
   const [appliedCode,    setAppliedCode]  = useState<import('../../lib/api').LoyaltyRedemption | null>(null)
   const [hasSub,         setHasSub]       = useState<boolean | null>(null)
-  const etaRef = useRef(eta)
   const cancelledRef = useRef(false)
 
-  const estimate = calculateEstimate(serviceType ?? '', answers)
+  // Every price-bearing question must be answered — otherwise the job would be priced as the cheapest possible one.
+  const unanswered = (serviceConfig?.questions ?? []).filter(q => q.type === 'select' && !answers[q.key])
+  const estimate  = calculateEstimate(serviceType ?? '', answers)
+  const midpoint  = Math.round((estimate.min + estimate.max) / 2)             // what the customer is charged (the server prices it the same way)
+  const chargeNow = Math.max(0, midpoint - (appliedCode?.discountAmount ?? 0))
 
   // Get client GPS location
   useEffect(() => {
@@ -89,15 +93,11 @@ export default function BookScreen() {
       .catch(() => setHasSub(false))
   }, [step])
 
-  // ETA countdown during tracking
+  // Loyalty points are awarded by the server when the provider completes the job. Read the balance before and after
+  // so the "points earned" we show is what actually happened, not a made-up number.
   useEffect(() => {
-    if (step !== 'tracking') return
-    etaRef.current = 12; setEta(12)
-    const id = setInterval(() => {
-      etaRef.current = Math.max(1, etaRef.current - 0.2)
-      setEta(Math.round(etaRef.current))
-    }, 400)
-    return () => clearInterval(id)
+    if (step === 'tracking' && pointsBefore === null) api.loyalty.balance().then(b => setPointsBefore(b.points)).catch(() => {})
+    if (step === 'done') api.loyalty.balance().then(b => setPointsNow(b.points)).catch(() => {})
   }, [step])
 
   // ── Real-time polling — every 5s during tracking ──
@@ -168,7 +168,7 @@ export default function BookScreen() {
     setLoading(true)
     let created: Booking | null = null
     try {
-      const shownTotal = Math.max(0, Math.round((estimate.min + estimate.max) / 2) - (appliedCode?.discountAmount ?? 0))
+      const shownTotal = chargeNow
       created = await api.bookings.create({
         serviceType:    (serviceType ?? 'handyman') as any,
         location:       clientCoords ? `${clientCoords.lat},${clientCoords.lng}` : '-29.8587,31.0218',
@@ -343,7 +343,7 @@ export default function BookScreen() {
                 <Text style={s.estimateRange}>
                   R {estimate.min.toLocaleString()} – R {estimate.max.toLocaleString()}
                 </Text>
-                <Text style={s.estimateNote}>Final quote confirmed by the provider</Text>
+                <Text style={s.estimateNote}>You'll be charged the midpoint of this range</Text>
               </View>
             )}
 
@@ -351,7 +351,11 @@ export default function BookScreen() {
           </ScrollView>
 
           <View style={s.ctaBar}>
-            <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, !address.trim() && { opacity: 0.5 }]} onPress={() => { if (!address.trim()) { Alert.alert('Address required', 'Please enter the service address.'); return } setStep('providers') }}>
+            <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, (!address.trim() || unanswered.length > 0) && { opacity: 0.5 }]} onPress={() => {
+              if (unanswered.length > 0) { Alert.alert('A few more details', `Please answer: ${unanswered.map(q => q.label.replace(/\?$/, '')).join(', ')}.`); return }
+              if (!address.trim()) { Alert.alert('Address required', 'Please enter the service address.'); return }
+              setStep('providers')
+            }}>
               <Text style={s.ctaBtnText}>Find providers →</Text>
             </TouchableOpacity>
           </View>
@@ -417,7 +421,7 @@ export default function BookScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.provName}>{p.name}</Text>
-                      <Text style={s.provSkill}>{p.skills[0]} · {p.jobCount > 500 ? '8' : '5'} yrs exp</Text>
+                      <Text style={s.provSkill}>{p.skills[0]} · {p.jobCount} {p.jobCount === 1 ? 'job' : 'jobs'} completed</Text>
                       <Text style={s.provStars}>{'★'.repeat(Math.round(p.rating))}{'☆'.repeat(5 - Math.round(p.rating))} <Text style={s.reviewCount}>{p.rating} ({p.reviewCount})</Text></Text>
                     </View>
                     {etaLabel && (
@@ -427,8 +431,7 @@ export default function BookScreen() {
                     )}
                   </View>
                   <View style={s.tagRow}>
-                    <View style={s.tag}><Text style={s.tagText}>🏅 Certified</Text></View>
-                    <View style={s.tag}><Text style={s.tagText}>✓ Insured</Text></View>
+                    {p.kycStatus === 'approved' && <View style={s.tag}><Text style={s.tagText}>✓ Verified by Easyfix</Text></View>}
                     {p.availability?.emergency && <View style={[s.tag, s.tagEmergency]}><Text style={[s.tagText, { color: colors.red }]}>⚡ Emergency</Text></View>}
                   </View>
                   <View style={s.provMetaRow}>
@@ -479,18 +482,19 @@ export default function BookScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.provMiniName}>{prov?.name}</Text>
-                <Text style={s.provMiniSub}>Quote valid 30 minutes</Text>
+                <Text style={s.provMiniSub}>{prov?.skills[0]}{prov && prov.reviewCount > 0 ? ` · ★ ${prov.rating} (${prov.reviewCount})` : ''}</Text>
               </View>
-              <View style={s.approvedBadge}><Text style={s.approvedText}>Approved</Text></View>
+              {prov?.kycStatus === 'approved' && <View style={s.approvedBadge}><Text style={s.approvedText}>Verified</Text></View>}
             </View>
 
             <View style={s.quoteCard}>
               {[
                 { label: 'Call-out fee',       val: 'R 150',                                                               color: colors.text },
                 { label: 'Labour & materials', val: `R ${Math.max(0, estimate.min - 150).toLocaleString()} – R ${Math.max(0, estimate.max - 150).toLocaleString()}`, color: colors.text },
-                { label: 'Premium discount',   val: '−R 0 (included)',                                                     color: colors.accent },
-                { label: 'Estimated total',    val: `R ${estimate.min.toLocaleString()} – R ${estimate.max.toLocaleString()}`, color: colors.navy, bold: true },
-              ].map(r => (
+                { label: 'Estimated total',    val: `R ${estimate.min.toLocaleString()} – R ${estimate.max.toLocaleString()}`, color: colors.text },
+                ...(appliedCode ? [{ label: `Loyalty reward (${appliedCode.code})`, val: `−R ${appliedCode.discountAmount.toLocaleString()}`, color: colors.accent }] : []),
+                { label: 'You pay now',        val: `R ${chargeNow.toLocaleString()}`,                                    color: colors.navy, bold: true },
+              ].map((r: { label: string; val: string; color: string; bold?: boolean }) => (
                 <View key={r.label} style={[s.quoteRow, r.bold && s.quoteRowTotal]}>
                   <Text style={s.quoteLabel}>{r.label}</Text>
                   <Text style={[s.quoteVal, { color: r.color }, r.bold && { fontWeight: '700', fontSize: 15 }]}>{r.val}</Text>
@@ -524,7 +528,7 @@ export default function BookScreen() {
                   )
                 })}
                 {appliedCode && (
-                  <Text style={s.loyaltyApplied}>−R{appliedCode.discountAmount} applied · New total: R{Math.max(0, Math.round((estimate.min + estimate.max) / 2) - appliedCode.discountAmount).toLocaleString()}</Text>
+                  <Text style={s.loyaltyApplied}>−R{appliedCode.discountAmount} applied · New total: R{chargeNow.toLocaleString()}</Text>
                 )}
               </View>
             )}
@@ -539,7 +543,7 @@ export default function BookScreen() {
             <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, (loading || !card) && { opacity: 0.5 }]} onPress={handleApprove} disabled={loading || !card}>
               {loading
                 ? <ActivityIndicator color={colors.navy} />
-                : <Text style={s.ctaBtnText}>{card ? `Approve & pay R ${Math.max(0, Math.round((estimate.min + estimate.max) / 2) - (appliedCode?.discountAmount ?? 0)).toLocaleString()}` : 'Enter card details'}</Text>}
+                : <Text style={s.ctaBtnText}>{card ? `Approve & pay R ${chargeNow.toLocaleString()}` : 'Enter card details'}</Text>}
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.8} style={s.ctaBtnSec} onPress={() => setStep('providers')} disabled={loading}>
               <Text style={s.ctaBtnSecText}>Request different provider</Text>
@@ -553,36 +557,41 @@ export default function BookScreen() {
         <>
           <View style={s.header}>
             <View style={{ flex: 1 }}>
-              <Text style={s.headerTitle}>{prov?.name.split(' ')[0]} is on the way</Text>
-              <Text style={[s.headerSub, { color: colors.accent }]}>ETA {eta} minutes</Text>
+              <Text style={s.headerTitle}>
+                {liveStatus === 'en_route'    ? `${prov?.name.split(' ')[0]} is on the way`
+                 : liveStatus === 'in_progress' ? 'Job in progress'
+                 : `${prov?.name.split(' ')[0]} accepted your booking`}
+              </Text>
+              <Text style={[s.headerSub, { color: colors.accent }]}>
+                {liveStatus === 'en_route'    ? 'Your provider has set off'
+                 : liveStatus === 'in_progress' ? 'Work has started'
+                 : 'Waiting for your provider to set off'}
+              </Text>
             </View>
             <Text style={s.bookingId}>#{booking?.id.slice(-6).toUpperCase() ?? 'B-NEW'}</Text>
           </View>
           <ScrollView style={s.body}>
-            <View style={s.mapBox}>
-              <Text style={s.mapLabel}>📍 Live map · {eta} min away</Text>
-              <View style={s.mapDot} />
-            </View>
-
             <View style={s.trackInfo}>
               <View style={[s.avatar, { backgroundColor: '#DCF0E8' }]}>
                 <Text style={[s.avatarText, { color: '#1A6842' }]}>{prov?.name.split(' ').map(w => w[0]).join('')}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.provName}>{prov?.name}</Text>
-                <Text style={s.provSkill}>Master Plumber · 1.4km</Text>
+                <Text style={s.provSkill}>{prov?.skills[0]}{prov ? ` · ${prov.jobCount} ${prov.jobCount === 1 ? 'job' : 'jobs'} completed` : ''}</Text>
               </View>
-              <View style={s.contactBtns}>
-                <View style={s.contactBtn}><Text>📞</Text></View>
-                <View style={s.contactBtn}><Text>💬</Text></View>
-              </View>
+              {booking && (
+                <TouchableOpacity activeOpacity={0.8} style={s.contactBtn}
+                  onPress={() => router.push({ pathname: '/(client)/conversation', params: { bookingId: booking.id, providerName: prov?.name } } as any)}>
+                  <Text>💬</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={s.stepsCard}>
               {[
                 { label: 'Booking confirmed & payment held',                    done: true },
                 { label: `${prov?.name.split(' ')[0]} accepted your request`,   done: ['accepted','en_route','in_progress','completed'].includes(liveStatus ?? '') },
-                { label: `En route · ETA ${eta} min`,                           done: liveStatus === 'in_progress' || liveStatus === 'completed', active: liveStatus === 'en_route' || liveStatus === 'accepted' },
+                { label: 'On the way',                                          done: liveStatus === 'in_progress' || liveStatus === 'completed', active: liveStatus === 'en_route' },
                 { label: liveStatus === 'in_progress' ? 'Job in progress 🔧' : 'Job in progress', done: liveStatus === 'completed', active: liveStatus === 'in_progress' },
                 { label: 'Complete & payment released',                          todo: liveStatus !== 'completed', done: liveStatus === 'completed' },
               ].map((st, i) => (
@@ -638,9 +647,11 @@ export default function BookScreen() {
               ))}
             </View>
 
-            <View style={s.warrantyBox}>
-              <Text style={s.warrantyText}>🛡️ 90-day warranty now active. {prov?.name.split(' ')[0]} saved to your contacts.</Text>
-            </View>
+            {hasSub && booking?.warrantyExpiresAt && (
+              <View style={s.warrantyBox}>
+                <Text style={s.warrantyText}>🛡️ Your 90-day warranty is active until {new Date(booking.warrantyExpiresAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}.</Text>
+              </View>
+            )}
           </ScrollView>
           <View style={s.ctaBar}>
             <TouchableOpacity activeOpacity={0.8}
@@ -667,12 +678,14 @@ export default function BookScreen() {
         <View style={[s.body, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }]}>
           <View style={s.doneTick}><Text style={{ fontSize: 36 }}>✓</Text></View>
           <Text style={s.doneTitle}>All done!</Text>
-          <Text style={s.doneSub}>{booking ? `R ${booking.quotedAmount.toLocaleString()} paid` : 'Payment complete'} to {prov?.name.split(' ')[0]}. 90-day warranty active.</Text>
-          <View style={s.pointsBox}>
-            <Text style={s.pointsLabel}>Loyalty points earned</Text>
-            <Text style={s.pointsVal}>+50 pts</Text>
-            <Text style={s.pointsSubLabel}>Total: 340 · Next reward at 500</Text>
-          </View>
+          <Text style={s.doneSub}>{booking ? `R ${booking.quotedAmount.toLocaleString()} paid` : 'Payment complete'} to {prov?.name.split(' ')[0]}.</Text>
+          {pointsBefore !== null && pointsNow !== null && (
+            <View style={s.pointsBox}>
+              <Text style={s.pointsLabel}>Loyalty points earned</Text>
+              <Text style={s.pointsVal}>+{Math.max(0, pointsNow - pointsBefore)} pts</Text>
+              <Text style={s.pointsSubLabel}>Your balance: {pointsNow.toLocaleString()} pts</Text>
+            </View>
+          )}
           <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, { width: '100%' }]} onPress={() => router.replace('/(client)')}>
             <Text style={s.ctaBtnText}>Back to home</Text>
           </TouchableOpacity>
@@ -853,9 +866,6 @@ const s = StyleSheet.create({
   loyaltyChipText:   { fontSize: 13, color: colors.text },
   loyaltyChipTextActive: { fontWeight: '700', color: colors.black },
   loyaltyApplied:    { fontSize: 11, color: colors.green, fontWeight: '600', marginTop: 4 },
-  mapBox:            { backgroundColor: colors.navyMid, borderRadius: 12, height: 160, marginBottom: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  mapLabel:          { color: '#fff', fontSize: 12, opacity: 0.7 },
-  mapDot:            { position: 'absolute', bottom: 24, right: 80, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.gold, borderWidth: 2.5, borderColor: '#fff' },
   trackInfo:         { backgroundColor: '#fff', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, borderWidth: 1, borderColor: colors.creamMid },
   contactBtns:       { flexDirection: 'row', gap: 7, marginLeft: 'auto' },
   contactBtn:        { width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: colors.creamMid, alignItems: 'center', justifyContent: 'center' },
