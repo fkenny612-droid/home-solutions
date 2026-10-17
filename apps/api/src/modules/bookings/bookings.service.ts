@@ -1,14 +1,35 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
+import { BadGatewayException, BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { SmsService } from '../notifications/sms.service'
 import { SubscriptionsService } from '../subscriptions/subscriptions.service'
+import { PeachPaymentsService } from '../payments/peach-payments.service'
 import { BookingStatus, ServiceType } from './booking.types'
 import { POINTS_PER_RAND_SPENT, REFERRAL_BONUS_POINTS } from '../loyalty/loyalty.constants'
+import { isKnownService, priceBooking } from './pricing'
+import { ALL_STATUSES, Actor, canTransition, nextStatuses } from './booking-status'
+
+const PAYMENT_METHODS = ['card', 'eft', 'payfast']
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export interface RequestUser {
   sub:  string
   role: string
+}
+
+export interface CreateBookingDto {
+  clientId?:       string           // admins only — everyone else is the authenticated caller
+  serviceType:     ServiceType
+  location:        string
+  address:         string
+  paymentMethod?:  string
+  notes?:          string
+  serviceDetails?: Record<string, any>
+  images?:         string[]
+  discountCode?:   string           // a loyalty reward code owned by the client
+  emergency?:      boolean          // flat-fee emergency call-out
+  expectedAmount?: number           // the total the customer was shown; rejected if the real price differs
+  // quotedAmount is deliberately NOT accepted: the server prices the job itself.
 }
 
 @Injectable()
@@ -18,6 +39,7 @@ export class BookingsService {
     private notifications:  NotificationsService,
     private sms:            SmsService,
     private subscriptions:  SubscriptionsService,
+    private peach:           PeachPaymentsService,
   ) {}
 
   /** Clients see only their own bookings, providers see their assigned + open pending jobs, admins see all. */
@@ -36,20 +58,30 @@ export class BookingsService {
       orderBy: { createdAt: 'desc' },
       include: { provider: true },
     })
-    return bookings.map(this.withProviderName)
+    return bookings.map(b => this.present(b, user))
   }
 
   async findOne(id: string, user: RequestUser) {
     const booking = await this.prisma.booking.findUnique({ where: { id }, include: { provider: true } })
     if (!booking) throw new NotFoundException(`Booking ${id} not found`)
     this.assertParty(booking, user)
-    return this.withProviderName(booking)
+    return this.present(booking, user)
   }
 
   /** Flattens the joined provider relation into a plain providerName field, matching the client's expected shape. */
   private withProviderName<T extends { provider?: { name: string } | null }>(booking: T) {
     const { provider, ...rest } = booking
     return { ...rest, providerName: provider?.name ?? null }
+  }
+
+  /** Adds providerName and the statuses this caller may move the booking to (so clients never duplicate the rules). */
+  private present<T extends { status: string; clientId: string; providerId: string | null; provider?: { name: string } | null }>(booking: T, user: RequestUser) {
+    return { ...this.withProviderName(booking), allowedNext: nextStatuses(booking.status, this.actorFor(booking, user)) }
+  }
+
+  private actorFor(booking: { clientId: string }, user: RequestUser): Actor {
+    if (user.role === 'admin') return 'admin'
+    return booking.clientId === user.sub ? 'client' : 'provider'
   }
 
   /** Caller must be the client, the assigned provider, or an admin. */
@@ -107,84 +139,197 @@ export class BookingsService {
     if (!client.pushToken) await this.sms.notifyJobComplete(client.phone, serviceType, amount)
   }
 
-  async create(user: RequestUser, dto: {
-    clientId?:      string
-    serviceType:    ServiceType
-    location:       string
-    address:        string
-    quotedAmount:   number
-    paymentMethod:  string
-    notes?:         string
-    serviceDetails?: Record<string, any>
-    images?:         string[]
-  }) {
+  async create(user: RequestUser, dto: CreateBookingDto) {
+    if (!dto || typeof dto !== 'object') throw new BadRequestException('Invalid booking')
+    if (!isKnownService(dto.serviceType)) throw new BadRequestException('Unknown service type')
+
+    const address  = typeof dto.address  === 'string' ? dto.address.trim()  : ''
+    const location = typeof dto.location === 'string' ? dto.location.trim() : ''
+    if (!address  || address.length  > 300) throw new BadRequestException('A service address is required')
+    if (!location || location.length > 100) throw new BadRequestException('A location is required')
+
+    const paymentMethod = dto.paymentMethod ?? 'card'
+    if (!PAYMENT_METHODS.includes(paymentMethod)) throw new BadRequestException('Unsupported payment method')
+
+    const notes  = dto.notes == null ? null : String(dto.notes).slice(0, 1000)
+    const images = Array.isArray(dto.images) ? dto.images : []
+    if (images.length > 10 || images.some(i => typeof i !== 'string' || i.length > 500)) throw new BadRequestException('Invalid photos')
+    const details = dto.serviceDetails
+    if (details != null && (typeof details !== 'object' || Array.isArray(details) || JSON.stringify(details).length > 10_000)) {
+      throw new BadRequestException('Invalid job details')
+    }
+
     // Always derive clientId from the authenticated caller — never trust the body —
     // except admins, who may create a booking on a client's behalf.
     const clientId = user.role === 'admin' && dto.clientId ? dto.clientId : user.sub
-    const booking = await this.prisma.booking.create({
-      data: {
-        clientId,
-        serviceType:    dto.serviceType,
-        location:       dto.location,
-        address:        dto.address,
-        quotedAmount:   dto.quotedAmount,
-        paymentMethod:  dto.paymentMethod,
-        notes:          dto.notes ?? null,
-        serviceDetails: dto.serviceDetails ?? undefined,
-        images:         dto.images ?? [],
-        status:         'pending',
-      },
-    })
+
+    // Reward code: must exist, belong to this client and be unused. It is consumed below, atomically with the booking.
+    let discount = 0
+    let discountCode: string | null = null
+    if (dto.discountCode) {
+      const code = String(dto.discountCode).trim()
+      const redemption = await this.prisma.loyaltyRedemption.findUnique({ where: { code } })
+      if (!redemption || redemption.userId !== clientId) throw new BadRequestException('That reward code is not valid')
+      if (redemption.used) throw new ConflictException('That reward has already been used')
+      discount = redemption.discountAmount
+      discountCode = code
+    }
+
+    // The server prices the job. Whatever amount the app displays or sends is only checked, never trusted.
+    let price
+    try {
+      price = priceBooking({ serviceType: dto.serviceType, answers: details ?? {}, emergency: dto.emergency === true, discount })
+    } catch (err) {
+      if (err instanceof RangeError) throw new BadRequestException(err.message)
+      throw err
+    }
+    if (dto.expectedAmount != null && Math.abs(Number(dto.expectedAmount) - price.total) > 1) {
+      throw new ConflictException(`The price is now R${price.total}. Please review and confirm.`)
+    }
+
+    // Consume the reward first (the conditional update is the lock: only one request can flip it),
+    // then create the booking, and hand the reward back if the booking can't be created.
+    if (discountCode) {
+      const used = await this.prisma.loyaltyRedemption.updateMany({ where: { code: discountCode, userId: clientId, used: false }, data: { used: true } })
+      if (used.count !== 1) throw new ConflictException('That reward has already been used')
+    }
+    let booking
+    try {
+      booking = await this.prisma.booking.create({
+        data: {
+          clientId,
+          serviceType:    dto.serviceType,
+          location,
+          address,
+          quotedAmount:   price.total,
+          paymentMethod,
+          notes,
+          serviceDetails: details ?? undefined,
+          images,
+          discountCode,
+          discountAmount: price.discount,
+          status:         'pending',
+        },
+      })
+    } catch (err) {
+      if (discountCode) {
+        await this.prisma.loyaltyRedemption.updateMany({ where: { code: discountCode, userId: clientId, used: true }, data: { used: false } }).catch(() => {})
+      }
+      throw err
+    }
+
     // Save in-app notification for the client
     this.notifications.saveInApp(clientId, '📋 Booking received', `We're finding a ${dto.serviceType} provider near you.`, 'booking_created', { bookingId: booking.id }).catch(() => {})
     // Notify matching providers in the background
-    this.notifyProviders(dto.serviceType, booking.id, dto.address).catch(() => {})
+    this.notifyProviders(dto.serviceType, booking.id, address).catch(() => {})
     return booking
   }
 
   async updateStatus(id: string, status: BookingStatus, user: RequestUser) {
+    if (!ALL_STATUSES.includes(status)) throw new BadRequestException('Unknown status')
     const existing = await this.prisma.booking.findUnique({ where: { id } })
     if (!existing) throw new NotFoundException(`Booking ${id} not found`)
     this.assertParty(existing, user)
 
-    const warrantyExpiresAt = status === 'completed'
-      ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-      : undefined
+    if (!canTransition(existing.status, status, this.actorFor(existing, user))) {
+      throw new ConflictException(`This booking is ${existing.status.replace('_', ' ')} and can't be marked ${status.replace('_', ' ')}.`)
+    }
 
-    const booking = await this.prisma.booking.update({
-      where: { id },
-      data: {
-        status,
-        ...(status === 'completed' ? { paymentReleased: true, warrantyExpiresAt } : {}),
-      },
+    // Move the status only if nobody else has moved it first, so a job can't be completed (and paid out) twice.
+    const completing = status === 'completed'
+    const moved = await this.prisma.booking.updateMany({
+      where: { id, status: existing.status },
+      data:  { status, ...(completing ? { warrantyExpiresAt: new Date(Date.now() + 90 * DAY_MS) } : {}) },
     })
+    if (moved.count !== 1) throw new ConflictException('This booking was just updated — please refresh and try again.')
+    if (completing && existing.providerId) {
+      await this.prisma.provider.update({ where: { id: existing.providerId }, data: { jobCount: { increment: 1 } } })
+        .catch(err => console.error(`Failed to bump jobCount for provider ${existing.providerId}:`, err))
+    }
 
+    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id } })
     this.notifyOnStatusChange(booking, status).catch(() => {})
 
-    if (status === 'completed') {
-      this.awardLoyaltyAndReferral(booking.clientId, booking.finalAmount ?? booking.quotedAmount).catch(() => {})
-      if (booking.providerId) {
-        try {
-          await this.payoutProvider(booking.providerId, booking.finalAmount ?? booking.quotedAmount)
-        } catch (err) {
-          // Never let a payout failure undo the already-saved job completion — but this must not
-          // fail silently, since it means a provider didn't get credited for a job they did.
-          console.error(`Failed to credit provider ${booking.providerId} for completed booking ${booking.id}:`, err)
-        }
+    // Money follows the status: completed → capture the held payment and credit the provider and client;
+    // cancelled → return the held payment. Never let a gateway problem undo the saved status change —
+    // an admin can retry with reconcilePayment — but it must not fail silently either.
+    if (status === 'completed' || status === 'cancelled') {
+      try {
+        await this.reconcilePayment(id)
+      } catch (err) {
+        console.error(`Payment reconciliation failed for booking ${id} (${status}) — needs manual follow-up:`, err)
       }
     }
 
-    return booking
+    return this.prisma.booking.findUniqueOrThrow({ where: { id } })
   }
 
-  /** Credits a provider's earnings balance for a completed job, net of their subscription tier's platform commission. */
-  private async payoutProvider(providerId: string, amount: number) {
-    const commissionPct = await this.subscriptions.getProviderCommissionPct(providerId)
+  /**
+   * Brings a booking's payment in line with its status. Safe to call repeatedly:
+   *  - completed with a held payment → capture it, credit the provider (net of commission) and award the client's points, once
+   *  - cancelled with a held payment → void the hold and give back any reward code
+   *  - cancelled and never charged   → give back any reward code
+   */
+  async reconcilePayment(id: string): Promise<{ action: 'captured' | 'voided' | 'none' }> {
+    const b = await this.prisma.booking.findUnique({ where: { id } })
+    if (!b) throw new NotFoundException(`Booking ${id} not found`)
+
+    const held = b.paymentHeld && !!b.transactionId
+    if (b.status === 'cancelled') {
+      if (held) await this.voidHold(b.id, b.transactionId!)
+      await this.restoreDiscount(b)
+      return { action: held ? 'voided' : 'none' }
+    }
+    if (b.status === 'completed' && held && !b.paymentReleased) {
+      await this.capturePayment(b)
+      return { action: 'captured' }
+    }
+    return { action: 'none' }
+  }
+
+  private async capturePayment(b: { id: string; clientId: string; providerId: string | null; transactionId: string | null; finalAmount: number | null; quotedAmount: number }) {
+    const amount = b.finalAmount ?? b.quotedAmount
+    const result = await this.peach.releaseFunds(b.transactionId!, amount)
+    if (!result.success) throw new BadGatewayException('The payment gateway did not confirm the capture')
+
+    const commissionPct = b.providerId ? await this.subscriptions.getProviderCommissionPct(b.providerId) : 0
     const payout = Math.round(amount * (1 - commissionPct / 100) * 100) / 100
-    await this.prisma.provider.update({
-      where: { id: providerId },
-      data:  { earningsBalance: { increment: payout }, jobCount: { increment: 1 } },
-    })
+
+    // The money has been captured, so recording it must not fail on a slow connection: wider window, one retry.
+    // A failed attempt applied nothing (it's atomic), and the flag below is the lock, so retrying can't double-credit.
+    const credited = await this.withRetry(() => this.prisma.$transaction(async tx => {
+      const lock = await tx.booking.updateMany({ where: { id: b.id, paymentReleased: false }, data: { paymentReleased: true } })
+      if (lock.count !== 1) return false
+      if (b.providerId) await tx.provider.update({ where: { id: b.providerId }, data: { earningsBalance: { increment: payout } } })
+      return true
+    }, { maxWait: 10_000, timeout: 20_000 }))
+    if (credited) {
+      await this.awardLoyaltyAndReferral(b.clientId, amount).catch(err => console.error(`Failed to award loyalty points for booking ${b.id}:`, err))
+    }
+  }
+
+  private async withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
+    for (let i = 1; ; i++) {
+      try { return await fn() } catch (err) {
+        if (i >= attempts) throw err
+        console.warn(`Retrying after error (attempt ${i}/${attempts}):`, (err as Error)?.message)
+      }
+    }
+  }
+
+  private async voidHold(bookingId: string, transactionId: string) {
+    const result = await this.peach.voidHold(transactionId)
+    if (!result.success) throw new BadGatewayException('The payment gateway did not confirm the refund')
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { paymentHeld: false } })
+  }
+
+  /** Gives a reward code back to its owner when the booking it was spent on is cancelled. Idempotent. */
+  private async restoreDiscount(b: { id: string; clientId: string; discountCode: string | null }) {
+    if (!b.discountCode) return
+    // Detaching the code from the booking first means a repeat call can never re-enable a code the client has since re-used.
+    const detached = await this.prisma.booking.updateMany({ where: { id: b.id, discountCode: b.discountCode }, data: { discountCode: null } })
+    if (detached.count !== 1) return
+    await this.prisma.loyaltyRedemption.updateMany({ where: { code: b.discountCode, userId: b.clientId, used: true }, data: { used: false } })
   }
 
   private async notifyOnStatusChange(booking: { id: string; clientId: string; providerId: string | null; serviceType: string; finalAmount: number | null; quotedAmount: number }, status: BookingStatus) {
@@ -228,6 +373,7 @@ export class BookingsService {
   }
 
   async assignProvider(id: string, providerId: string, user: RequestUser) {
+    if (typeof providerId !== 'string' || !providerId) throw new BadRequestException('providerId is required')
     const existing = await this.prisma.booking.findUnique({ where: { id } })
     if (!existing) throw new NotFoundException(`Booking ${id} not found`)
 
@@ -238,11 +384,28 @@ export class BookingsService {
       throw new ForbiddenException('Not allowed to assign this booking')
     }
 
-    const booking = await this.prisma.booking.update({
-      where: { id },
+    const open = existing.status === 'pending' || existing.status === 'emergency'
+    if (!open && !(isAdmin && existing.status === 'accepted')) {
+      throw new ConflictException('This booking can no longer be assigned')
+    }
+
+    const target = await this.prisma.provider.findUnique({ where: { id: providerId } })
+    if (!target) throw new NotFoundException('Provider not found')
+    if (!isAdmin && target.status !== 'active') throw new ForbiddenException('That provider has not been approved yet')
+
+    // A job whose payment was never secured can't be taken (admins excepted, e.g. for invoiced or cash jobs).
+    if (!isAdmin && existing.paymentMethod === 'card' && !existing.paymentHeld) {
+      throw new ConflictException("Payment hasn't been secured for this booking yet — try again in a moment")
+    }
+
+    // Claim atomically: if two providers tap Accept together, exactly one wins.
+    const claimed = await this.prisma.booking.updateMany({
+      where: { id, status: existing.status, providerId: existing.providerId },
       data:  { providerId, status: 'accepted' },
-      include: { provider: true },
     })
+    if (claimed.count !== 1) throw new ConflictException('Someone else just took this job')
+
+    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id }, include: { provider: true } })
     // Notify client — push or SMS
     this.notifyClientOnAssign(
       booking.clientId,

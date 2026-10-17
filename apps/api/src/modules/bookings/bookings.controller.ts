@@ -35,6 +35,13 @@ export class BookingsController {
     return this.svc.updateStatus(id, status, req.user)
   }
 
+  /** Admin: re-run the payment side of a booking (capture a completed job, void a cancelled one). Safe to repeat. */
+  @Post(':id/reconcile-payment')
+  @UseGuards(AdminGuard)
+  reconcilePayment(@Param('id') id: string) {
+    return this.svc.reconcilePayment(id)
+  }
+
   @Patch(':id/assign')
   assignProvider(@Param('id') id: string, @Body('providerId') providerId: string, @Req() req: any) {
     return this.svc.assignProvider(id, providerId, req.user)

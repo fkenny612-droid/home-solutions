@@ -120,6 +120,29 @@ export class PeachPaymentsService {
     return { success: /^(000\.000\.|000\.100\.1)/.test(result?.result?.code || '') }
   }
 
+  /**
+   * Cancel a pre-authorisation that was never captured, returning the held funds to the customer
+   * (Oppwa/Peach paymentType RV). Used when a booking is cancelled after payment was held.
+   * NOTE: not yet exercised against the live Peach gateway — verify with a test transaction.
+   */
+  async voidHold(transactionId: string): Promise<{ success: boolean }> {
+    if (!process.env.PEACH_ENTITY_ID) {
+      this.logger.warn('Mock: voiding hold for txn ' + transactionId)
+      return { success: true }
+    }
+    const body = new URLSearchParams({
+      'authentication.entityId': this.entityId,
+      'paymentType': 'RV',
+    })
+    const response = await fetch(`${this.baseUrl}/payments/${transactionId}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    })
+    const result = await response.json()
+    return { success: /^(000\.000\.|000\.100\.1)/.test(result?.result?.code || '') }
+  }
+
   async splitPayout(payouts: PayoutParams[]): Promise<{ success: boolean; batchId: string }> {
     // Peach split-pay batch payout to multiple providers
     this.logger.log(`Processing batch payout for ${payouts.length} providers`)

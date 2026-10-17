@@ -224,6 +224,8 @@ model Booking {
   paymentHeld      Boolean   @default(false)
   paymentReleased  Boolean   @default(false)
   transactionId    String?
+  discountCode     String?
+  discountAmount   Float     @default(0)
   serviceDetails   Json?
   images           String[]
   warrantyExpiresAt DateTime?

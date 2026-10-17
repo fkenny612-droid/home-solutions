@@ -160,7 +160,7 @@ export class ProvidersService {
     await this.prisma.review.create({
       data: { providerId: id, clientId: clientId ?? 'anonymous', stars, tags, comment, bookingId },
     })
-    // jobCount is credited when the booking is marked completed (see BookingsService.payoutProvider),
+    // jobCount is credited when the booking is marked completed (see BookingsService.updateStatus),
     // not here — a job still counts even if the client never leaves a review.
     return this.prisma.provider.update({
       where: { id },

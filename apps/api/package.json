@@ -7,7 +7,9 @@
     "build": "npx prisma generate && tsc",
     "start": "npx prisma db push --skip-generate && node dist/main.js",
     "seed": "npx ts-node prisma/seed.ts",
-    "db:push": "npx prisma db push"
+    "db:push": "npx prisma db push",
+    "test": "node --test --require ts-node/register/transpile-only test/*.spec.ts",
+    "sync:pricing": "node scripts/sync-pricing.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

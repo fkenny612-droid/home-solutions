@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The API's types come from the generated Prisma client.
+      - run: pnpm --filter api exec prisma generate
+
+      - name: API — type-check
+        run: pnpm --filter api exec tsc --noEmit
+
+      # Includes the pricing drift guard: fails if apps/api's price table no longer matches
+      # apps/mobile/lib/serviceConfig.ts (fix with `pnpm --filter api sync:pricing`).
+      - name: API — tests (pricing + booking status rules)
+        run: pnpm --filter api test
+
+      - name: Mobile — type-check
+        run: pnpm --filter mobile exec tsc --noEmit
+
+      - name: Web — type-check
+        run: pnpm --filter web exec tsc --noEmit
