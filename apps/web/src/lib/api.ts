@@ -86,7 +86,8 @@ export const bookings = {
   },
   get: (id: string) => req<Booking>(`/bookings/${id}`),
   stats: () => req<BookingStats>('/bookings/stats'),
-  create: (dto: { clientId: string; serviceType: ServiceType; location: string; address: string; quotedAmount: number; paymentMethod: string; notes?: string }) =>
+  // The API prices the job itself from `serviceDetails` — there is deliberately no amount to send.
+  create: (dto: { serviceType: ServiceType; location: string; address: string; paymentMethod: string; notes?: string; serviceDetails?: Record<string, unknown>; discountCode?: string; emergency?: boolean; expectedAmount?: number }) =>
     req<Booking>('/bookings', { method: 'POST', body: JSON.stringify(dto) }),
   updateStatus: (id: string, status: BookingStatus) =>
     req<Booking>(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
@@ -163,15 +164,11 @@ export const chat = {
 
 // ── Payments ─────────────────────────────────────────────────────────────────
 export const payments = {
-  hold: (bookingId: string, amount: number, paymentBrand: string, descriptor: string) =>
+  // The amount held is the booking's price; funds are captured/returned by the API when a booking is completed or cancelled.
+  hold: (bookingId: string, paymentBrand: string, card: { number: string; holder: string; expiry: string; cvv: string }) =>
     req<{ success: boolean; transactionId: string }>('/payments/hold', {
       method: 'POST',
-      body: JSON.stringify({ bookingId, amount, paymentBrand, descriptor }),
-    }),
-  release: (transactionId: string, amount: number) =>
-    req<{ success: boolean }>(`/payments/release/${transactionId}`, {
-      method: 'POST',
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ bookingId, paymentBrand, card }),
     }),
   batchPayout: (payouts: unknown[]) =>
     req<{ success: boolean; batchId: string }>('/payments/payout/batch', {

@@ -96,6 +96,10 @@ export interface Booking {
   notes: string | null
   images: string[] | null
   providerName: string | null
+  discountCode?: string | null
+  discountAmount?: number
+  /** Statuses the signed-in user may move this booking to right now — decided by the server. */
+  allowedNext?: BookingStatus[]
   createdAt: string
   updatedAt: string
 }
@@ -137,7 +141,9 @@ export const api = {
   bookings: {
     list:           (status?: BookingStatus) => req<Booking[]>(`/bookings${status ? `?status=${status}` : ''}`),
     get:            (id: string)             => req<Booking>(`/bookings/${id}`),
-    create:         (dto: { clientId: string; serviceType: ServiceType; location: string; address: string; quotedAmount: number; paymentMethod: string; notes?: string; serviceDetails?: Record<string, any>; images?: string[] }) =>
+    // The server prices the job itself. `expectedAmount` is the total shown to the customer — the server
+    // rejects the booking if its own price differs, so nobody is charged more than they were shown.
+    create:         (dto: { serviceType: ServiceType; location: string; address: string; paymentMethod: string; notes?: string; serviceDetails?: Record<string, any>; images?: string[]; discountCode?: string; emergency?: boolean; expectedAmount?: number }) =>
       req<Booking>('/bookings', { method: 'POST', body: JSON.stringify(dto) }),
     updateStatus:   (id: string, status: BookingStatus) =>
       req<Booking>(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
@@ -198,18 +204,17 @@ export const api = {
   },
 
   payments: {
-    hold: (bookingId: string, amount: number, card: CardDetails) =>
+    // The amount held is the booking's price, decided by the server. Funds are captured/returned by the server
+    // when the provider completes the job or the booking is cancelled — the app never releases money itself.
+    hold: (bookingId: string, card: CardDetails) =>
       req<{ success: boolean; transactionId: string }>('/payments/hold', {
         method: 'POST',
         body: JSON.stringify({
-          bookingId, amount,
+          bookingId,
           paymentBrand: card.brand,
-          descriptor: `HomeSolutions-${bookingId}`,
           card: { number: card.number.replace(/\s/g, ''), holder: card.holder, expiry: card.expiry, cvv: card.cvv },
         }),
       }),
-    release: (transactionId: string, amount: number) =>
-      req<{ success: boolean }>(`/payments/release/${transactionId}`, { method: 'POST', body: JSON.stringify({ amount }) }),
   },
 
   chat: {

@@ -43,8 +43,13 @@ async function apiFetch(path: string, opts?: RequestInit) {
       ...(opts?.headers ?? {}),
     },
   })
-  if (!res.ok) throw new Error(`${res.status}`)
-  return res.json()
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`
+    try { const body = await res.json(); if (body?.message) message = Array.isArray(body.message) ? body.message[0] : body.message } catch {}
+    throw new Error(message)
+  }
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -342,17 +347,32 @@ function BookingsSection() {
     setAssigning(true)
     try {
       await apiFetch(`/bookings/${bookingId}/assign`, { method: 'PATCH', body: JSON.stringify({ providerId }) })
-      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, providerId, status: 'accepted' } : b))
-      setSelected((s: any) => s?.id === bookingId ? { ...s, providerId, status: 'accepted' } : s)
-    } catch {} finally { setAssigning(false) }
+      await refreshOne(bookingId)
+    } catch (e: any) { alert(e.message) } finally { setAssigning(false) }
   }
 
   const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter)
 
+  // After any change, re-read the booking so status, payment flags and the allowed next steps all come from the server.
+  const refreshOne = async (id: string) => {
+    const fresh = await apiFetch(`/bookings/${id}`)
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, ...fresh } : b))
+    setSelected((s: any) => s?.id === id ? { ...s, ...fresh } : s)
+  }
+
   const updateStatus = async (id: string, status: string) => {
-    await apiFetch(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
-    setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b))
-    setSelected((s: any) => s?.id === id ? { ...s, status } : s)
+    try {
+      await apiFetch(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+    } catch (e: any) { alert(e.message) }
+    await refreshOne(id).catch(() => {})
+  }
+
+  const reconcilePayment = async (id: string) => {
+    try {
+      const r = await apiFetch(`/bookings/${id}/reconcile-payment`, { method: 'POST' })
+      alert(r?.action === 'captured' ? 'Payment captured and the provider credited.' : r?.action === 'voided' ? 'Payment returned to the customer.' : 'Nothing to do — the payment is already settled.')
+    } catch (e: any) { alert(e.message) }
+    await refreshOne(id).catch(() => {})
   }
 
   return (
@@ -424,12 +444,21 @@ function BookingsSection() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-              {['accepted','en_route','in_progress','completed','cancelled'].map(s => (
+              {(selected.allowedNext ?? []).map((s: string) => (
                 <button key={s} style={styles.actionBtn} onClick={() => updateStatus(selected.id, s)}>
                   → {s.replace('_',' ')}
                 </button>
               ))}
+              {(selected.allowedNext ?? []).length === 0 && <span style={{ fontSize: 11, color: '#9C9CA0' }}>No further steps — this booking is final.</span>}
             </div>
+            {selected.paymentHeld && ((selected.status === 'completed' && !selected.paymentReleased) || selected.status === 'cancelled') && (
+              <div style={{ marginTop: 12, padding: 10, background: '#FEF3C7', borderRadius: 8, fontSize: 12, color: '#92400E' }}>
+                {selected.status === 'completed' ? 'Payment is still held for this completed job.' : 'This cancelled booking still has a payment held.'}
+                <button style={{ ...styles.actionBtn, marginLeft: 8 }} onClick={() => reconcilePayment(selected.id)}>
+                  {selected.status === 'completed' ? 'Retry capture' : 'Retry refund'}
+                </button>
+              </div>
+            )}
           </Card>
           <BookingChat bookingId={selected.id} myId="admin-1" myName="Admin" myRole="admin" />
         </div>

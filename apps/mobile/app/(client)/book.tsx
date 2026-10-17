@@ -1,6 +1,7 @@
 /**
  * Booking flow — Provider selection → Quote review → Tracking → Rating → Done
- * Wired to live API: create booking, hold payment, complete, release.
+ * Wired to live API: create booking, hold payment, then track until the provider completes it.
+ * The server prices the job and moves the money; this screen never sets an amount or releases funds.
  */
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, TextInput } from 'react-native'
@@ -11,7 +12,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
-import { api } from '../../lib/api'
+import { api, ApiError } from '../../lib/api'
 import type { Provider, Booking, CardDetails } from '../../lib/api'
 import CardInput from '../../components/CardInput'
 import { useAuth } from '../../context/auth'
@@ -25,8 +26,6 @@ const MOCK_PROVIDERS: Provider[] = [
   { id: 'prov-sipho', name: 'Sipho Ndlovu', skills: ['plumbing','handyman'], rating: 4.7, reviewCount: 98, jobCount: 312, earningsBalance: 0, kycStatus: 'approved', status: 'active', lat: null, lng: null, distanceKm: null, etaMinutes: null, serviceAreas: [], availability: { monFri: true, saturday: false, sunday: false, emergency: false } },
 ]
 
-const QUOTE_AMOUNT = 1000
-
 export default function BookScreen() {
   const { serviceType } = useLocalSearchParams<{ serviceType: string }>()
   const { user } = useAuth()
@@ -39,7 +38,8 @@ export default function BookScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [selectedProv,   setSelected]    = useState(0)
   const [providerView,   setProviderView] = useState<'list' | 'map'>('list')
-  const [providers,      setProviders]   = useState<Provider[]>(MOCK_PROVIDERS)
+  // Sample providers are for local development only — real customers must never be shown (or charged for) fake ones.
+  const [providers,      setProviders]   = useState<Provider[]>(__DEV__ ? MOCK_PROVIDERS : [])
   const [booking,        setBooking]     = useState<Booking | null>(null)
   const [liveStatus,     setLiveStatus]  = useState<string | null>(null)
   const [txnId,          setTxnId]       = useState<string | null>(null)
@@ -55,6 +55,7 @@ export default function BookScreen() {
   const [appliedCode,    setAppliedCode]  = useState<import('../../lib/api').LoyaltyRedemption | null>(null)
   const [hasSub,         setHasSub]       = useState<boolean | null>(null)
   const etaRef = useRef(eta)
+  const cancelledRef = useRef(false)
 
   const estimate = calculateEstimate(serviceType ?? '', answers)
 
@@ -112,6 +113,11 @@ export default function BookScreen() {
           setTxnId(updated.transactionId ?? txnId)
           setStep('rating')
         }
+        if (updated.status === 'cancelled' && !cancelledRef.current) {
+          cancelledRef.current = true
+          Alert.alert('Booking cancelled', 'This booking was cancelled. Any payment held for it is being returned.')
+          router.replace('/(client)/bookings' as any)
+        }
       } catch {}
     }
     poll() // immediate first poll
@@ -152,61 +158,68 @@ export default function BookScreen() {
     finally { setUploadingPhoto(false) }
   }
 
-  // ── Approve & pay → create booking + hold payment ──
+  // ── Approve & pay → create booking, hold payment, hand the job to the provider ──
+  // The server prices the booking (and applies/consumes the reward code); we only tell it the total we showed
+  // the customer so a mismatch is caught instead of silently charging a different amount.
   const handleApprove = async () => {
     if (!user) return
     if (!card) { Alert.alert('Card required', 'Please enter your card details to continue.'); return }
+    if (!prov) { Alert.alert('No provider selected', 'Please choose a provider first.'); return }
     setLoading(true)
+    let created: Booking | null = null
     try {
-      // 1. Create booking
-      const baseAmount  = Math.round((estimate.min + estimate.max) / 2)
-      const quoteAmount = Math.max(0, baseAmount - (appliedCode?.discountAmount ?? 0))
-      const newBooking = await api.bookings.create({
-        clientId:       user.id,
+      const shownTotal = Math.max(0, Math.round((estimate.min + estimate.max) / 2) - (appliedCode?.discountAmount ?? 0))
+      created = await api.bookings.create({
         serviceType:    (serviceType ?? 'handyman') as any,
         location:       clientCoords ? `${clientCoords.lat},${clientCoords.lng}` : '-29.8587,31.0218',
         address:        address || 'South Africa',
-        quotedAmount:   quoteAmount,
         paymentMethod:  'card',
-        notes:          `Requested provider: ${prov?.name}`,
+        notes:          `Requested provider: ${prov.name}`,
         serviceDetails: answers,
         images:         photos,
+        discountCode:   appliedCode?.code,
+        expectedAmount: shownTotal,
       })
-      setBooking(newBooking)
 
-      // 2. Assign selected provider
-      if (prov) {
-        await api.bookings.assignProvider(newBooking.id, prov.id)
-      }
-
-      // 3. Hold payment with real card details
-      const payRes = await api.payments.hold(newBooking.id, quoteAmount, card)
+      // Secure the payment BEFORE the provider is told they have the job.
+      const payRes = await api.payments.hold(created.id, card)
       setTxnId(payRes.transactionId)
 
+      const assigned = await api.bookings.assignProvider(created.id, prov.id)
+      setBooking({ ...created, ...assigned })
       setStep('tracking')
     } catch (e) {
-      // Fall through to tracking even if API call fails (demo resilience)
-      setStep('tracking')
+      // Never pretend it worked. Undo what we did (cancelling also returns a held payment and the reward code)
+      // and tell the customer exactly what went wrong.
+      if (created) { try { await api.bookings.updateStatus(created.id, 'cancelled') } catch {} }
+      Alert.alert(
+        "We couldn't complete your booking",
+        e instanceof ApiError && e.status !== 0 ? e.message : 'Please check your connection and try again.',
+      )
     } finally {
       setLoading(false)
     }
   }
 
-  // ── Mark complete → update status + release payment ──
-  const handleComplete = async () => {
-    setLoading(true)
-    try {
-      if (booking) {
-        await api.bookings.updateStatus(booking.id, 'completed')
-      }
-      if (txnId) {
-        await api.payments.release(txnId, QUOTE_AMOUNT)
-      }
-    } catch {}
-    finally {
-      setLoading(false)
-      setStep('rating')
-    }
+  // ── Cancel while waiting for / travelling with the provider (the server returns the held payment) ──
+  const handleCancel = () => {
+    if (!booking) return
+    Alert.alert('Cancel this booking?', 'The payment held on your card will be released.', [
+      { text: 'Keep booking', style: 'cancel' },
+      {
+        text: 'Cancel booking', style: 'destructive',
+        onPress: async () => {
+          setLoading(true)
+          try {
+            await api.bookings.updateStatus(booking.id, 'cancelled')
+            cancelledRef.current = true
+            router.replace('/(client)/bookings' as any)
+          } catch (e) {
+            Alert.alert("Couldn't cancel", e instanceof ApiError && e.status !== 0 ? e.message : 'Please check your connection and try again.')
+          } finally { setLoading(false) }
+        },
+      },
+    ])
   }
 
   const prog = { details: 0.2, providers: 0.4, quote: 0.65, tracking: 0.85, rating: 1, done: 1 }[step]
@@ -380,7 +393,14 @@ export default function BookScreen() {
             />
           ) : (
           <ScrollView style={s.body}>
-            <Text style={s.hint}>{clientCoords ? 'Sorted by proximity · Verified only' : 'Sorted by rating · Verified only'}</Text>
+            {providers.length === 0 ? (
+              <View style={s.noProviders}>
+                <Text style={s.noProvidersTitle}>No providers available yet</Text>
+                <Text style={s.noProvidersText}>We don't have a verified provider for this service in your area right now. Please try again later.</Text>
+              </View>
+            ) : (
+              <Text style={s.hint}>{clientCoords ? 'Sorted by proximity · Verified only' : 'Sorted by rating · Verified only'}</Text>
+            )}
             {providers.map((p, i) => {
               const avatarColors = [
                 { bg: '#DCF0E8', fg: '#1A6842' }, { bg: '#DBEAFE', fg: '#1D4ED8' },
@@ -436,8 +456,8 @@ export default function BookScreen() {
           </ScrollView>
           )}
           <View style={s.ctaBar}>
-            <TouchableOpacity activeOpacity={0.8} style={s.ctaBtn} onPress={() => setStep('quote')}>
-              <Text style={s.ctaBtnText}>Request quote from {prov?.name.split(' ')[0]}</Text>
+            <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, !prov && { opacity: 0.5 }]} onPress={() => setStep('quote')} disabled={!prov}>
+              <Text style={s.ctaBtnText}>{prov ? `Request quote from ${prov.name.split(' ')[0]}` : 'No provider available'}</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -579,11 +599,12 @@ export default function BookScreen() {
             </View>
           </ScrollView>
           <View style={s.ctaBar}>
-            <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtn, { backgroundColor: colors.accent }, loading && { opacity: 0.7 }]} onPress={handleComplete} disabled={loading}>
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={[s.ctaBtnText, { color: '#fff' }]}>Mark job complete</Text>}
-            </TouchableOpacity>
+            <Text style={s.waitNote}>Your provider marks the job complete when the work is done — you'll then be asked to rate them and your payment is released.</Text>
+            {['pending', 'accepted', 'en_route'].includes(liveStatus ?? booking?.status ?? '') && (
+              <TouchableOpacity activeOpacity={0.8} style={[s.ctaBtnSec, loading && { opacity: 0.6 }]} onPress={handleCancel} disabled={loading}>
+                {loading ? <ActivityIndicator color={colors.text} /> : <Text style={s.ctaBtnSecText}>Cancel booking</Text>}
+              </TouchableOpacity>
+            )}
           </View>
         </>
       )}
@@ -599,7 +620,7 @@ export default function BookScreen() {
               <Text style={[s.avatarText, { color: '#1A6842', fontSize: 22 }]}>{prov?.name.split(' ').map(w => w[0]).join('')}</Text>
             </View>
             <Text style={s.provName}>{prov?.name}</Text>
-            <Text style={[s.provSkill, { marginBottom: 16 }]}>{serviceType} · R 1 000</Text>
+            <Text style={[s.provSkill, { marginBottom: 16 }]}>{serviceType}{booking ? ` · R ${booking.quotedAmount.toLocaleString()}` : ''}</Text>
 
             <View style={s.starsRow}>
               {[1,2,3,4,5].map(n => (
@@ -646,7 +667,7 @@ export default function BookScreen() {
         <View style={[s.body, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }]}>
           <View style={s.doneTick}><Text style={{ fontSize: 36 }}>✓</Text></View>
           <Text style={s.doneTitle}>All done!</Text>
-          <Text style={s.doneSub}>R 1 000 released to {prov?.name.split(' ')[0]}. 90-day warranty active. Receipt emailed.</Text>
+          <Text style={s.doneSub}>{booking ? `R ${booking.quotedAmount.toLocaleString()} paid` : 'Payment complete'} to {prov?.name.split(' ')[0]}. 90-day warranty active.</Text>
           <View style={s.pointsBox}>
             <Text style={s.pointsLabel}>Loyalty points earned</Text>
             <Text style={s.pointsVal}>+50 pts</Text>
@@ -868,4 +889,8 @@ const s = StyleSheet.create({
   ctaBtnText:        { fontSize: 14, fontWeight: '600', color: colors.navy },
   ctaBtnSec:         { backgroundColor: colors.creamMid, borderRadius: 12, padding: 14, alignItems: 'center' },
   ctaBtnSecText:     { fontSize: 14, fontWeight: '500', color: colors.text },
+  waitNote:          { fontSize: 12, color: colors.textMuted, textAlign: 'center', lineHeight: 18, paddingHorizontal: 6 },
+  noProviders:       { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
+  noProvidersTitle:  { fontSize: 16, fontWeight: '600', color: colors.text },
+  noProvidersText:   { fontSize: 13, color: colors.textMuted, textAlign: 'center', lineHeight: 19 },
 })

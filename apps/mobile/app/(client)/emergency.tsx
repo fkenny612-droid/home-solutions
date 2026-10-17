@@ -11,10 +11,10 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Location from 'expo-location'
 import { Linking } from 'react-native'
 import { colors } from '../../constants/theme'
-import { api } from '../../lib/api'
+import { api, ApiError } from '../../lib/api'
 import { useAuth } from '../../context/auth'
 import CardInput from '../../components/CardInput'
-import type { CardDetails } from '../../lib/api'
+import type { Booking, CardDetails, Provider } from '../../lib/api'
 
 const SERVICES = [
   { value: 'plumbing',    label: 'Plumbing',    emoji: '💧' },
@@ -25,7 +25,11 @@ const SERVICES = [
   { value: 'handyman',    label: 'Handyman',    emoji: '🔧' },
 ]
 
-const EMERGENCY_RATE = 850 // flat call-out fee
+const EMERGENCY_RATE = 850 // flat call-out fee shown to the customer — the server charges its own EMERGENCY_CALLOUT_FEE and rejects a mismatch
+
+// The API returns a flat `emergency` flag on each provider (not the nested `availability` object the type describes).
+const takesEmergencies = (p: Provider) =>
+  (p as unknown as { emergency?: boolean }).emergency === true || p.availability?.emergency === true
 
 export default function EmergencyScreen() {
   const { user } = useAuth()
@@ -65,31 +69,37 @@ export default function EmergencyScreen() {
     if (!user) return
     if (!card) { Alert.alert('Card required', 'Please enter your card details.'); return }
     setLoading(true)
+    let booking: Booking | null = null
     try {
-      // Find nearest available provider for this service
+      // Find a technician FIRST. Nobody is charged for a call-out that nobody can attend.
       const providers = await api.providers.list(service.value, coords?.lat, coords?.lng)
-      const provider  = providers.find(p => p.availability?.emergency) ?? providers[0]
-
-      const booking = await api.bookings.create({
-        clientId:      user.id,
-        serviceType:   service.value as any,
-        location:      coords ? `${coords.lat},${coords.lng}` : '-29.8587,31.0218',
-        address:       address || 'Durban, KZN',
-        quotedAmount:  EMERGENCY_RATE,
-        paymentMethod: 'card',
-        notes:         `EMERGENCY: ${notes}`.trim(),
-      })
-
-      if (provider) {
-        await api.bookings.assignProvider(booking.id, provider.id)
+      const provider  = providers.find(takesEmergencies)
+      if (!provider) {
+        Alert.alert('No technician available', "We couldn't find an emergency technician for this service near you right now. You have not been charged.")
+        return
       }
 
-      await api.payments.hold(booking.id, EMERGENCY_RATE, card)
+      booking = await api.bookings.create({
+        serviceType:    service.value as any,
+        location:       coords ? `${coords.lat},${coords.lng}` : '-29.8587,31.0218',
+        address:        address || 'Durban, KZN',
+        paymentMethod:  'card',
+        notes:          `EMERGENCY: ${notes}`.trim(),
+        emergency:      true,
+        expectedAmount: EMERGENCY_RATE,
+      })
+
+      // Secure the payment before the technician is told they have the job.
+      await api.payments.hold(booking.id, card)
+      await api.bookings.assignProvider(booking.id, provider.id)
+
       setBookingId(booking.id)
-      setEta(provider?.etaMinutes ?? 12)
+      setEta(provider.etaMinutes ?? 12)
       setStep('dispatched')
-    } catch {
-      Alert.alert('Dispatch failed', 'Could not find an available provider. Please call 081 000 0000 for immediate assistance.')
+    } catch (e) {
+      // Undo anything we started (cancelling also returns a held payment) and say why — never claim a dispatch that didn't happen.
+      if (booking) { try { await api.bookings.updateStatus(booking.id, 'cancelled') } catch {} }
+      Alert.alert('Dispatch failed', e instanceof ApiError && e.status !== 0 ? e.message : 'Please check your connection and try again.')
     } finally {
       setLoading(false)
     }

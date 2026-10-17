@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
-import { api, Booking } from '../../lib/api'
+import { api, ApiError, Booking } from '../../lib/api'
+import { Alert } from '../../lib/alert'
 import { useAuth } from '../../context/auth'
 
 const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
@@ -37,6 +38,7 @@ export default function ProviderJobs() {
   const { user } = useAuth()
   const [jobs,       setJobs]       = useState<Booking[]>([])
   const [refreshing, setRefreshing] = useState(false)
+  const [passed,     setPassed]     = useState<string[]>([])   // jobs this provider has declined (hidden for this session)
 
   const load = async () => {
     try {
@@ -52,21 +54,25 @@ export default function ProviderJobs() {
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false) }
 
+  const explain = (title: string, e: unknown) =>
+    Alert.alert(title, e instanceof ApiError && e.status !== 0 ? e.message : 'Please check your connection and try again.')
+
   const updateStatus = async (id: string, status: 'en_route' | 'in_progress' | 'completed') => {
-    try { await api.bookings.updateStatus(id, status); await load() } catch {}
+    try { await api.bookings.updateStatus(id, status); await load() } catch (e) { explain("Couldn't update the job", e); await load() }
   }
 
   const acceptJob = async (id: string) => {
     if (!user) return
-    try { await api.bookings.assignProvider(id, user.id); await load() } catch {}
+    try { await api.bookings.assignProvider(id, user.id); await load() } catch (e) { explain("Couldn't accept this job", e); await load() }
   }
 
-  const declineJob = async (id: string) => {
-    try { await api.bookings.updateStatus(id, 'cancelled'); await load() } catch {}
-  }
+  // Declining just hides the job from *this* provider. It must never cancel it — the booking belongs to the
+  // client and other providers can still take it. (This used to call updateStatus('cancelled'), which would have
+  // cancelled the client's booking for everyone; the server now refuses, so the button silently did nothing.)
+  const declineJob = (id: string) => setPassed(prev => [...prev, id])
 
   const activeJobs  = jobs.filter(j => j.providerId === user?.id && !['completed', 'cancelled'].includes(j.status))
-  const pendingJobs = jobs.filter(j => j.status === 'pending' && !j.providerId)
+  const pendingJobs = jobs.filter(j => j.status === 'pending' && !j.providerId && !passed.includes(j.id))
 
   return (
     <SafeAreaView style={s.safe}>
