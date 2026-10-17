@@ -4,7 +4,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { SERVICE_PRICING } from '../src/modules/bookings/pricing.generated'
 import {
-  calculateEstimate, baseQuote, priceBooking, isKnownService,
+  calculateEstimate, baseQuote, priceBooking, isKnownService, unansweredQuestions,
   EMERGENCY_CALLOUT_FEE, MIN_PAYABLE,
 } from '../src/modules/bookings/pricing'
 
@@ -91,4 +91,18 @@ test('totals are never zero, negative, or fractional', () => {
     const t = priceBooking({ serviceType: id, answers: {} }).total
     assert.ok(Number.isInteger(t) && t >= 150, `${id} -> ${t}`)
   }
+})
+
+test('a booking must answer every price-bearing question (an empty form is not the cheapest job)', () => {
+  assert.deepEqual(unansweredQuestions('plumbing', {}).sort(), ['issue', 'urgency'].sort())
+  assert.deepEqual(unansweredQuestions('plumbing', { issue: 'burst_pipe' }), ['urgency'])
+  assert.deepEqual(unansweredQuestions('plumbing', { issue: 'burst_pipe', urgency: 'standard' }), [])
+})
+
+test('junk answers do not count as answered', () => {
+  assert.deepEqual(unansweredQuestions('plumbing', { issue: 'not-a-real-option', urgency: 12 }).sort(), ['issue', 'urgency'])
+})
+
+test('unknown services have nothing to answer (they are rejected elsewhere)', () => {
+  assert.deepEqual(unansweredQuestions('made_up', {}), [])
 })

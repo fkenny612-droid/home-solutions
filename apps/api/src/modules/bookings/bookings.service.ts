@@ -6,7 +6,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service'
 import { PeachPaymentsService } from '../payments/peach-payments.service'
 import { BookingStatus, ServiceType } from './booking.types'
 import { POINTS_PER_RAND_SPENT, REFERRAL_BONUS_POINTS } from '../loyalty/loyalty.constants'
-import { isKnownService, priceBooking } from './pricing'
+import { isKnownService, priceBooking, unansweredQuestions } from './pricing'
 import { ALL_STATUSES, Actor, canTransition, nextStatuses } from './booking-status'
 
 const PAYMENT_METHODS = ['card', 'eft', 'payfast']
@@ -173,6 +173,11 @@ export class BookingsService {
       if (redemption.used) throw new ConflictException('That reward has already been used')
       discount = redemption.discountAmount
       discountCode = code
+    }
+
+    // An unanswered question prices the job at the cheapest option, so require them all (except flat-fee emergencies).
+    if (dto.emergency !== true && unansweredQuestions(dto.serviceType, details ?? {}).length > 0) {
+      throw new BadRequestException('Please answer all the questions about the job so we can price it correctly')
     }
 
     // The server prices the job. Whatever amount the app displays or sends is only checked, never trusted.
@@ -413,7 +418,7 @@ export class BookingsService {
       booking.serviceType,
       booking.id,
     ).catch(() => {})
-    return booking
+    return this.withProviderName(booking)   // never return the provider's full record (phone, earnings) to the caller
   }
 
   async stats() {

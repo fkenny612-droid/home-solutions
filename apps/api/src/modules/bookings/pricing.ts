@@ -12,6 +12,15 @@ export function isKnownService(serviceType: string): boolean {
 }
 
 /**
+ * The price-bearing questions the customer hasn't answered. A booking with unanswered questions would be priced
+ * as the cheapest possible job, so standard bookings must answer all of them (emergency call-outs are a flat fee).
+ */
+export function unansweredQuestions(serviceType: string, answers: Record<string, unknown> = {}): string[] {
+  if (!isKnownService(serviceType)) return []
+  return SERVICE_PRICING[serviceType].filter(q => !q.options.some(o => o.value === answers[q.key])).map(q => q.key)
+}
+
+/**
  * Price range for a job, from the customer's answers. Must stay identical to calculateEstimate()
  * in apps/mobile/lib/serviceConfig.ts — test/pricing.spec.ts enforces that.
  * Note it only prices "select" answers; counters (quantity, days) do not change the price.

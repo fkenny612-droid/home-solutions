@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Param, Body, Query, Req, UseGuards, Forbi
 import { AuthGuard } from '@nestjs/passport'
 import { AdminGuard } from '../../common/guards/admin.guard'
 import { ProvidersService, ProviderStatus, KycStatus } from './providers.service'
+import { presentProvider } from './provider-presenter'
 
 function assertSelfOrAdmin(req: any, providerId: string) {
   if (req.user.role === 'admin') return
@@ -15,18 +16,20 @@ export class ProvidersController {
   constructor(private readonly svc: ProvidersService) {}
 
   @Get()
-  findAll(
+  async findAll(
+    @Req() req: any,
     @Query('status') status?: ProviderStatus,
     @Query('skill')  skill?: string,
     @Query('lat')    lat?: string,
     @Query('lng')    lng?: string,
   ) {
-    return this.svc.findAll(status, skill, lat ? parseFloat(lat) : undefined, lng ? parseFloat(lng) : undefined)
+    const providers = await this.svc.findAll(status, skill, lat ? parseFloat(lat) : undefined, lng ? parseFloat(lng) : undefined)
+    return providers.map(p => presentProvider(p, req.user))
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.svc.findOne(id)
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return presentProvider(await this.svc.findOne(id), req.user)
   }
 
   @Get(':id/earnings')
