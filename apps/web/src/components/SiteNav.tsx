@@ -1,6 +1,6 @@
 'use client'
 
-import { ActiveSection } from '@/app/page'
+import { ActiveSection } from '@/app/preview/page'
 import LogoMark from './Logo'
 
 const tabs: { id: ActiveSection; label: string; icon: string }[] = [

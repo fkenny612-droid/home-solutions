@@ -1,6 +1,6 @@
 'use client'
 
-import { ActiveSection } from '@/app/page'
+import { ActiveSection } from '@/app/preview/page'
 
 const STACK = [
   'React Native + Expo', 'NestJS', 'PostgreSQL 16', 'Next.js 14',
