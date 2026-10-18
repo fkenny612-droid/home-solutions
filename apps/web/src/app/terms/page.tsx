@@ -133,7 +133,8 @@ export default function TermsOfService() {
 
       <footer style={{ marginTop: 60, paddingTop: 24, borderTop: '1px solid #eee', color: '#999', fontSize: 12 }}>
         © 2026 Easyfix (Pty) Ltd · Durban, KwaZulu-Natal ·{' '}
-        <a href="/privacy" style={{ color: '#1A5C1A' }}>Privacy Policy</a>
+        <a href="/privacy" style={{ color: '#1A5C1A' }}>Privacy Policy</a> ·{' '}
+        <a href="/delete-account" style={{ color: '#1A5C1A' }}>Delete your account</a>
       </footer>
     </main>
   )
