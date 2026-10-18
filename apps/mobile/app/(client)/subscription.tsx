@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
-import { api, SubscriptionPlan, ActiveSubscription } from '../../lib/api'
+import { api, ApiError, SubscriptionPlan, ActiveSubscription } from '../../lib/api'
 
 const PLAN_HIGHLIGHT: Record<string, { tag: string; tagColor: string }> = {
   basic_home:   { tag: 'STARTER',   tagColor: colors.gray400 },
@@ -45,8 +45,8 @@ export default function ClientSubscription() {
               const sub = await api.subscriptions.subscribe(plan.id)
               setActive(sub)
               Alert.alert('Subscribed!', `Welcome to ${plan.name}.`)
-            } catch {
-              Alert.alert('Error', 'Could not subscribe. Please try again.')
+            } catch (e) {
+              Alert.alert("Couldn't change plan", e instanceof ApiError && e.status !== 0 ? e.message : 'Please check your connection and try again.')
             } finally {
               setSubscribing(null)
             }

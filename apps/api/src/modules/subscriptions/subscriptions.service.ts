@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common'
+import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 
 export const CLIENT_PLANS = {
@@ -80,6 +80,11 @@ export class SubscriptionsService {
       throw new BadRequestException(`Unknown plan: ${planId}`)
     }
     const plan = plans[planId as keyof typeof plans]
+    // Nothing charges the card yet, so a paid plan would simply switch its benefits on for free (a provider could
+    // take 'Elite' and pay 8% commission instead of 20%). Refuse until payment is wired up — then remove this.
+    if ((plan as { priceMonthly: number }).priceMonthly > 0) {
+      throw new ConflictException('Paid plans are not available yet. Subscription payments are coming soon.')
+    }
     const expiresAt = new Date()
     expiresAt.setMonth(expiresAt.getMonth() + 1)
 
