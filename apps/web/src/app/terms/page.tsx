@@ -15,7 +15,7 @@ export default function TermsOfService() {
       </div>
 
       <section>
-        <p>These Terms of Service ("Terms") govern your use of the Easyfix mobile application and website operated by Easyfix (Pty) Ltd ("Easyfix", "we", "us"). By creating an account or using the platform you agree to be bound by these Terms.</p>
+        <p>These Terms of Service (&quot;Terms&quot;) govern your use of the Easyfix mobile application and website operated by Easyfix (Pty) Ltd (&quot;Easyfix&quot;, &quot;we&quot;, &quot;us&quot;). By creating an account or using the platform you agree to be bound by these Terms.</p>
       </section>
 
       {[

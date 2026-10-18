@@ -604,7 +604,7 @@ function ProvidersSection() {
                       } catch (e: any) { alert(e.message) }
                     }}
                   >
-                    ✅ I've paid this — mark as paid out
+                    ✅ I&apos;ve paid this — mark as paid out
                   </button>
                 </div>
               )

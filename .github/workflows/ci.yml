@@ -38,3 +38,8 @@ jobs:
 
       - name: Web — type-check
         run: pnpm --filter web exec tsc --noEmit
+
+      # The same build Vercel runs. Type-checking alone misses lint errors that fail the deploy (that is how the
+      # website silently stayed on an old version for weeks).
+      - name: Web — production build
+        run: pnpm --filter web exec next build
