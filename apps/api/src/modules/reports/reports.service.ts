@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 
 export const REPORT_TARGETS = ['listing', 'message'] as const
@@ -38,11 +39,16 @@ export class ReportsService {
 
   /** Admin: open reports first, each with a snapshot of what was reported. */
   async list(status?: string) {
-    const reports = await this.prisma.report.findMany({
+    const found = await this.prisma.report.findMany({
       where:   status ? { status } : {},
-      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      orderBy: { createdAt: 'desc' },
       take:    200,
     })
+    // Open reports first (alphabetical status order would put 'dismissed' above 'open'), newest first within each.
+    const reports = [...found].sort((a, b) => Number(b.status === 'open') - Number(a.status === 'open'))
+    // How many people reported the same item — several reports on one item is the strongest signal.
+    const counts = await this.prisma.report.groupBy({ by: ['targetType', 'targetId'], _count: { _all: true } })
+    const countFor = (t: string, id: string) => counts.find(c => c.targetType === t && c.targetId === id)?._count._all ?? 1
     return Promise.all(reports.map(async r => {
       let target: Record<string, unknown> | null = null
       if (r.targetType === 'listing') {
@@ -56,8 +62,29 @@ export class ReportsService {
           select: { id: true, text: true, senderId: true, senderName: true, bookingId: true },
         })
       }
-      return { ...r, target }
+      return { ...r, target, reportCount: countFor(r.targetType, r.targetId) }
     }))
+  }
+
+  /**
+   * Moderator action: take the reported content down. A listing is deleted; a chat message is blanked (the row stays so
+   * the conversation keeps its shape and the booking history is intact). Every report on that item is then closed.
+   */
+  async removeContent(id: string) {
+    const report = await this.prisma.report.findUnique({ where: { id } })
+    if (!report) throw new NotFoundException('Report not found')
+
+    let removed = false
+    if (report.targetType === 'listing') {
+      removed = (await this.prisma.listing.deleteMany({ where: { id: report.targetId } })).count > 0
+    } else {
+      removed = (await this.prisma.message.updateMany({
+        where: { id: report.targetId },
+        data:  { text: '[Removed by Easyfix]', attachments: Prisma.DbNull },
+      })).count > 0
+    }
+    await this.prisma.report.updateMany({ where: { targetType: report.targetType, targetId: report.targetId }, data: { status: 'resolved' } })
+    return { ok: true, removed }
   }
 
   async setStatus(id: string, status: string) {

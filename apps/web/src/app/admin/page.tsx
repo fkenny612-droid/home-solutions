@@ -53,7 +53,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = 'dashboard' | 'bookings' | 'providers' | 'clients' | 'tracking' | 'hardware' | 'materials' | 'finance' | 'settings'
+type Section = 'dashboard' | 'bookings' | 'providers' | 'clients' | 'tracking' | 'hardware' | 'materials' | 'finance' | 'reports' | 'settings'
 
 const NAV: { section: string; items: { id: Section; label: string; icon: string }[] }[] = [
   { section: 'Operations', items: [
@@ -69,6 +69,7 @@ const NAV: { section: string; items: { id: Section; label: string; icon: string 
     { id: 'hardware',  label: 'Hardware',   icon: '🏪' },
     { id: 'materials', label: 'Materials',  icon: '📦' },
     { id: 'finance',   label: 'Finance',    icon: '💰' },
+    { id: 'reports',   label: 'Reports',    icon: '🚩' },
   ]},
   { section: 'System', items: [
     { id: 'settings',  label: 'Settings',   icon: '⚙️' },
@@ -85,6 +86,7 @@ const STATUS_COLORS: Record<string, string> = {
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function AdminPortal() {
   const [authed,   setAuthed]   = useState(false)
+  const [openReports, setOpenReports] = useState(0)
   const [loading,  setLoading]  = useState(true)
   const [section,  setSection]  = useState<Section>('dashboard')
   const [phone,    setPhone]    = useState('')
@@ -115,6 +117,10 @@ export default function AdminPortal() {
   }
 
   const logout = () => { clearToken(); setAuthed(false) }
+
+  const refreshOpenReports = () =>
+    apiFetch('/reports?status=open').then((r: any[]) => setOpenReports(r.length)).catch(() => {})
+  useEffect(() => { if (authed) refreshOpenReports() }, [authed])
 
   if (loading) return <div style={styles.center}><span>Loading…</span></div>
 
@@ -166,6 +172,9 @@ export default function AdminPortal() {
               >
                 <span style={{ fontSize: 15 }}>{item.icon}</span>
                 <span>{item.label}</span>
+                {item.id === 'reports' && openReports > 0 && (
+                  <span style={{ marginLeft: 'auto', background: '#E63946', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>{openReports}</span>
+                )}
               </button>
             ))}
           </div>
@@ -192,6 +201,7 @@ export default function AdminPortal() {
           {section === 'hardware'   && <HardwareSection />}
           {section === 'materials'  && <MaterialsSection />}
           {section === 'finance'    && <FinanceSection />}
+          {section === 'reports'    && <ReportsSection onChanged={refreshOpenReports} />}
           {section === 'settings'   && <SettingsSection />}
         </div>
       </div>
@@ -846,6 +856,102 @@ function FinanceSection() {
         <button style={styles.primaryBtn}>Process pending payouts →</button>
       </Card>
     </div>
+  )
+}
+
+// ─── Reports (user-reported marketplace listings and chat messages) ───────────
+const REASON_LABELS: Record<string, string> = {
+  spam_or_scam: 'Spam or scam', prohibited_item: 'Prohibited item or service',
+  inappropriate: 'Inappropriate or offensive', harassment: 'Harassment or abuse', other: 'Something else',
+}
+
+function ReportsSection({ onChanged }: { onChanged: () => void }) {
+  const [reports, setReports] = useState<any[]>([])
+  const [filter,  setFilter]  = useState<'open' | 'resolved' | 'dismissed' | 'all'>('open')
+  const [busy,    setBusy]    = useState<string | null>(null)
+  const [loaded,  setLoaded]  = useState(false)
+
+  const load = () =>
+    apiFetch(`/reports${filter === 'all' ? '' : `?status=${filter}`}`)
+      .then(setReports).catch(() => setReports([])).finally(() => setLoaded(true))
+
+  useEffect(() => { setLoaded(false); load() }, [filter])
+
+  const act = async (r: any, kind: 'remove' | 'dismiss' | 'reopen') => {
+    const what = r.targetType === 'listing' ? 'delete this listing' : 'blank out this message'
+    if (kind === 'remove' && !confirm(`Remove the reported content? This will ${what} and close every report on it.`)) return
+    setBusy(r.id)
+    try {
+      if (kind === 'remove') await apiFetch(`/reports/${r.id}/remove-content`, { method: 'POST' })
+      else await apiFetch(`/reports/${r.id}`, { method: 'PATCH', body: JSON.stringify({ status: kind === 'dismiss' ? 'dismissed' : 'open' }) })
+      await load(); onChanged()
+    } catch (e: any) { alert(e.message) } finally { setBusy(null) }
+  }
+
+  return (
+    <Card title="Reported content" action={
+      <div style={styles.filterRow}>
+        {(['open', 'resolved', 'dismissed', 'all'] as const).map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{ ...styles.filterBtn, ...(filter === f ? styles.filterBtnActive : {}) }}>{f}</button>
+        ))}
+      </div>
+    }>
+      {!loaded && <Empty text="Loading…" />}
+      {loaded && reports.length === 0 && <Empty text={filter === 'open' ? 'Nothing waiting for review 🎉' : 'No reports here'} />}
+      {reports.map(r => {
+        const t = r.target
+        return (
+          <div key={r.id} style={{ ...styles.tableRow, alignItems: 'flex-start', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
+              <StatusBadge status={r.status} />
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{REASON_LABELS[r.reason] ?? r.reason}</span>
+              <span style={styles.rowSub}>· {r.targetType === 'listing' ? 'Marketplace listing' : 'Chat message'} · {new Date(r.createdAt).toLocaleString('en-ZA')}</span>
+              {r.reportCount > 1 && <span style={{ fontSize: 10, fontWeight: 700, color: '#E63946', background: '#FEE2E2', borderRadius: 10, padding: '1px 8px' }}>{r.reportCount} reports on this item</span>}
+            </div>
+
+            <div style={{ background: '#FAFAF9', border: '1px solid #F0EEEC', borderRadius: 8, padding: 10, width: '100%', fontSize: 13 }}>
+              {!t && <span style={{ color: '#9C9CA0' }}>This content no longer exists (already removed or deleted).</span>}
+              {t && r.targetType === 'listing' && (
+                <>
+                  <div style={{ fontWeight: 600 }}>{t.title}</div>
+                  <div style={{ color: '#5C5C60', margin: '4px 0', whiteSpace: 'pre-wrap' }}>{t.description}</div>
+                  <div style={styles.rowSub}>Seller: {t.sellerName} ({t.sellerId?.slice(0, 8)}) · {t.images?.length ?? 0} photo(s)</div>
+                  {t.images?.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      {t.images.slice(0, 4).map((url: string, i: number) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <a key={i} href={url} target="_blank" rel="noreferrer"><img src={url} alt="Listing photo" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6 }} /></a>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              {t && r.targetType === 'message' && (
+                <>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{t.text || <em style={{ color: '#9C9CA0' }}>(no text — attachment only)</em>}</div>
+                  <div style={{ ...styles.rowSub, marginTop: 4 }}>From: {t.senderName} ({t.senderId?.slice(0, 8)}) · booking #{t.bookingId?.slice(-6).toUpperCase()}</div>
+                </>
+              )}
+            </div>
+            {r.details && <div style={{ fontSize: 12, color: '#5C5C60' }}>Reporter said: {r.details}</div>}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              {r.status === 'open' && t && (
+                <button disabled={busy === r.id} style={{ ...styles.actionBtn, background: '#E63946', color: '#fff', border: 'none' }} onClick={() => act(r, 'remove')}>
+                  {r.targetType === 'listing' ? 'Remove listing' : 'Remove message'}
+                </button>
+              )}
+              {r.status === 'open' && (
+                <button disabled={busy === r.id} style={styles.actionBtn} onClick={() => act(r, 'dismiss')}>No violation — dismiss</button>
+              )}
+              {r.status !== 'open' && (
+                <button disabled={busy === r.id} style={styles.actionBtn} onClick={() => act(r, 'reopen')}>Reopen</button>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </Card>
   )
 }
 

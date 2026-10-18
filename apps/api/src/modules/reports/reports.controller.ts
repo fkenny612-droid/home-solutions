@@ -19,6 +19,12 @@ export class ReportsController {
     return this.svc.list(status)
   }
 
+  @Post(':id/remove-content')
+  @UseGuards(AdminGuard)
+  removeContent(@Param('id') id: string) {
+    return this.svc.removeContent(id)
+  }
+
   @Patch(':id')
   @UseGuards(AdminGuard)
   setStatus(@Param('id') id: string, @Body('status') status: string) {
