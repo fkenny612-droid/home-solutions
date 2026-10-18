@@ -11,7 +11,7 @@ export default function TermsOfService() {
       <div style={{ marginBottom: 40 }}>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 2, color: '#1A5C1A', textTransform: 'uppercase', marginBottom: 8 }}>Easyfix</div>
         <h1 style={{ fontSize: 36, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Terms of Service</h1>
-        <p style={{ color: '#666', marginTop: 8 }}>Effective date: 1 July 2026 · Last updated: 20 July 2026</p>
+        <p style={{ color: '#666', marginTop: 8 }}>Effective date: 1 July 2026 · Last updated: 18 October 2026</p>
       </div>
 
       <section>
@@ -24,7 +24,7 @@ export default function TermsOfService() {
           content: [
             'Easyfix is a marketplace that connects clients seeking home services and equipment hire with independent service providers operating in KwaZulu-Natal and surrounding areas.',
             'Easyfix is not itself a service provider. We do not employ technicians or providers. Each provider is an independent contractor responsible for the quality of their own work.',
-            'Easyfix facilitates payment, booking management, and dispute resolution between clients and providers.',
+            'Easyfix facilitates payment and booking management between clients and providers, and will try to help resolve disputes between them.',
           ],
         },
         {
@@ -39,11 +39,14 @@ export default function TermsOfService() {
         {
           title: '3. Bookings and Payments',
           content: [
-            'When you book a service, your payment is held securely via Peach Payments until the job is marked complete.',
-            'Payment is released to the provider within 48 hours of job completion, less Easyfix\'s service fee.',
-            'The service fee is 15% of the quoted amount for standard bookings.',
-            'Emergency callout bookings carry a flat dispatch fee of R850 in addition to the service quote.',
-            'Cancellations made more than 2 hours before a scheduled job are fully refunded. Cancellations within 2 hours may incur a 20% cancellation fee.',
+            'The price of a booking is calculated by Easyfix from your answers about the job and shown to you before you pay. You pay that price.',
+            'When you book, the amount is held on your card (not charged) through Peach Payments and the provider is asked to accept. The booking is confirmed only once the provider accepts.',
+            'When the provider marks the job complete, the held amount is charged. Easyfix then credits the provider with that amount less Easyfix\'s commission, which is deducted from the provider\'s payment and is not added to your price.',
+            'Provider commission depends on the provider\'s plan and is currently 20% (Starter), 12% (Pro) or 8% (Elite) of the job price. Providers are paid out to their bank account on request, after Easyfix has processed the payout.',
+            'Emergency callout bookings are a flat R850. The technician must accept the request; if nobody accepts within 15 minutes the request is cancelled and the amount held on your card is released.',
+            'Other bookings that no provider accepts within 2 hours are also cancelled and the held amount released.',
+            'You may cancel a booking at any time until the work has started, and the amount held on your card will be released in full. Once work has started, a booking can no longer be cancelled in the app; contact us if there is a problem.',
+            'If a provider declines your request or cancels before the work starts, the amount held on your card is released.',
           ],
         },
         {
@@ -79,7 +82,7 @@ export default function TermsOfService() {
         {
           title: '7. Warranties and Liability',
           content: [
-            'Easyfix provides a 90-day warranty on parts and labour for completed home services bookings, administered through the platform.',
+            'Customers on an Easyfix subscription plan receive a workmanship warranty on completed home services bookings: 30 days on Basic Home and 90 days on Premium Home and Estate / Business. Contact us within the warranty period if the same problem comes back and we will arrange for it to be put right.',
             'Easyfix is not liable for any indirect, incidental, or consequential damages arising from use of the platform.',
             'Our total liability to you for any claim shall not exceed the amount you paid for the booking giving rise to the claim.',
             'Equipment hire services are provided by independent providers. Easyfix does not warrant the condition or fitness for purpose of hired equipment.',
@@ -96,7 +99,7 @@ export default function TermsOfService() {
         {
           title: '9. Termination',
           content: [
-            'You may close your account at any time by contacting hello@easyfix.co.za.',
+            'You may close your account at any time by deleting it in the app (Profile, then Delete account) or by contacting hello@easyfix.co.za.',
             'Easyfix may suspend or terminate your account if you breach these Terms, without liability to you.',
             'Upon termination, your right to use the platform ceases immediately. Outstanding payments due to providers will still be processed.',
           ],
