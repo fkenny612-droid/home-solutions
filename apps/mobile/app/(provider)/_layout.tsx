@@ -14,6 +14,7 @@ const PROVIDER_TABS: { name: string; label: string; icon: IconName; iconActive: 
 export default function ProviderLayout() {
   return (
     <Tabs
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

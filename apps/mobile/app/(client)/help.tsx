@@ -23,8 +23,8 @@ const FAQS = [
     a: 'Your card is held (not charged) when you book. The amount is only taken once your provider marks the job complete. If the booking is cancelled, or no provider accepts in time, the hold is released.',
   },
   {
-    q: 'What is the 90-day warranty?',
-    a: 'Warranty length depends on your plan (30 days on Basic Home, 90 days on Premium Home and Estate / Business). If the same problem comes back within your warranty period, contact us and we\'ll arrange for it to be put right. You can see your warranties under "Active warranties" in your profile.',
+    q: 'How does the workmanship warranty work?',
+    a: 'Warranty length depends on your plan (30 days on Basic Home, 90 days on Premium Home and Estate / Business). Paid plans are coming soon. If the same problem comes back within your warranty period, contact us and we\'ll arrange for it to be put right. You can see your warranties under "Active warranties" in your profile.',
   },
   {
     q: 'Can I cancel a booking?',

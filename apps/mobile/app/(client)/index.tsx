@@ -12,6 +12,7 @@ import { colors } from '../../constants/theme'
 import { useAuth } from '../../context/auth'
 import { SERVICES, SERVICE_CATEGORIES, EASY_HIRE_IDS, EASY_FIX_IDS } from '../../lib/serviceConfig'
 import { api, ActiveSubscription } from '../../lib/api'
+import { PAID_PLANS_AVAILABLE } from '../../constants/plans'
 import SliderButton from '../../components/SliderButton'
 import { LogoImage } from '../../components/Logo'
 
@@ -501,7 +502,9 @@ export default function ClientHome() {
               { emoji: '⚡', title: 'Easy booking',     sub: 'Choose a provider and book in minutes' },
               { emoji: '🛡️', title: 'Vetted providers', sub: 'KYC-verified and rated by customers' },
               { emoji: '💳', title: 'Pay on completion', sub: 'Funds held until job is done'   },
-              { emoji: '📋', title: '90-day warranty',  sub: 'Included with Premium'           },
+              PAID_PLANS_AVAILABLE
+                ? { emoji: '📋', title: 'Workmanship warranty', sub: 'Included with Premium' }
+                : { emoji: '⭐', title: 'Rated by customers',   sub: 'Reviews after every job' },
             ].map(item => (
               <View key={item.title} style={s.whyCard}>
                 <Text style={s.whyEmoji}>{item.emoji}</Text>

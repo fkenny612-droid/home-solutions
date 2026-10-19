@@ -6,6 +6,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { api, ApiError, SubscriptionPlan, ActiveSubscription } from '../../lib/api'
+import { PAID_PLANS_AVAILABLE } from '../../constants/plans'
 
 const PLAN_HIGHLIGHT: Record<string, { tag: string; tagColor: string }> = {
   basic_home:   { tag: 'STARTER',   tagColor: colors.gray400 },
@@ -30,6 +31,10 @@ export default function ClientSubscription() {
 
   const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (active?.planId === plan.id) return
+    if (plan.priceMonthly > 0 && !PAID_PLANS_AVAILABLE) {
+      Alert.alert('Coming soon', `The ${plan.name} plan is not available to buy yet. We will let you know when paid plans open.`)
+      return
+    }
     Alert.alert(
       `Subscribe to ${plan.name}`,
       plan.priceMonthly === 0
@@ -152,7 +157,7 @@ export default function ClientSubscription() {
                   {subscribing === plan.id
                     ? <ActivityIndicator color={isCurrent ? colors.gold : colors.white} size="small" />
                     : <Text style={[s.btnText, isCurrent && s.btnTextActive]}>
-                        {isCurrent ? 'Current plan' : 'Select plan'}
+                        {isCurrent ? 'Current plan' : plan.priceMonthly > 0 && !PAID_PLANS_AVAILABLE ? 'Coming soon' : 'Select plan'}
                       </Text>
                   }
                 </TouchableOpacity>
@@ -160,7 +165,7 @@ export default function ClientSubscription() {
             )
           })}
 
-          <Text style={s.footnote}>Billed monthly. Cancel anytime. VAT inclusive.</Text>
+          {PAID_PLANS_AVAILABLE && <Text style={s.footnote}>Billed monthly. Cancel anytime. VAT inclusive.</Text>}
           <View style={{ height: 32 }} />
         </ScrollView>
       )}

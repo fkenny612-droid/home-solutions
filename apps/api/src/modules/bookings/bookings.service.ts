@@ -308,9 +308,10 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
 
     // Move the status only if nobody else has moved it first, so a job can't be completed (and paid out) twice.
     const completing = status === 'completed'
+    const warrantyDays = completing ? await this.subscriptions.getWarrantyDays(existing.clientId) : 0
     const moved = await this.prisma.booking.updateMany({
       where: { id, status: existing.status },
-      data:  { status, ...(completing ? { warrantyExpiresAt: new Date(Date.now() + 90 * DAY_MS) } : {}) },
+      data:  { status, ...(warrantyDays > 0 ? { warrantyExpiresAt: new Date(Date.now() + warrantyDays * DAY_MS) } : {}) },
     })
     if (moved.count !== 1) throw new ConflictException('This booking was just updated — please refresh and try again.')
     if (completing && existing.providerId) {

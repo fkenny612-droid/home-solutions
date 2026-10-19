@@ -13,6 +13,7 @@ import * as Location from 'expo-location'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../constants/theme'
 import { api, ApiError } from '../../lib/api'
+import { PAID_PLANS_AVAILABLE } from '../../constants/plans'
 import type { Provider, Booking, CardDetails } from '../../lib/api'
 import CardInput from '../../components/CardInput'
 import { useAuth } from '../../context/auth'
@@ -502,18 +503,20 @@ export default function BookScreen() {
               ))}
             </View>
 
-            {hasSub === false && (
+            {PAID_PLANS_AVAILABLE && hasSub === false && (
               <TouchableOpacity activeOpacity={0.8} style={s.upgradePrompt} onPress={() => router.push('/(client)/subscription')}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.upgradeTitle}>🌟 Upgrade to Premium</Text>
-                  <Text style={s.upgradeSub}>Get a 90-day warranty, priority providers & discounts on every job</Text>
+                  <Text style={s.upgradeSub}>Get a workmanship warranty and plan benefits on every job</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={colors.gold} />
               </TouchableOpacity>
             )}
-            <View style={s.warrantyBox}>
-              <Text style={s.warrantyText}>🛡️ <Text style={{ fontWeight: '700' }}>90-day warranty</Text> on all parts and labour with Premium plan.</Text>
-            </View>
+            {PAID_PLANS_AVAILABLE && (
+              <View style={s.warrantyBox}>
+                <Text style={s.warrantyText}>🛡️ <Text style={{ fontWeight: '700' }}>Workmanship warranty</Text> comes with Premium and Estate plans.</Text>
+              </View>
+            )}
 
             {redemptions.length > 0 && (
               <View style={s.loyaltyBox}>
@@ -655,7 +658,7 @@ export default function BookScreen() {
 
             {hasSub && booking?.warrantyExpiresAt && (
               <View style={s.warrantyBox}>
-                <Text style={s.warrantyText}>🛡️ Your 90-day warranty is active until {new Date(booking.warrantyExpiresAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}.</Text>
+                <Text style={s.warrantyText}>🛡️ Your workmanship warranty is active until {new Date(booking.warrantyExpiresAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}.</Text>
               </View>
             )}
           </ScrollView>

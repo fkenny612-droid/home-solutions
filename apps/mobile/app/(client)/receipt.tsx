@@ -126,7 +126,7 @@ export default function ReceiptScreen() {
               <View style={s.warrantyBox}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={colors.green} />
                 <Text style={s.warrantyText}>
-                  90-day workmanship warranty active until {new Date(booking.warrantyExpiresAt).toLocaleDateString('en-ZA')}
+                  Workmanship warranty active until {new Date(booking.warrantyExpiresAt).toLocaleDateString('en-ZA')}
                 </Text>
               </View>
             </>

@@ -115,6 +115,18 @@ export class SubscriptionsService {
     return CLIENT_PLANS[sub.planId as keyof typeof CLIENT_PLANS]?.discount ?? 0
   }
 
+  /**
+   * Days of workmanship warranty a customer's completed jobs get. The Terms promise a warranty only to customers on a
+   * plan (30 days Basic Home, 90 days Premium Home and Estate / Business), so no active plan means none.
+   */
+  async getWarrantyDays(userId: string): Promise<number> {
+    const sub = await this.prisma.subscription.findUnique({
+      where: { userId_userRole: { userId, userRole: 'client' } },
+    })
+    if (!sub || sub.status !== 'active') return 0
+    return CLIENT_PLANS[sub.planId as keyof typeof CLIENT_PLANS]?.warrantyDays ?? 0
+  }
+
   /** Providers with no active subscription sit on the free Starter tier's commission rate. */
   async getProviderCommissionPct(providerId: string): Promise<number> {
     const sub = await this.prisma.subscription.findUnique({

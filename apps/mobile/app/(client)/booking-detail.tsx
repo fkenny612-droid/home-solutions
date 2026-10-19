@@ -292,7 +292,7 @@ export default function BookingDetail() {
           {isComplete && booking.warrantyExpiresAt && (
             <View style={s.warrantyRow}>
               <Ionicons name="shield-checkmark-outline" size={16} color={colors.green} />
-              <Text style={s.warrantyText}>90-day warranty active · expires {new Date(booking.warrantyExpiresAt).toLocaleDateString('en-ZA')}</Text>
+              <Text style={s.warrantyText}>Workmanship warranty active · expires {new Date(booking.warrantyExpiresAt).toLocaleDateString('en-ZA')}</Text>
             </View>
           )}
           {isComplete && booking.paymentReleased && (

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { api, Booking } from '../../lib/api'
+import { PAID_PLANS_AVAILABLE } from '../../constants/plans'
 import { colors } from '../../constants/theme'
 
 const SERVICE_EMOJI: Record<string, string> = {
@@ -94,7 +95,7 @@ export default function WarrantiesScreen() {
               <View style={s.infoBox}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={colors.green} />
                 <Text style={s.infoText}>
-                  All completed jobs include a 90-day workmanship warranty. If anything goes wrong, contact us and we'll send the provider back at no charge.
+                  Completed jobs on a customer plan include a workmanship warranty: 30 days on Basic Home, 90 days on Premium Home and Estate / Business. If the same problem comes back within it, contact us and we'll arrange for it to be put right.
                 </Text>
               </View>
             ) : null
@@ -103,7 +104,7 @@ export default function WarrantiesScreen() {
             <View style={s.empty}>
               <Ionicons name="shield-outline" size={52} color={colors.gray200} />
               <Text style={s.emptyTitle}>No active warranties</Text>
-              <Text style={s.emptySub}>Completed jobs include a 90-day warranty. Book a service to get started.</Text>
+              <Text style={s.emptySub}>{PAID_PLANS_AVAILABLE ? 'Completed jobs on a customer plan include a workmanship warranty.' : 'Workmanship warranties come with customer plans, which are coming soon. They will appear here once you have one.'}</Text>
               <TouchableOpacity activeOpacity={0.8} style={s.emptyBtn} onPress={() => router.replace('/(client)')}>
                 <Text style={s.emptyBtnText}>Browse services</Text>
               </TouchableOpacity>
