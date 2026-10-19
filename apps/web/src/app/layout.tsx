@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import { DM_Sans, DM_Serif_Display } from 'next/font/google'
+import localFont from 'next/font/local'
 import { SITE, siteUrl } from '@/lib/site'
 import './globals.css'
 
-// Self-hosted by Next at build time: no render-blocking request to Google Fonts.
-const sans = DM_Sans({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-sans', display: 'swap' })
-const display = DM_Serif_Display({ subsets: ['latin'], weight: '400', variable: '--font-display', display: 'swap' })
+// Fonts live in the repo (OFL-licensed, latin subset), so the build never depends on fetching Google Fonts —
+// a failed fetch during CI or a Vercel build used to be able to take the whole site's deploy down.
+const sans = localFont({ src: './fonts/DMSans-latin.woff2', weight: '100 1000', variable: '--font-sans', display: 'swap' })
+const display = localFont({ src: './fonts/DMSerifDisplay-latin.woff2', weight: '400', variable: '--font-display', display: 'swap' })
 
 const TITLE = 'Easyfix – Book Plumbers, Electricians & Cleaners in Durban'
 const DESCRIPTION =
