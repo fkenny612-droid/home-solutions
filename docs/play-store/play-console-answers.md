@@ -166,9 +166,9 @@ No SMS, call-log, contacts, background-location or "all files" permissions, so n
 | Play requirement | Status |
 |---|---|
 | Terms prohibit objectionable content | Yes — Terms sections 5 and 6 (prohibited items, harassment, fake listings) |
-| In-app way to report content | **Yes** — "Report this listing" and long-press to report a chat message |
-| Reports are reviewed and acted on | **Partly** — reports are stored and admins can remove a listing through the API, but the **admin portal has no screen for reviewing reports yet** (TODO before launch) |
-| Block abusive users | No — not built. Reporting exists; blocking does not |
+| In-app way to report content | **Yes** — "Report listing or block seller" on a listing, and long-press a chat message to report or block its sender |
+| Reports are reviewed and acted on | **Yes** — the admin portal has a Reports screen (open reports first, with the reported content). An admin can remove a listing or message, and the person who posted it is notified in the app with the reason and an appeal email |
+| Block abusive users | **Yes** — block from a chat (ban icon in the header, or long-press a message) or from a listing; manage under Profile → Blocked users. Blocking hides both people from each other in chat, the marketplace, provider search and new job requests. It does not cancel a booking already in progress |
 | Age-restricted: only adults | Yes — marketplace sellers need an age-checked SA ID |
 
 ---

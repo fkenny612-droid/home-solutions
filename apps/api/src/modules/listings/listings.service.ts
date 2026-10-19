@@ -1,15 +1,26 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
+import { BlocksService } from '../blocks/blocks.service'
+import { NotificationsService } from '../notifications/notifications.service'
 
 @Injectable()
 export class ListingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private blocks: BlocksService,
+    private notifications: NotificationsService,
+  ) {}
 
-  async findAll(params: { category?: string; q?: string; city?: string; sellerId?: string }) {
+  async findAll(params: { category?: string; q?: string; city?: string; sellerId?: string }, viewerId?: string) {
     const where: any = {}
     if (params.category) where.category = params.category
     if (params.city)     where.city     = { contains: params.city, mode: 'insensitive' }
     if (params.sellerId) where.sellerId = params.sellerId
+    // A signed-in viewer doesn't see listings from people they blocked, or who blocked them.
+    if (viewerId) {
+      const hidden = await this.blocks.hiddenFrom(viewerId)
+      if (hidden.size) where.sellerId = { ...(typeof where.sellerId === 'string' ? { equals: where.sellerId } : {}), notIn: [...hidden] }
+    }
     if (params.q) {
       where.OR = [
         { title:       { contains: params.q, mode: 'insensitive' } },
@@ -36,6 +47,7 @@ export class ListingsService {
   async findOne(id: string, userId?: string) {
     const row = await this.prisma.listing.findUnique({ where: { id } })
     if (!row) throw new NotFoundException('Listing not found')
+    if (userId && row.sellerId !== userId && (await this.blocks.hiddenFrom(userId)).has(row.sellerId)) throw new NotFoundException('Listing not found')
     // increment view count (fire and forget)
     this.prisma.listing.update({ where: { id }, data: { views: { increment: 1 } } }).catch(() => {})
     return this.toDto(row, userId ?? null)
@@ -83,6 +95,10 @@ export class ListingsService {
     if (!row)              throw new NotFoundException('Listing not found')
     if (row.sellerId !== userId && role !== 'admin') throw new ForbiddenException('Not your listing')
     await this.prisma.listing.delete({ where: { id } })
+    // A moderator removing someone else's listing must tell the seller, not leave them wondering where it went.
+    if (row.sellerId !== userId) {
+      await this.notifications.notifyListingRemoved(row.sellerId, row.title).catch(() => {})
+    }
     return { ok: true }
   }
 

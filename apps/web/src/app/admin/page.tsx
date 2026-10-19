@@ -879,7 +879,7 @@ function ReportsSection({ onChanged }: { onChanged: () => void }) {
 
   const act = async (r: any, kind: 'remove' | 'dismiss' | 'reopen') => {
     const what = r.targetType === 'listing' ? 'delete this listing' : 'blank out this message'
-    if (kind === 'remove' && !confirm(`Remove the reported content? This will ${what} and close every report on it.`)) return
+    if (kind === 'remove' && !confirm(`Remove the reported content? This will ${what}, close every report on it and notify the person who posted it.`)) return
     setBusy(r.id)
     try {
       if (kind === 'remove') await apiFetch(`/reports/${r.id}/remove-content`, { method: 'POST' })

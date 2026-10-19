@@ -1,16 +1,25 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
+import { NotificationsService } from '../notifications/notifications.service'
 
 export const REPORT_TARGETS = ['listing', 'message'] as const
 export const REPORT_REASONS = ['spam_or_scam', 'prohibited_item', 'inappropriate', 'harassment', 'other'] as const
+
+export const REASON_LABELS: Record<string, string> = {
+  spam_or_scam:    'Spam or scam',
+  prohibited_item: 'Prohibited item or service',
+  inappropriate:   'Inappropriate or offensive',
+  harassment:      'Harassment or abuse',
+  other:           'Something else',
+}
 
 export type ReportTarget = (typeof REPORT_TARGETS)[number]
 export type ReportReason = (typeof REPORT_REASONS)[number]
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private notifications: NotificationsService) {}
 
   async create(reporterId: string, dto: { targetType: string; targetId: string; reason: string; details?: string }) {
     if (!REPORT_TARGETS.includes(dto.targetType as ReportTarget)) throw new BadRequestException('Unknown report target')
@@ -74,14 +83,19 @@ export class ReportsService {
     const report = await this.prisma.report.findUnique({ where: { id } })
     if (!report) throw new NotFoundException('Report not found')
 
+    const reasonLabel = REASON_LABELS[report.reason]
     let removed = false
     if (report.targetType === 'listing') {
+      const listing = await this.prisma.listing.findUnique({ where: { id: report.targetId }, select: { sellerId: true, title: true } })
       removed = (await this.prisma.listing.deleteMany({ where: { id: report.targetId } })).count > 0
+      if (removed && listing) await this.notifications.notifyListingRemoved(listing.sellerId, listing.title, reasonLabel).catch(() => {})
     } else {
+      const message = await this.prisma.message.findUnique({ where: { id: report.targetId }, select: { senderId: true } })
       removed = (await this.prisma.message.updateMany({
         where: { id: report.targetId },
         data:  { text: '[Removed by Easyfix]', attachments: Prisma.DbNull },
       })).count > 0
+      if (removed && message) await this.notifications.notifyMessageRemoved(message.senderId, reasonLabel).catch(() => {})
     }
     await this.prisma.report.updateMany({ where: { targetType: report.targetType, targetId: report.targetId }, data: { status: 'resolved' } })
     return { ok: true, removed }

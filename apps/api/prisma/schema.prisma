@@ -290,6 +290,17 @@ model Report {
   @@index([status])
 }
 
+/// One user blocking another. Blocking hides each side from the other (chat, marketplace, provider lists, new job requests).
+model UserBlock {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
 model PayoutRequest {
   id         String    @id @default(uuid())
   providerId String

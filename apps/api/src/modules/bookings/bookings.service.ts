@@ -4,6 +4,7 @@ import { NotificationsService } from '../notifications/notifications.service'
 import { SmsService } from '../notifications/sms.service'
 import { SubscriptionsService } from '../subscriptions/subscriptions.service'
 import { PeachPaymentsService } from '../payments/peach-payments.service'
+import { BlocksService } from '../blocks/blocks.service'
 import { BookingStatus, ServiceType } from './booking.types'
 import { POINTS_PER_RAND_SPENT, REFERRAL_BONUS_POINTS } from '../loyalty/loyalty.constants'
 import { isKnownService, priceBooking, unansweredQuestions } from './pricing'
@@ -44,6 +45,7 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
     private sms:            SmsService,
     private subscriptions:  SubscriptionsService,
     private peach:           PeachPaymentsService,
+    private blocks:          BlocksService,
   ) {}
 
   onModuleInit() {
@@ -71,8 +73,11 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
       orderBy: { createdAt: 'desc' },
       include: { provider: true },
     })
-    const contacts = await this.clientContacts(bookings, user)
-    return bookings.map(b => ({ ...this.present(b, user), ...contacts.get(b.id) }))
+    // A provider doesn't see open requests from customers who blocked them (or whom they blocked).
+    const hidden = user.role === 'provider' ? await this.blocks.hiddenFrom(user.sub) : new Set<string>()
+    const visible = hidden.size ? bookings.filter(b => b.providerId === user.sub || !hidden.has(b.clientId)) : bookings
+    const contacts = await this.clientContacts(visible, user)
+    return visible.map(b => ({ ...this.present(b, user), ...contacts.get(b.id) }))
   }
 
   async findOne(id: string, user: RequestUser) {
@@ -459,6 +464,9 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
 
     const target = await this.prisma.provider.findUnique({ where: { id: providerId } })
     if (!target) throw new NotFoundException('Provider not found')
+    if (!isAdmin && await this.blocks.eitherBlocked(existing.clientId, providerId)) {
+      throw new ForbiddenException(isAccepting ? 'This job is not available to you' : 'This provider is not available')
+    }
     if (!isAdmin && target.status !== 'active') throw new ForbiddenException('That provider has not been approved yet')
 
     // A card job whose payment was never secured can't be requested or taken (admins excepted, e.g. invoiced or cash jobs).

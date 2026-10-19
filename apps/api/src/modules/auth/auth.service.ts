@@ -234,6 +234,7 @@ export class AuthService {
       this.prisma.savedAddress.deleteMany({ where: { userId } }),
       this.prisma.bankAccount.deleteMany({ where: { userId } }),
       this.prisma.notification.deleteMany({ where: { userId } }),
+      this.prisma.userBlock.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } }),
       this.prisma.loyaltyRedemption.deleteMany({ where: { userId } }),
       this.prisma.subscription.deleteMany({ where: { userId } }),
       this.prisma.listing.deleteMany({ where: { sellerId: userId } }),

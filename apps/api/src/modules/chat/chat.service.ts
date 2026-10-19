@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
+import { BlocksService } from '../blocks/blocks.service'
 
 export interface ChatAttachment {
   url:      string
@@ -26,6 +27,7 @@ export class ChatService {
   constructor(
     private prisma:         PrismaService,
     private notifications:  NotificationsService,
+    private blocks:         BlocksService,
   ) {}
 
   private assertParty(booking: { clientId: string; providerId: string | null }, user: RequestUser) {
@@ -39,13 +41,26 @@ export class ChatService {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } })
     if (!booking) throw new NotFoundException('Booking not found')
     this.assertParty(booking, user)
-    return this.prisma.message.findMany({ where: { bookingId }, orderBy: { createdAt: 'asc' } })
+    // Messages from someone you have blocked are not shown to you (support staff see everything).
+    const blocked = user.role === 'admin' ? new Set<string>() : await this.blocks.blockedBy(user.sub)
+    return this.prisma.message.findMany({
+      where:   { bookingId, ...(blocked.size ? { senderId: { notIn: [...blocked] } } : {}) },
+      orderBy: { createdAt: 'asc' },
+    })
   }
 
   async sendMessage(bookingId: string, dto: SendMessageDto, user: RequestUser) {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } })
     if (!booking) throw new NotFoundException('Booking not found')
     this.assertParty(booking, user)
+
+    // Either side blocking the other ends the chat. Money and the booking itself are untouched.
+    if (user.role !== 'admin') {
+      const other = booking.clientId === user.sub ? booking.providerId : booking.clientId
+      if (other && await this.blocks.eitherBlocked(user.sub, other)) {
+        throw new ForbiddenException('You can no longer message this person')
+      }
+    }
 
     const message = await this.prisma.message.create({
       data: {

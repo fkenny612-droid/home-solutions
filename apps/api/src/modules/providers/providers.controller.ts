@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport'
 import { AdminGuard } from '../../common/guards/admin.guard'
 import { ProvidersService, ProviderStatus, KycStatus } from './providers.service'
 import { presentProvider } from './provider-presenter'
+import { BlocksService } from '../blocks/blocks.service'
 
 function assertSelfOrAdmin(req: any, providerId: string) {
   if (req.user.role === 'admin') return
@@ -13,7 +14,7 @@ function assertSelfOrAdmin(req: any, providerId: string) {
 @Controller('providers')
 @UseGuards(AuthGuard('jwt'))
 export class ProvidersController {
-  constructor(private readonly svc: ProvidersService) {}
+  constructor(private readonly svc: ProvidersService, private readonly blocks: BlocksService) {}
 
   @Get()
   async findAll(
@@ -24,7 +25,9 @@ export class ProvidersController {
     @Query('lng')    lng?: string,
   ) {
     const providers = await this.svc.findAll(status, skill, lat ? parseFloat(lat) : undefined, lng ? parseFloat(lng) : undefined)
-    return providers.map(p => presentProvider(p, req.user))
+    // Providers you blocked (or who blocked you) don't show up in search.
+    const hidden = req.user.role === 'admin' ? new Set<string>() : await this.blocks.hiddenFrom(req.user.sub)
+    return providers.filter(p => !hidden.has(p.id)).map(p => presentProvider(p, req.user))
   }
 
   /** Admin: every provider with a payout waiting (declared before ':id' so it isn't read as a provider id). */

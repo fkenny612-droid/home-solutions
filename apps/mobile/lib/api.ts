@@ -276,6 +276,12 @@ export const api = {
       req<{ id: string; status: string }>('/reports', { method: 'POST', body: JSON.stringify(dto) }),
   },
 
+  blocks: {
+    list:    ()               => req<BlockedUser[]>('/blocks'),
+    block:   (userId: string) => req<{ ok: boolean }>('/blocks', { method: 'POST', body: JSON.stringify({ userId }) }),
+    unblock: (userId: string) => req<{ ok: boolean }>(`/blocks/${userId}`, { method: 'DELETE' }),
+  },
+
   paymentMethods: {
     list:       ()                                                                       => req<SavedCard[]>('/payment-methods'),
     add:        (dto: { brand: string; last4: string; expiry: string; holderName: string }) => req<SavedCard>('/payment-methods', { method: 'POST', body: JSON.stringify(dto) }),
@@ -382,6 +388,8 @@ export interface LoyaltyRedemption {
   used:           boolean
   createdAt:      string
 }
+
+export interface BlockedUser { userId: string; name: string; blockedAt: string }
 
 export type ReportTarget = 'listing' | 'message'
 export type ReportReason = 'spam_or_scam' | 'prohibited_item' | 'inappropriate' | 'harassment' | 'other'

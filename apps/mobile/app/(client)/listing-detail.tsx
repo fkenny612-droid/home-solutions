@@ -203,7 +203,7 @@ export default function ListingDetailScreen() {
           {listing.sellerId !== user?.id && (
             <TouchableOpacity style={s.reportRow} onPress={() => setReporting(true)} activeOpacity={0.7}>
               <Ionicons name="flag-outline" size={14} color={colors.gray400} />
-              <Text style={s.reportText}>Report this listing</Text>
+              <Text style={s.reportText}>Report listing or block seller</Text>
             </TouchableOpacity>
           )}
 
@@ -229,7 +229,14 @@ export default function ListingDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <ReportSheet visible={reporting} targetType="listing" targetId={listing.id} onClose={() => setReporting(false)} />
+      <ReportSheet
+        visible={reporting}
+        targetType="listing"
+        targetId={listing.id}
+        blockUser={listing.sellerId !== user?.id ? { id: listing.sellerId, name: listing.sellerName } : null}
+        onBlocked={() => router.back()}
+        onClose={() => setReporting(false)}
+      />
 
       {/* Lightbox */}
       <Modal visible={lightbox} transparent animationType="fade" onRequestClose={() => setLightbox(false)}>

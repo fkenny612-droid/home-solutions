@@ -7,10 +7,11 @@ import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'
 import { colors } from '../../constants/theme'
-import { api, Message, ChatAttachment } from '../../lib/api'
+import { api, ApiError, Message, ChatAttachment } from '../../lib/api'
 import { useAuth } from '../../context/auth'
 import { uploadToCloudinary } from '../../lib/cloudinary'
 import ReportSheet from '../../components/ReportSheet'
+import { confirmBlock } from '../../lib/blocking'
 
 interface PendingAttachment {
   localUri:  string
@@ -27,7 +28,7 @@ export default function ChatScreen() {
   const [text,      setText]      = useState('')
   const [sending,   setSending]   = useState(false)
   const [pending,   setPending]   = useState<PendingAttachment[]>([])
-  const [reportId,  setReportId]  = useState<string | null>(null)
+  const [reported,  setReported]  = useState<Message | null>(null)
   const listRef = useRef<FlatList>(null)
 
   const load = async () => {
@@ -43,6 +44,9 @@ export default function ChatScreen() {
     if (messages.length > 0)
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100)
   }, [messages.length])
+
+  // The other person in this chat, known once they have sent something (needed to block them).
+  const otherParty = [...messages].reverse().find(m => m.senderId !== user?.id && !m.id.startsWith('opt-'))
 
   const addPending    = (item: PendingAttachment) => setPending(prev => [...prev, item])
   const updatePending = (uri: string, patch: Partial<PendingAttachment>) =>
@@ -123,8 +127,10 @@ export default function ChatScreen() {
         attachments,
       })
       await load()
-    } catch {
+    } catch (e) {
       setMessages(prev => prev.filter(m => m.id !== optimistic.id))
+      // The server's reason matters here (e.g. the other person has blocked you); otherwise stay quiet as before.
+      if (e instanceof ApiError && e.status === 403) Alert.alert('Message not sent', e.message)
     } finally {
       setSending(false)
     }
@@ -136,7 +142,7 @@ export default function ChatScreen() {
     return (
       <Pressable
         style={[s.bubble, isMe ? s.bubbleMe : s.bubbleThem]}
-        onLongPress={!isMe && !item.id.startsWith('opt-') ? () => setReportId(item.id) : undefined}
+        onLongPress={!isMe && !item.id.startsWith('opt-') ? () => setReported(item) : undefined}
         delayLongPress={400}
       >
         {!isMe && (
@@ -180,6 +186,16 @@ export default function ChatScreen() {
           <Text style={s.headerName}>{providerName ?? 'Provider'}</Text>
           <Text style={s.headerSub}>Booking #{bookingId?.slice(-6).toUpperCase()}</Text>
         </View>
+        {otherParty && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            accessibilityLabel={`Block ${otherParty.senderName}`}
+            onPress={() => confirmBlock({ id: otherParty.senderId, name: otherParty.senderName }, () => router.back())}
+            style={s.headerFileBtn}
+          >
+            <Ionicons name="ban-outline" size={20} color={colors.gray400} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity activeOpacity={0.8} onPress={pickFile} style={s.headerFileBtn}>
           <Ionicons name="attach" size={20} color={colors.gray400} />
         </TouchableOpacity>
@@ -268,7 +284,14 @@ export default function ChatScreen() {
 
       </KeyboardAvoidingView>
 
-      <ReportSheet visible={reportId !== null} targetType="message" targetId={reportId} onClose={() => setReportId(null)} />
+      <ReportSheet
+        visible={reported !== null}
+        targetType="message"
+        targetId={reported?.id ?? null}
+        blockUser={reported ? { id: reported.senderId, name: reported.senderName } : null}
+        onBlocked={() => router.back()}
+        onClose={() => setReported(null)}
+      />
     </SafeAreaView>
   )
 }

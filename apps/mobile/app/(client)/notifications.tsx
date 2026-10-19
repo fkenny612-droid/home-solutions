@@ -15,6 +15,8 @@ const TYPE_ICON: Record<string, { icon: string; bg: string }> = {
   job_complete:       { icon: 'checkmark-circle-outline', bg: '#0D3B4F' },
   chat_message:       { icon: 'chatbubble-outline',      bg: '#2E1A4F' },
   payment:            { icon: 'card-outline',             bg: '#4F2E0D' },
+  listing_removed:    { icon: 'alert-circle-outline',     bg: '#4F0D0D' },
+  message_removed:    { icon: 'alert-circle-outline',     bg: '#4F0D0D' },
 }
 
 function timeAgo(iso: string) {

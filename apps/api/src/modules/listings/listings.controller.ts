@@ -1,18 +1,21 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { ListingsService } from './listings.service'
+import { OptionalJwtGuard } from '../../common/guards/optional-jwt.guard'
 
 @Controller('listings')
 export class ListingsController {
   constructor(private readonly svc: ListingsService) {}
 
   @Get()
+  @UseGuards(OptionalJwtGuard)
   findAll(
+    @Req() req: any,
     @Query('category') category?: string,
     @Query('q')        q?:        string,
     @Query('city')     city?:     string,
   ) {
-    return this.svc.findAll({ category, q, city })
+    return this.svc.findAll({ category, q, city }, req.user?.sub)
   }
 
   @Get('mine')
@@ -22,6 +25,7 @@ export class ListingsController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtGuard)
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.svc.findOne(id, req?.user?.sub)
   }

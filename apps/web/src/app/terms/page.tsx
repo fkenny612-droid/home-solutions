@@ -11,7 +11,7 @@ export default function TermsOfService() {
       <div style={{ marginBottom: 40 }}>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 2, color: '#1A5C1A', textTransform: 'uppercase', marginBottom: 8 }}>Easyfix</div>
         <h1 style={{ fontSize: 36, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Terms of Service</h1>
-        <p style={{ color: '#666', marginTop: 8 }}>Effective date: 1 July 2026 · Last updated: 18 October 2026</p>
+        <p style={{ color: '#666', marginTop: 8 }}>Effective date: 1 July 2026 · Last updated: 19 October 2026</p>
       </div>
 
       <section>
@@ -77,6 +77,8 @@ export default function TermsOfService() {
             'You may not harass, threaten, or abuse other users or providers.',
             'You may not attempt to circumvent the platform\'s payment system.',
             'You may not scrape, reverse-engineer, or otherwise misuse the platform\'s systems.',
+            'You can report a listing or a chat message from inside the app, and block any user so that you no longer see each other in chat, the marketplace or provider search. Blocking does not cancel a booking that is already in progress.',
+            'Easyfix reviews reports and may remove content, tell the person who posted it, and suspend or close accounts that repeatedly or seriously break these Terms.',
           ],
         },
         {

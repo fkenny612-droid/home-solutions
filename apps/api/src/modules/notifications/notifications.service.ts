@@ -42,6 +42,34 @@ export class NotificationsService {
     ])
   }
 
+  /** In-app + push notification to a user known only by id (looks up their push token). */
+  async notifyUserById(userId: string, title: string, body: string, type: string, data?: Record<string, any>) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { pushToken: true } })
+    await this.notifyOne(user?.pushToken, userId, title, body, type, data)
+  }
+
+  /** Tell a seller why their listing disappeared. Rules live in the Terms; the email is how they can appeal. */
+  async notifyListingRemoved(sellerId: string, listingTitle: string, reasonLabel?: string) {
+    const why = reasonLabel ? ` It was reported as: ${reasonLabel.toLowerCase()}.` : ''
+    await this.notifyUserById(
+      sellerId,
+      'Your listing was removed',
+      `"${listingTitle.slice(0, 60)}" was taken down because it broke the Easyfix marketplace rules.${why} If you think this was a mistake, email hello@easyfix.co.za.`,
+      'listing_removed',
+    )
+  }
+
+  /** Tell someone a chat message they sent was removed by a moderator. */
+  async notifyMessageRemoved(senderId: string, reasonLabel?: string) {
+    const why = reasonLabel ? ` It was reported as: ${reasonLabel.toLowerCase()}.` : ''
+    await this.notifyUserById(
+      senderId,
+      'A message you sent was removed',
+      `A moderator removed one of your chat messages for breaking the Easyfix rules.${why} Repeated breaches can lead to your account being suspended. Questions? Email hello@easyfix.co.za.`,
+      'message_removed',
+    )
+  }
+
   async notifyProviders(tokens: string[], title: string, body: string, data?: Record<string, any>) {
     await this.send(tokens.map(to => ({ to, title, body, data })))
   }

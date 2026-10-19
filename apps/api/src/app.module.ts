@@ -13,11 +13,13 @@ import { LoyaltyModule } from './modules/loyalty/loyalty.module'
 import { ListingsModule } from './modules/listings/listings.module'
 import { PaymentMethodsModule } from './modules/payment-methods/payment-methods.module'
 import { ReportsModule } from './modules/reports/reports.module'
+import { BlocksModule } from './modules/blocks/blocks.module'
 
 @Module({
   imports: [
     PrismaModule,
     NotificationsModule,
+    BlocksModule,
     HardwareModule,
     AuthModule,
     BookingsModule,

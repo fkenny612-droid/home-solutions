@@ -16,6 +16,7 @@ const MENU = [
   { label: 'Saved addresses',   sub: 'Manage your saved locations',   route: '/(client)/addresses'          },
   { label: 'Refer a friend',    sub: 'Share your code, earn points',  route: '/(client)/referral'           },
   { label: 'Notifications',     sub: 'Push, SMS enabled',             route: '/(client)/notifications'      },
+  { label: 'Blocked users',     sub: 'People you have blocked',       route: '/(client)/blocked-users'      },
   { label: 'Help & support',    sub: 'Chat, call, email',             route: '/(client)/help'               },
 ]
 
