@@ -26,7 +26,7 @@
     },
     "android": {
       "package": "co.za.easyfix.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -55,7 +55,6 @@
           "sounds": []
         }
       ],
-      "expo-splash-screen",
       [
         "expo-splash-screen",
         {
