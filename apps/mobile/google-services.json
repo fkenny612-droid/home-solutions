@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "home-solutions-placeholder",
-    "storage_bucket": "home-solutions-placeholder.appspot.com"
+    "project_number": "119609305055",
+    "project_id": "easy-fix-c9a5a",
+    "storage_bucket": "easy-fix-c9a5a.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "mobilesdk_app_id": "1:119609305055:android:9b5354d9476ee70515066a",
         "android_client_info": {
-          "package_name": "co.za.homesolutions.app"
+          "package_name": "co.za.easyfix.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "placeholder"
+          "current_key": "AIzaSyD0I2dDSUaY7EjF0PNI8AW_dgyMe7x-7Lw"
         }
       ],
       "services": {

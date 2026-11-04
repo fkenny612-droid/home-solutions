@@ -3,7 +3,7 @@
 Prepared 2026-10-18 from the code in this repo, not from memory. Anything marked **CONFIRM** needs a human decision or a
 fact only you have. Re-check this against the app before every submission: if a feature changes, the answers change.
 
-Package: `co.za.homesolutions.app` · Version 1.0.0 (versionCode 1) · Account type: organisation
+Package: `co.za.easyfix.app` · Version 1.0.0 (versionCode 2) · Account type: organisation
 
 ---
 
@@ -46,7 +46,7 @@ Serving Durban, Umhlanga, Pinetown and surrounding areas. Questions? hello@easyf
 
 **Category:** House & Home · **Tags:** home services, handyman, plumbing (pick what the console offers)
 **Contact email:** hello@easyfix.co.za — **CONFIRM** the mailbox works (due within 2 days)
-**Website:** https://web-three-black-11.vercel.app now → `https://easyfix.co.za` once the domain points at Vercel
+**Website:** https://www.easy-fix.co.za ✅
 **Contact phone:** optional — leave blank until a real support number exists
 
 **Graphics you still need to produce:** icon 512×512 (adaptive icon assets already exist in `apps/mobile/assets`), feature graphic
@@ -58,9 +58,9 @@ Serving Durban, Umhlanga, Pinetown and surrounding areas. Questions? hello@easyf
 
 | Field | URL (until easyfix.co.za is connected) |
 |---|---|
-| Privacy policy | https://web-three-black-11.vercel.app/privacy |
-| Account deletion (web) | https://web-three-black-11.vercel.app/delete-account |
-| Terms | https://web-three-black-11.vercel.app/terms |
+| Privacy policy | https://www.easy-fix.co.za/privacy |
+| Account deletion (web) | https://www.easy-fix.co.za/delete-account |
+| Terms | https://www.easy-fix.co.za/terms |
 
 In-app deletion path (tell Google): **Profile → Delete account**.
 
@@ -186,10 +186,10 @@ No SMS, call-log, contacts, background-location or "all files" permissions, so n
 ## 9. Must be done before you can submit (blockers)
 
 1. **Firebase / FCM:** `apps/mobile/google-services.json` is a placeholder (`home-solutions-placeholder`). Create a Firebase
-   project for `co.za.homesolutions.app`, replace the file, and upload the FCM service-account key to EAS. Without it, Android push
+   project for `co.za.easyfix.app`, replace the file, and upload the FCM service-account key to EAS. Without it, Android push
    notifications (provider job alerts) do not work.
 2. **Real support details:** set phone/WhatsApp/hours in `apps/mobile/constants/support.ts` when they exist; confirm hello@easyfix.co.za.
-3. **Domain:** point easyfix.co.za at the Vercel project, then swap the URLs in section 2.
+3. ~~**Domain:** point easyfix.co.za at the Vercel project~~ ✅ **Done** — easy-fix.co.za is live on Vercel.
 4. **Card handling:** card numbers still pass through our server to Peach. Moving to Peach's hosted checkout would take card data
    out of our systems entirely and simplify the Data safety answers (needs your Peach account details).
 5. **Reviewer accounts** (section 3) and the **admin screen for reports** (section 7).

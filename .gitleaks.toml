@@ -21,4 +21,7 @@ tags = ["key", "expo"]
 description = "Files that legitimately contain example/placeholder values"
 paths = [
   '''(.*?)(png|jpg|jpeg|gif|svg|ico|lock)$''',
+  # Firebase client API keys are intentionally public — they are restricted by
+  # Android package name and SHA-1 certificate fingerprint, not kept secret.
+  '''apps/mobile/google-services\.json$''',
 ]
