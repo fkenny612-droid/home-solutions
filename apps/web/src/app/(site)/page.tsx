@@ -43,6 +43,10 @@ const FAQS = [
     q: 'Can I earn money as a service provider?',
     a: 'Yes. Plumbers, electricians, cleaners and other tradespeople can join Easyfix, receive job requests, and get paid to their bank account on request. See the service provider page for how it works.',
   },
+  {
+    q: 'What is Easy-Hire?',
+    a: 'Easy-Hire is the equipment and staffing hire section of the Easyfix app. You can hire event equipment, plant and construction machinery, vehicles, and security guards — all bookable the same way as a home service, with the price shown before you confirm.',
+  },
 ]
 
 const FEATURES = [
@@ -160,14 +164,34 @@ export default function HomePage() {
             })}
           </div>
           <p className="mk-more">
-            The app also covers painting, tiling, landscaping, security, solar, gas, moving and event equipment hire,
-            with more added over time.
+            The app also covers painting, tiling, landscaping, security, solar, gas and moving, with more added over time.
+            Equipment and staffing hire is available through <a href="#easy-hire">Easy-Hire</a>.
           </p>
         </div>
       </section>
 
+      {/* Easy-Hire */}
+      <section className="mk-section mk-section--white" id="easy-hire">
+        <div className="mk-wrap">
+          <div className="mk-band">
+            <div>
+              <div className="mk-kicker">Easy-Hire</div>
+              <h2>Hire equipment &amp; staff in Durban</h2>
+              <p>Need a tent, a generator, a crane or security guards for your event or site? Easy-Hire lets you browse, book and pay for equipment and staffing from verified suppliers — all in the same app.</p>
+              <a className="mk-btn mk-btn--dark" href={EARLY_ACCESS_URL}>Get early access <Icon name="arrow" size={18} /></a>
+            </div>
+            <ul>
+              <li><Icon name="check" size={18} /> Event equipment: marquees, chairs, sound &amp; lighting</li>
+              <li><Icon name="check" size={18} /> Plant &amp; construction machinery</li>
+              <li><Icon name="check" size={18} /> Vehicles &amp; transport</li>
+              <li><Icon name="check" size={18} /> Security guards &amp; event staff</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* How it works */}
-      <section className="mk-section mk-section--white" id="how-it-works">
+      <section className="mk-section" id="how-it-works">
         <div className="mk-wrap">
           <div className="mk-kicker">How it works</div>
           <h2 className="mk-h2">From problem to fixed in four steps</h2>
