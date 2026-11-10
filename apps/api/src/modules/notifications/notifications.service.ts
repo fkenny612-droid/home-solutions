@@ -54,7 +54,7 @@ export class NotificationsService {
     await this.notifyUserById(
       sellerId,
       'Your listing was removed',
-      `"${listingTitle.slice(0, 60)}" was taken down because it broke the Easyfix marketplace rules.${why} If you think this was a mistake, email hello@easyfix.co.za.`,
+      `"${listingTitle.slice(0, 60)}" was taken down because it broke the Easyfix marketplace rules.${why} If you think this was a mistake, email hello@easy-fix.co.za.`,
       'listing_removed',
     )
   }
@@ -65,7 +65,7 @@ export class NotificationsService {
     await this.notifyUserById(
       senderId,
       'A message you sent was removed',
-      `A moderator removed one of your chat messages for breaking the Easyfix rules.${why} Repeated breaches can lead to your account being suspended. Questions? Email hello@easyfix.co.za.`,
+      `A moderator removed one of your chat messages for breaking the Easyfix rules.${why} Repeated breaches can lead to your account being suspended. Questions? Email hello@easy-fix.co.za.`,
       'message_removed',
     )
   }

@@ -8,7 +8,7 @@
  *   hours     — e.g. 'Mon–Fri 07:00–20:00' (enables the support-hours note)
  */
 export const SUPPORT = {
-  email:    'hello@easyfix.co.za',   // the contact address in our published privacy policy and terms
+  email:    'hello@easy-fix.co.za',   // the contact address in our published privacy policy and terms
   phone:    null as string | null,
   whatsapp: null as string | null,
   hours:    null as string | null,

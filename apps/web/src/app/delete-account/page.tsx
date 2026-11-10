@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: 'How to delete your Easyfix account and what happens to your data.',
 }
 
-const SUPPORT_EMAIL = 'hello@easyfix.co.za'
+const SUPPORT_EMAIL = 'hello@easy-fix.co.za'
 
 const DELETED = [
   'Your profile and login',

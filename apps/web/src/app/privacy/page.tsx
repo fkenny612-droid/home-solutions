@@ -62,7 +62,7 @@ export default function PrivacyPolicy() {
             'Booking records, including the service address, are kept for 5 years for legal and tax purposes, even after an account is deleted.',
             'Chat messages are kept with the booking they belong to.',
             'You can delete your account in the app (Profile, then Delete account). This permanently removes your profile, saved cards, saved addresses, bank details, notifications, loyalty rewards, subscription and marketplace listings. Booking records are kept as above, and your name is removed from chat messages and reviews. You cannot delete your account while you have a booking in progress or, as a provider, an unpaid earnings balance.',
-            'You can delete your account yourself in the app, or ask us to by emailing hello@easyfix.co.za. Some data may be retained where required by law.',
+            'You can delete your account yourself in the app, or ask us to by emailing hello@easy-fix.co.za. Some data may be retained where required by law.',
           ],
         },
         {
@@ -72,7 +72,7 @@ export default function PrivacyPolicy() {
             'You have the right to correct inaccurate or incomplete information.',
             'You have the right to object to the processing of your personal information.',
             'You have the right to request deletion of your personal information, subject to legal retention requirements.',
-            'To exercise any of these rights, contact our Information Officer at hello@easyfix.co.za.',
+            'To exercise any of these rights, contact our Information Officer at hello@easy-fix.co.za.',
           ],
         },
         {
@@ -99,7 +99,7 @@ export default function PrivacyPolicy() {
           title: '9. Contact Us',
           content: [
             'Information Officer: Easyfix (Pty) Ltd',
-            'Email: hello@easyfix.co.za',
+            'Email: hello@easy-fix.co.za',
             'Address: Durban, KwaZulu-Natal, South Africa',
             'To lodge a complaint with the Information Regulator: inforeg.org.za',
           ],

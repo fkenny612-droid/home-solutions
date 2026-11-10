@@ -123,7 +123,7 @@ export const SERVICE_PAGES: ServicePage[] = [
     faqs: [
       { q: 'What jobs can a handyman do?', a: 'Small repairs, installations and odd jobs around the home. For regulated work such as electrical or gas, book that trade directly.' },
       { q: 'How do I know the price?', a: 'The app shows a price range for the job type and a quote before you pay.' },
-      { q: 'What if I am not happy?', a: 'You can chat with the provider in the app, contact us at hello@easyfix.co.za, and leave a review once the job is done.' },
+      { q: 'What if I am not happy?', a: 'You can chat with the provider in the app, contact us at hello@easy-fix.co.za, and leave a review once the job is done.' },
     ],
   },
   {

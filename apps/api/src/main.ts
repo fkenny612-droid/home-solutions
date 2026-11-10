@@ -12,6 +12,8 @@ async function bootstrap() {
       const allowed = [
         'http://localhost:3000',
         'http://localhost:8081',
+        'https://easy-fix.co.za',
+        'https://www.easy-fix.co.za',
         ...(process.env.WEB_URL ? [process.env.WEB_URL] : []),
       ]
       const isVercel = /\.vercel\.app$/.test(origin)

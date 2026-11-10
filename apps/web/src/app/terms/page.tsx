@@ -101,7 +101,7 @@ export default function TermsOfService() {
         {
           title: '9. Termination',
           content: [
-            'You may close your account at any time by deleting it in the app (Profile, then Delete account) or by contacting hello@easyfix.co.za.',
+            'You may close your account at any time by deleting it in the app (Profile, then Delete account) or by contacting hello@easy-fix.co.za.',
             'Easyfix may suspend or terminate your account if you breach these Terms, without liability to you.',
             'Upon termination, your right to use the platform ceases immediately. Outstanding payments due to providers will still be processed.',
           ],
@@ -118,7 +118,7 @@ export default function TermsOfService() {
           title: '11. Contact',
           content: [
             'Easyfix (Pty) Ltd',
-            'Email: hello@easyfix.co.za',
+            'Email: hello@easy-fix.co.za',
             'Durban, KwaZulu-Natal, South Africa',
           ],
         },

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: 'Is Easyfix available yet?',
-    a: 'We are launching in Durban first. The Android app is coming soon to Google Play. Email hello@easyfix.co.za to be told as soon as it is live.',
+    a: 'We are launching in Durban first. The Android app is coming soon to Google Play. Email hello@easy-fix.co.za to be told as soon as it is live.',
   },
   {
     q: 'How much does a service cost?',

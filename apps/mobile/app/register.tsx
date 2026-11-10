@@ -273,9 +273,9 @@ export default function RegisterScreen() {
           {step === 3 && (
             <Text style={s.legal}>
               By creating an account you agree to our{' '}
-              <Text style={s.legalLink} onPress={() => Linking.openURL('https://easyfix.co.za/terms')}>Terms of Service</Text>
+              <Text style={s.legalLink} onPress={() => Linking.openURL('https://www.easy-fix.co.za/terms')}>Terms of Service</Text>
               {' '}and{' '}
-              <Text style={s.legalLink} onPress={() => Linking.openURL('https://easyfix.co.za/privacy')}>Privacy Policy</Text>
+              <Text style={s.legalLink} onPress={() => Linking.openURL('https://www.easy-fix.co.za/privacy')}>Privacy Policy</Text>
               . Your data is protected under POPIA.
             </Text>
           )}

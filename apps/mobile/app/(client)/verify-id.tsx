@@ -238,7 +238,7 @@ export default function VerifyIdScreen() {
 
           <Text style={s.legalNote}>
             Easyfix uses your ID only to confirm your age. We comply with POPIA and do not share your information with third parties.{' '}
-            <Text style={{ color: colors.brand, fontWeight: '600' }} onPress={() => Linking.openURL('https://easyfix.co.za/privacy')}>Privacy Policy →</Text>
+            <Text style={{ color: colors.brand, fontWeight: '600' }} onPress={() => Linking.openURL('https://www.easy-fix.co.za/privacy')}>Privacy Policy →</Text>
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

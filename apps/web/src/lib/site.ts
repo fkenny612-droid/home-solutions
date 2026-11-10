@@ -2,20 +2,20 @@
 export const SITE = {
   name:  'Easyfix',
   legal: 'Easyfix (Pty) Ltd',
-  email: 'hello@easyfix.co.za',
+  email: 'hello@easy-fix.co.za',
   city:  'Durban',
   region: 'KwaZulu-Natal',
 } as const
 
 /**
- * Canonical origin. Set NEXT_PUBLIC_SITE_URL once the easyfix.co.za domain is connected; until then Vercel's
- * production URL is used, so canonical links, the sitemap and social previews always point at a live address.
+ * Canonical origin. The apex domain (easy-fix.co.za) redirects to www on Vercel, so canonical links, the sitemap and
+ * social previews use the www host that actually serves pages — pointing Google at a redirecting URL wastes crawl and
+ * can split ranking. Override with NEXT_PUBLIC_SITE_URL if the primary domain ever changes.
  */
 export function siteUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL
   if (explicit) return explicit.replace(/\/$/, '')
-  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  if (vercel) return `https://${vercel}`
+  if (process.env.NODE_ENV === 'production') return 'https://www.easy-fix.co.za'
   return 'http://localhost:3000'
 }
 

@@ -40,12 +40,12 @@ Get job requests near you, accept the jobs you want, and build your rating. Earn
 EASY-HIRE
 Hire event equipment, plant, transport and security guards.
 
-Serving Durban, Umhlanga, Pinetown and surrounding areas. Questions? hello@easyfix.co.za
+Serving Durban, Umhlanga, Pinetown and surrounding areas. Questions? hello@easy-fix.co.za
 ```
 *(Do not add claims about live tracking, plan discounts, warranties or response times until they exist — see section 9.)*
 
 **Category:** House & Home · **Tags:** home services, handyman, plumbing (pick what the console offers)
-**Contact email:** hello@easyfix.co.za — **CONFIRM** the mailbox works (due within 2 days)
+**Contact email:** hello@easy-fix.co.za — **the domain had no mail servers (MX records) when checked on 10 Nov 2026: create the mailbox before submitting**
 **Website:** https://www.easy-fix.co.za ✅
 **Contact phone:** optional — leave blank until a real support number exists
 
@@ -56,7 +56,7 @@ Serving Durban, Umhlanga, Pinetown and surrounding areas. Questions? hello@easyf
 
 ## 2. Policy URLs
 
-| Field | URL (until easyfix.co.za is connected) |
+| Field | URL |
 |---|---|
 | Privacy policy | https://www.easy-fix.co.za/privacy |
 | Account deletion (web) | https://www.easy-fix.co.za/delete-account |
@@ -188,8 +188,8 @@ No SMS, call-log, contacts, background-location or "all files" permissions, so n
 1. **Firebase / FCM:** `apps/mobile/google-services.json` is a placeholder (`home-solutions-placeholder`). Create a Firebase
    project for `co.za.easyfix.app`, replace the file, and upload the FCM service-account key to EAS. Without it, Android push
    notifications (provider job alerts) do not work.
-2. **Real support details:** set phone/WhatsApp/hours in `apps/mobile/constants/support.ts` when they exist; confirm hello@easyfix.co.za.
-3. ~~**Domain:** point easyfix.co.za at the Vercel project~~ ✅ **Done** — easy-fix.co.za is live on Vercel.
+2. **Real support details:** set phone/WhatsApp/hours in `apps/mobile/constants/support.ts` when they exist; confirm hello@easy-fix.co.za.
+3. ~~**Domain:** point easy-fix.co.za at the Vercel project~~ ✅ **Done** — easy-fix.co.za is live on Vercel.
 4. **Card handling:** card numbers still pass through our server to Peach. Moving to Peach's hosted checkout would take card data
    out of our systems entirely and simplify the Data safety answers (needs your Peach account details).
 5. **Reviewer accounts** (section 3) and the **admin screen for reports** (section 7).
