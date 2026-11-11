@@ -9,6 +9,8 @@ The content agent runs Monday, Wednesday and Friday. Each run writes ONE file pe
 
 and appends a line per project to `content/LOG.md` (date | project | theme | channels) so later runs don't repeat a theme.
 
+**Where to save (owner's instruction, 2026-11-11 — overrides any mention of `content-drafts`):** commit the content to **`main`** and `git push origin main`. Start each run from an up-to-date `main` (`git fetch origin && git checkout main && git pull origin main`). If the push is rejected because main moved, `git pull --no-rebase origin main` and push again — never force-push. Only touch files under `content/`. No pull requests.
+
 Edit this file to change brand facts, tone or rules. The agent follows it.
 
 ## Projects
