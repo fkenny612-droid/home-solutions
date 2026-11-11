@@ -5,6 +5,7 @@ The content agent runs Monday, Wednesday and Friday. Each run writes ONE file pe
 - `content/easy-fix/YYYY-MM-DD.md`
 - `content/finesse-connect/YYYY-MM-DD.md`
 - `content/truck-loads/YYYY-MM-DD.md`
+- `content/connected-assets/YYYY-MM-DD.md`
 
 and appends a line per project to `content/LOG.md` (date | project | theme | channels) so later runs don't repeat a theme.
 
@@ -31,10 +32,18 @@ Edit this file to change brand facts, tone or rules. The agent follows it.
 - Tone: practical, fast, dependable.
 - Facts to confirm: launch status `[live/coming soon]`, download link `[link]`, cities `[cities]`.
 
+### Connected Assets (AssetTrack ZA)
+- Multi-tenant SaaS for asset tracking/management: equipment, IT and fixed assets.
+- Audience: businesses and organisations with assets to track — asset managers, finance managers/CFOs, IT managers, auditors. B2B, so LinkedIn is the main channel.
+- Benefits to lead with: fewer lost assets, audit-ready asset registers, time saved on stock-takes/verification. Tie to SA financial year-ends (Feb for many companies, March for government/municipalities) and audit season.
+- Funnel goal: demo bookings and free trials.
+- Tone: modern SaaS — clear, benefit-led.
+- Facts to confirm: website `[website]`, demo/trial link `[demo link]`, pricing `[pricing]`.
+
 ## What each file contains
 1. **Theme of the run** (one line) and why it's timely (SA dates: payday ~25th, month-end, school terms, public holidays, festive season, load-shedding/weather, etc.).
 2. **Facebook/Instagram post** — 3 variants with different angles (e.g. price, trust/reliability, convenience). Short, emojis sparingly, CTA, 3–6 hashtags. Include an image/video suggestion.
-3. **LinkedIn post** — 1 version (most useful for Finesse Connect and the Truck Loads business/driver side; for Easy Fix target service providers). Hook first line, short paragraphs, CTA, 3–5 hashtags.
+3. **LinkedIn post** — 1 version (most useful for Connected Assets, Finesse Connect and the Truck Loads business/driver side; for Easy Fix target service providers). Hook first line, short paragraphs, CTA, 3–5 hashtags.
 4. **Best posting time** suggestion (SAST).
 
 ## Rules
