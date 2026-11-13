@@ -7,8 +7,10 @@
 ## Build
 
 ```bash
-node render.mjs voiceover.mp3 dept-agriculture-promo.mp4
+node render.mjs voiceover.mp3 dept-agriculture-promo.mp4 --breaks "6.78-7.23,13.23-13.63,21.03-21.40,26.92-27.30,32.14-32.58,38.36-38.91"
 ```
+
+`voiceover.mp3` is take 1 (42.9s). `--breaks` lists its six paragraph pauses in seconds. Without the option the script guesses the breaks, and on this take it would wrongly use the pause inside the closing line.
 
 The script finds the pauses in the voiceover, starts each scene on its paragraph and syncs the captions to it.
 Run it with no audio file to get a silent version with estimated timings. Add `--preview` to get one PNG per scene.

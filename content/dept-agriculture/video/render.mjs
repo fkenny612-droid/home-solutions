@@ -70,7 +70,15 @@ function chunks(text) {
 }
 
 const dur = audio ? duration(audio) : 42.88;
-const segs = (audio && segments(audio, dur)) || estimate(dur);
+// --breaks "a-b,c-d,...": explicit paragraph pauses (seconds) when auto-detection picks the wrong ones
+function fromBreaks(spec, dur) {
+  const br = spec.split(',').map(x => x.split('-').map(Number));
+  const segs = []; let start = 0;
+  for (const [a, b] of br) { segs.push([start, a]); start = b; }
+  segs.push([start, dur]); return segs;
+}
+const breaks = flag('--breaks');
+const segs = (audio && breaks && fromBreaks(breaks, dur)) || (audio && segments(audio, dur)) || estimate(dur);
 console.log(audio ? `voiceover: ${audio} (${dur.toFixed(2)}s)` : 'no voiceover given: using estimated timings (silent render)');
 const total = +(dur + LEAD + TAIL).toFixed(2);
 const starts = segs.map(([a], i) => i === 0 ? 0 : a + LEAD - 0.35);
