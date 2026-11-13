@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Growing South Africa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=block" rel="stylesheet">
+<style>
+  :root{
+    --night:#0B2E22; --forest:#0F3D2E; --leaf:#2E7D4F; --sprout:#7BC47F;
+    --maize:#E8B931; --sun:#F4C542; --soil:#8B5A2B; --clay:#C9773B;
+    --cream:#F6F0E1; --mist:rgba(246,240,225,.72);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:var(--night)}
+  body{font-family:Inter,system-ui,sans-serif;color:var(--cream)}
+  #stage{position:absolute;inset:0;overflow:hidden;
+    background:radial-gradient(1200px 800px at 75% 30%, #15523C 0%, var(--forest) 45%, var(--night) 100%)}
+  .grain{position:absolute;inset:0;opacity:.06;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")}
+  #hills{position:absolute;left:-200px;bottom:0;width:2320px;height:420px}
+  #sun{position:absolute;width:260px;height:260px;border-radius:50%;
+    background:radial-gradient(circle,#FFE08A 0%,var(--sun) 55%,rgba(244,197,66,0) 72%)}
+  .scene{position:absolute;inset:0;opacity:0}
+  .copy{position:absolute;left:150px;top:210px;width:860px}
+  .kicker{font:600 26px/1 Inter;letter-spacing:.22em;text-transform:uppercase;color:var(--maize);display:flex;gap:18px;align-items:center}
+  .kicker b{font:700 26px/1 'JetBrains Mono',monospace;color:var(--cream);opacity:.55;letter-spacing:0}
+  .kicker:after{content:"";height:2px;width:120px;background:var(--maize);opacity:.6}
+  h1{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:104px;line-height:1.02;letter-spacing:-.02em;margin-top:34px;text-wrap:balance}
+  h1 em{font-style:normal;color:var(--maize)}
+  .chips{display:flex;flex-wrap:wrap;gap:16px;margin-top:48px}
+  .chip{font:600 28px/1 Inter;padding:20px 28px;border-radius:999px;border:2px solid rgba(232,185,49,.5);background:rgba(11,46,34,.55);display:flex;align-items:center;gap:14px}
+  .chip i{width:12px;height:12px;border-radius:50%;background:var(--maize);display:block}
+  .art{position:absolute;right:140px;top:150px;width:720px;height:720px}
+  .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .eyebrow{font:600 28px/1 Inter;letter-spacing:.3em;text-transform:uppercase;color:var(--maize)}
+  .big{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:150px;line-height:1;letter-spacing:-.025em;margin-top:30px}
+  .sub{font:500 40px/1.3 Inter;color:var(--mist);margin-top:34px}
+  .impact{display:flex;gap:60px;margin-top:60px}
+  .stat{width:440px;padding:46px 30px;border-radius:28px;background:rgba(11,46,34,.6);border:2px solid rgba(232,185,49,.35)}
+  .stat svg{width:110px;height:110px}
+  .stat h3{font-family:Fraunces,Georgia,serif;font-size:56px;line-height:1.05;margin-top:22px}
+  .rule{width:160px;height:4px;background:var(--maize);margin:42px auto 0;border-radius:2px}
+  #cap{position:absolute;left:50%;bottom:64px;transform:translateX(-50%);width:max-content;max-width:1500px;text-align:center;
+    font:500 36px/1.35 Inter;color:#fff;padding:16px 34px;border-radius:14px;background:rgba(6,24,18,.62);opacity:0}
+  #bar{position:absolute;left:0;top:0;height:6px;background:var(--maize);width:0}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="sun"></div>
+
+  <!-- Rolling fields (three parallax layers) -->
+  <svg id="hills" viewBox="0 0 2320 420" preserveAspectRatio="none">
+    <path id="h1" fill="#1F5E40" d="M0 210 C300 120 560 150 820 190 S1400 110 1700 170 S2150 230 2320 160 V420 H0Z"/>
+    <path id="h2" fill="#2E7D4F" d="M0 280 C260 220 600 250 900 290 S1500 220 1800 260 S2200 310 2320 270 V420 H0Z"/>
+    <g id="rows" stroke="#3E9A60" stroke-width="5" opacity=".55" fill="none">
+      <path d="M0 340 C500 300 1200 330 2320 310"/><path d="M0 370 C500 335 1200 360 2320 345"/><path d="M0 400 C500 370 1200 390 2320 380"/>
+    </g>
+    <path id="h3" fill="#8B5A2B" opacity=".9" d="M0 395 C400 375 900 390 1300 400 S2000 385 2320 395 V420 H0Z"/>
+  </svg>
+
+  <!-- 0 INTRO -->
+  <section class="scene" data-scene="0">
+    <div class="center" style="padding-bottom:180px">
+      <div class="eyebrow" data-d=".3">Department of Agriculture · South Africa</div>
+      <div class="big" data-d=".7">From the soil<br>to the <span style="color:var(--maize)">table.</span></div>
+      <div class="sub" data-d="1.4">Working for every farmer, and every family.</div>
+    </div>
+  </section>
+
+  <!-- 1 FARMER SUPPORT -->
+  <section class="scene" data-scene="1">
+    <div class="copy">
+      <div class="kicker" data-d=".2"><b>01</b>Farmer support</div>
+      <h1 data-d=".45">Backing producers, <em>big and small.</em></h1>
+      <div class="chips">
+        <div class="chip" data-d="1.2"><i></i>Funding</div>
+        <div class="chip" data-d="1.6"><i></i>Training</div>
+        <div class="chip" data-d="2.0"><i></i>Extension officers</div>
+      </div>
+    </div>
+    <svg class="art" viewBox="0 0 720 720">
+      <circle cx="360" cy="360" r="300" fill="rgba(232,185,49,.08)" stroke="rgba(232,185,49,.35)" stroke-width="3" data-anim="pop" data-d=".3"/>
+      <path d="M150 540 Q360 500 570 540 L570 600 L150 600Z" fill="#8B5A2B" data-anim="rise" data-d=".5"/>
+      <g data-anim="grow" data-d=".9" style="transform-origin:360px 540px">
+        <path d="M360 540 C360 440 362 360 360 250" stroke="#7BC47F" stroke-width="16" stroke-linecap="round" fill="none"/>
+        <path d="M360 400 C290 400 230 350 220 290 C290 285 350 330 360 400Z" fill="#2E7D4F"/>
+        <path d="M360 330 C430 330 500 280 510 210 C430 205 370 255 360 330Z" fill="#7BC47F"/>
+        <path d="M360 260 C330 220 330 170 360 130 C390 170 390 220 360 260Z" fill="#E8B931"/>
+      </g>
+      <g data-anim="pop" data-d="1.6"><circle cx="560" cy="200" r="54" fill="#E8B931"/><text x="560" y="218" text-anchor="middle" font-family="Fraunces" font-weight="700" font-size="50" fill="#0B2E22">R</text></g>
+      <g data-anim="pop" data-d="2.0"><circle cx="160" cy="230" r="46" fill="#F6F0E1"/><path d="M138 232 l16 16 30-34" stroke="#0F3D2E" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+    </svg>
+  </section>
+
+  <!-- 2 ANIMAL & PLANT HEALTH -->
+  <section class="scene" data-scene="2">
+    <div class="copy">
+      <div class="kicker" data-d=".2"><b>02</b>Animal &amp; plant health</div>
+      <h1 data-d=".45">Protecting our <em>herds and harvests.</em></h1>
+      <div class="chips">
+        <div class="chip" data-d="1.4"><i></i>Disease control</div>
+        <div class="chip" data-d="1.8"><i></i>Biosecurity</div>
+        <div class="chip" data-d="2.2"><i></i>Food safety</div>
+      </div>
+    </div>
+    <svg class="art" viewBox="0 0 720 720">
+      <path data-anim="draw" data-d=".3" d="M360 70 L590 150 V350 C590 500 480 600 360 650 C240 600 130 500 130 350 V150Z" fill="none" stroke="#E8B931" stroke-width="14" stroke-linejoin="round"/>
+      <path data-anim="pop" data-d="1.0" d="M360 110 L555 178 V350 C555 480 460 565 360 608 C260 565 165 480 165 350 V178Z" fill="rgba(46,125,79,.35)"/>
+      <!-- simple cattle head -->
+      <g data-anim="pop" data-d="1.3" fill="#F6F0E1">
+        <path d="M290 270 C250 250 230 220 235 200 C265 215 285 230 305 250Z"/>
+        <path d="M430 270 C470 250 490 220 485 200 C455 215 435 230 415 250Z"/>
+        <path d="M300 255 C300 235 420 235 420 255 L410 380 C405 420 315 420 310 380Z"/>
+        <ellipse cx="360" cy="400" rx="56" ry="38" fill="#C9773B"/>
+        <circle cx="340" cy="400" r="7" fill="#0B2E22"/><circle cx="380" cy="400" r="7" fill="#0B2E22"/>
+        <circle cx="330" cy="300" r="9" fill="#0B2E22"/><circle cx="390" cy="300" r="9" fill="#0B2E22"/>
+      </g>
+      <!-- wheat sprig -->
+      <g data-anim="grow" data-d="1.7" style="transform-origin:360px 560px" fill="#E8B931">
+        <path d="M360 560 V470" stroke="#E8B931" stroke-width="6"/>
+        <ellipse cx="345" cy="500" rx="10" ry="20" transform="rotate(-25 345 500)"/><ellipse cx="375" cy="500" rx="10" ry="20" transform="rotate(25 375 500)"/>
+        <ellipse cx="345" cy="530" rx="10" ry="20" transform="rotate(-25 345 530)"/><ellipse cx="375" cy="530" rx="10" ry="20" transform="rotate(25 375 530)"/>
+        <ellipse cx="360" cy="468" rx="9" ry="20"/>
+      </g>
+    </svg>
+  </section>
+
+  <!-- 3 MARKETS -->
+  <section class="scene" data-scene="3">
+    <div class="copy">
+      <div class="kicker" data-d=".2"><b>03</b>Markets &amp; trade</div>
+      <h1 data-d=".45">Opening doors, <em>at home and abroad.</em></h1>
+      <div class="chips">
+        <div class="chip" data-d="1.4"><i></i>Local markets</div>
+        <div class="chip" data-d="1.8"><i></i>Export access</div>
+        <div class="chip" data-d="2.2"><i></i>Trade partnerships</div>
+      </div>
+    </div>
+    <svg class="art" viewBox="0 0 720 720">
+      <circle cx="360" cy="360" r="280" fill="rgba(46,125,79,.35)" stroke="rgba(246,240,225,.35)" stroke-width="3" data-anim="pop" data-d=".3"/>
+      <g fill="none" stroke="rgba(246,240,225,.18)" stroke-width="2" data-anim="pop" data-d=".4">
+        <ellipse cx="360" cy="360" rx="280" ry="100"/><ellipse cx="360" cy="360" rx="280" ry="200"/>
+        <ellipse cx="360" cy="360" rx="110" ry="280"/><ellipse cx="360" cy="360" rx="210" ry="280"/><path d="M80 360H640M360 80V640"/>
+      </g>
+      <!-- origin: southern Africa -->
+      <circle cx="400" cy="520" r="18" fill="#E8B931" data-anim="pop" data-d=".8"/>
+      <circle cx="400" cy="520" r="34" fill="none" stroke="#E8B931" stroke-width="3" data-anim="pulse" data-d=".9"/>
+      <g fill="none" stroke="#E8B931" stroke-width="6" stroke-linecap="round">
+        <path data-anim="draw" data-d="1.1" d="M400 520 Q260 380 220 210"/>
+        <path data-anim="draw" data-d="1.4" d="M400 520 Q460 330 380 160"/>
+        <path data-anim="draw" data-d="1.7" d="M400 520 Q600 430 600 260"/>
+        <path data-anim="draw" data-d="2.0" d="M400 520 Q300 560 150 420"/>
+      </g>
+      <g fill="#F6F0E1">
+        <circle cx="220" cy="210" r="12" data-anim="pop" data-d="1.8"/><circle cx="380" cy="160" r="12" data-anim="pop" data-d="2.1"/>
+        <circle cx="600" cy="260" r="12" data-anim="pop" data-d="2.4"/><circle cx="150" cy="420" r="12" data-anim="pop" data-d="2.7"/>
+      </g>
+    </svg>
+  </section>
+
+  <!-- 4 RESEARCH -->
+  <section class="scene" data-scene="4">
+    <div class="copy">
+      <div class="kicker" data-d=".2"><b>04</b>Research &amp; innovation</div>
+      <h1 data-d=".45">Helping farms adapt to a <em>changing climate.</em></h1>
+      <div class="chips">
+        <div class="chip" data-d="1.4"><i></i>Research</div>
+        <div class="chip" data-d="1.8"><i></i>Climate resilience</div>
+        <div class="chip" data-d="2.2"><i></i>New technology</div>
+      </div>
+    </div>
+    <svg class="art" viewBox="0 0 720 720">
+      <g fill="none" stroke-linecap="round">
+        <circle cx="360" cy="380" r="270" stroke="rgba(232,185,49,.25)" stroke-width="3" stroke-dasharray="4 18" data-anim="spin" data-d=".2"/>
+        <circle cx="360" cy="380" r="210" stroke="rgba(246,240,225,.18)" stroke-width="3" data-anim="pop" data-d=".3"/>
+      </g>
+      <!-- cloud + rain -->
+      <g data-anim="rise" data-d=".6">
+        <path d="M220 230 a60 60 0 0 1 110 -30 a75 75 0 0 1 140 30 a50 50 0 0 1 0 100 H230 a50 50 0 0 1 -10 -100Z" fill="#F6F0E1"/>
+      </g>
+      <g stroke="#7BC47F" stroke-width="8" stroke-linecap="round">
+        <path data-anim="drop" data-d="1.0" d="M280 360 v34"/><path data-anim="drop" data-d="1.2" d="M350 360 v34"/>
+        <path data-anim="drop" data-d="1.1" d="M420 360 v34"/><path data-anim="drop" data-d="1.3" d="M490 360 v34"/>
+      </g>
+      <!-- rising bar chart / yield -->
+      <g fill="#E8B931">
+        <rect data-anim="grow" data-d="1.4" x="250" y="500" width="50" height="90" rx="8" style="transform-origin:275px 590px"/>
+        <rect data-anim="grow" data-d="1.6" x="330" y="460" width="50" height="130" rx="8" style="transform-origin:355px 590px"/>
+        <rect data-anim="grow" data-d="1.8" x="410" y="420" width="50" height="170" rx="8" style="transform-origin:435px 590px"/>
+      </g>
+      <path data-anim="draw" data-d="2.0" d="M240 490 L320 450 L400 410 L490 360" fill="none" stroke="#F6F0E1" stroke-width="7" stroke-linecap="round"/>
+      <path data-anim="pop" data-d="2.6" d="M490 360 l-30 2 m30 -2 l-6 28" stroke="#F6F0E1" stroke-width="7" stroke-linecap="round"/>
+    </svg>
+  </section>
+
+  <!-- 5 IMPACT -->
+  <section class="scene" data-scene="5">
+    <div class="center" style="padding-bottom:160px">
+      <div class="eyebrow" data-d=".2">A strong agricultural sector means</div>
+      <div class="impact">
+        <div class="stat" data-d=".9">
+          <svg viewBox="0 0 100 100" fill="none" stroke="#E8B931" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><circle cx="35" cy="32" r="13"/><circle cx="68" cy="36" r="10"/><path d="M12 80c2-18 12-28 23-28s21 10 23 28M58 80c1-13 6-22 12-22s15 9 16 22"/></svg>
+          <h3>Jobs</h3>
+        </div>
+        <div class="stat" data-d="1.6">
+          <svg viewBox="0 0 100 100" fill="none" stroke="#E8B931" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 52h72c0 20-16 34-36 34S14 72 14 52Z"/><path d="M50 46V14M50 30c-10 0-16-6-16-14 10 0 16 6 16 14Zm0 6c10 0 16-6 16-14-10 0-16 6-16 14Z"/></svg>
+          <h3>Food security</h3>
+        </div>
+        <div class="stat" data-d="2.4">
+          <svg viewBox="0 0 100 100" fill="none" stroke="#E8B931" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 84h80M18 84V50l20-16 20 16v34M58 84V58h24v26M30 84V66h16v18"/><path d="M70 40c0-10 8-18 18-18 0 10-8 18-18 18Z"/></svg>
+          <h3>Thriving rural communities</h3>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 OUTRO -->
+  <section class="scene" data-scene="6">
+    <div class="center" style="padding-bottom:200px">
+      <div class="eyebrow" data-d=".2">The</div>
+      <div class="big" data-d=".4" style="font-size:132px">Department of Agriculture</div>
+      <div class="rule" data-anim="widen" data-d="1.0"></div>
+      <div class="sub" data-d="1.4" style="font-family:Fraunces,serif;font-size:64px;color:var(--maize);font-weight:500">Growing South Africa, together.</div>
+    </div>
+  </section>
+
+  <div id="cap"></div>
+  <div id="bar"></div>
+  <div class="grain"></div>
+</div>
+
+<script>
+/* Timeline: overwritten by render.mjs from the measured voiceover pauses. */
+window.TIMELINE = window.TIMELINE || {
+  total: 47,
+  // [start, end] of each scene in seconds
+  scenes: [[0,9.2],[9.2,15.3],[15.3,22.6],[22.6,28.6],[28.6,33.9],[33.9,39.7],[39.7,47]],
+  // captions: [start, end, text]
+  captions: []
+};
+
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const easeOut=x=>1-Math.pow(1-x,3);
+const easeInOut=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const backOut=x=>{const c=1.70158;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const prog=(t,a,d)=>clamp((t-a)/d);
+
+const scenes=[...document.querySelectorAll('.scene')];
+const sun=document.getElementById('sun'), cap=document.getElementById('cap'), bar=document.getElementById('bar');
+const h1=document.getElementById('h1'), h2=document.getElementById('h2'), rows=document.getElementById('rows');
+
+// prep stroke draws
+document.querySelectorAll('[data-anim=draw]').forEach(el=>{
+  const L=el.getTotalLength(); el.dataset.len=L; el.style.strokeDasharray=L; el.style.strokeDashoffset=L;
+});
+
+window.render=function(t){
+  const T=window.TIMELINE;
+  // landscape parallax + sun arc across whole film
+  const g=t/T.total;
+  h1.setAttribute('transform',`translate(${-g*60} 0)`);
+  h2.setAttribute('transform',`translate(${-g*120} 0)`);
+  rows.setAttribute('transform',`translate(${-g*180} 0)`);
+  const sr=easeOut(prog(t,0,3));
+  sun.style.left=(1700-g*40)+'px';
+  sun.style.top=(520-sr*600 + g*30)+'px';
+  sun.style.opacity=.35+.65*sr;
+  bar.style.width=(g*100)+'%';
+
+  scenes.forEach((s,i)=>{
+    const [a,b]=T.scenes[i];
+    const fin=prog(t,a,.6), fout=1-prog(t,b-.5,.5);
+    const vis=Math.min(fin,fout);
+    s.style.opacity=vis;
+    s.style.visibility=vis<=0?'hidden':'visible';
+    if(vis<=0) return;
+    const lt=t-a;
+    s.querySelectorAll('[data-d]').forEach(el=>{
+      const d=+el.dataset.d, k=el.dataset.anim;
+      const p=prog(lt,d,.8);
+      if(!k){ const e=easeOut(p); el.style.opacity=e; el.style.transform=`translateY(${(1-e)*40}px)`; return; }
+      if(k==='rise'){ const e=easeOut(p); el.style.opacity=e; el.style.transform=`translateY(${(1-e)*60}px)`; }
+      else if(k==='pop'){ const e=backOut(prog(lt,d,.6)); el.style.opacity=clamp(e); el.style.transformBox='fill-box'; el.style.transformOrigin='center'; el.style.transform=`scale(${.4+.6*e})`; }
+      else if(k==='grow'){ const e=easeOut(prog(lt,d,1.1)); el.style.opacity=clamp(e*3); el.style.transform=`scaleY(${e})`; }
+      else if(k==='draw'){ const e=easeInOut(prog(lt,d,1.1)); el.style.strokeDashoffset=el.dataset.len*(1-e); }
+      else if(k==='pulse'){ const c=((lt-d)%1.6)/1.6; el.style.transformBox='fill-box'; el.style.transformOrigin='center'; el.style.opacity=lt<d?0:(1-c); el.style.transform=`scale(${1+c*1.4})`; }
+      else if(k==='spin'){ el.style.transformBox='fill-box'; el.style.transformOrigin='center'; el.style.opacity=easeOut(p); el.style.transform=`rotate(${lt*8}deg)`; }
+      else if(k==='drop'){ const c=lt<d?0:((lt-d)%1.2)/1.2; el.style.opacity=lt<d?0:(1-c); el.style.transform=`translateY(${c*90}px)`; }
+      else if(k==='widen'){ const e=easeOut(p); el.style.width=(e*160)+'px'; }
+    });
+  });
+
+  // captions
+  const c=T.captions.find(([a,b])=>t>=a&&t<b);
+  if(c){ cap.textContent=c[2]; const e=Math.min(prog(t,c[0],.25),1-prog(t,c[1]-.2,.2)); cap.style.opacity=e; }
+  else cap.style.opacity=0;
+};
+window.render(+(new URLSearchParams(location.search).get('t')||2.5));
+</script>
+</body>
+</html>
