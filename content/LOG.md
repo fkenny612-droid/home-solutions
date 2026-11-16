@@ -14,3 +14,7 @@ date | project | theme | channels
 2026-11-13 | Finesse Connect | Security for the festive shutdown: CCTV check before you lock up | FB/IG x3 (carousel, Reel), LinkedIn
 2026-11-13 | Truck Loads | Customers: bought something big on Black Friday? Get it home same day | FB/IG x3 (Reel, carousel), LinkedIn
 2026-11-13 | Connected Assets | Year-end tech purchases: record it the day it arrives (tag, assign, date) | LinkedIn + document carousel, FB/IG x3
+2026-11-16 | Easy Fix | Providers: get found before December — free Google Business Profile, WhatsApp review requests, job photos | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-16 | Finesse Connect | Connectivity: off ADSL/copper and onto reliable internet with backup before the festive rush | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-16 | Truck Loads | Drivers/owners: festive-ready truck — licence disc, roadworthiness, load, rest (RTMC) | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-16 | Connected Assets | Public sector/municipalities: keep registers current in-house, not rebuilt each audit (AG 2024-25) | LinkedIn, FB/IG x3
