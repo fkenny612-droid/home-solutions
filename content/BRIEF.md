@@ -6,6 +6,7 @@ The content agent runs Monday, Wednesday and Friday. Each run writes ONE file pe
 - `content/finesse-connect/YYYY-MM-DD.md`
 - `content/truck-loads/YYYY-MM-DD.md`
 - `content/connected-assets/YYYY-MM-DD.md`
+- `content/connected-media/YYYY-MM-DD.md`
 
 and appends a line per project to `content/LOG.md` (date | project | theme | channels) so later runs don't repeat a theme.
 
@@ -42,6 +43,15 @@ Edit this file to change brand facts, tone or rules. The agent follows it.
 - Tone: modern SaaS — clear, benefit-led.
 - Facts to confirm: website `[website]`, demo/trial link `[demo link]`, pricing `[pricing]`.
 
+### Connected Media
+- White-label cloud digital signage platform (built on OptiSigns, sold under the Connected Media brand): businesses manage content on their screens (adverts, menus, promotions, information, internal comms) from one online dashboard.
+- **Never mention OptiSigns** or any underlying platform in posts — it is sold as Connected Media's own platform.
+- Audience: businesses running screens — retail, hospitality/restaurants, franchise groups, offices, `[other target sectors]`. B2B, so LinkedIn plus Facebook/Instagram.
+- Benefits to lead with: update every screen remotely in minutes, schedule content (e.g. breakfast vs lunch menus, weekend specials), one dashboard for many screens/branches, ready-made templates.
+- Keep it distinct from Finesse Connect: `[how Connected Media relates to Finesse Connect's digital signage offering]`. Until this is filled in, don't post the same theme for both projects in the same run, and don't mention one brand in the other's posts.
+- Tone: modern SaaS — clear, practical, benefit-led.
+- Facts to confirm (use placeholders until filled in): website `[website]`, demo/trial link `[demo link]`, pricing `[pricing]`, supported hardware `[hardware]`, WhatsApp `[WhatsApp number]`, service area `[city/province]`.
+
 ## Research step (do this before writing)
 The agent has web search and can read public web pages. Each run, spend a short, focused research pass per project, then write `content/research/YYYY-MM-DD.md` with what you found and the source URL + publish date for every point.
 
@@ -64,7 +74,7 @@ Research rules:
 ## What each file contains
 1. **Theme of the run** (one line), why it's timely and the research finding it is based on (link to the entry in `content/research/YYYY-MM-DD.md`) (SA dates: payday ~25th, month-end, school terms, public holidays, festive season, load-shedding/weather, etc.).
 2. **Facebook/Instagram post** — 3 variants with different angles (e.g. price, trust/reliability, convenience). Short, emojis sparingly, CTA, 3–6 hashtags. Include an image/video suggestion.
-3. **LinkedIn post** — 1 version (most useful for Connected Assets, Finesse Connect and the Truck Loads business/driver side; for Easy Fix target service providers). Hook first line, short paragraphs, CTA, 3–5 hashtags.
+3. **LinkedIn post** — 1 version (most useful for Connected Assets, Connected Media, Finesse Connect and the Truck Loads business/driver side; for Easy Fix target service providers). Hook first line, short paragraphs, CTA, 3–5 hashtags.
 4. **Best posting time** suggestion (SAST).
 
 ## Rules
