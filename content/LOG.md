@@ -18,3 +18,8 @@ date | project | theme | channels
 2026-11-16 | Finesse Connect | Connectivity: off ADSL/copper and onto reliable internet with backup before the festive rush | FB/IG x3 (carousel, Reel), LinkedIn
 2026-11-16 | Truck Loads | Drivers/owners: festive-ready truck — licence disc, roadworthiness, load, rest (RTMC) | FB/IG x3 (carousel, Reel), LinkedIn
 2026-11-16 | Connected Assets | Public sector/municipalities: keep registers current in-house, not rebuilt each audit (AG 2024-25) | LinkedIn, FB/IG x3
+2026-11-18 | Easy Fix | Homeowners: Durban water outages — what to check when water returns, backup tanks | FB/IG x3 (carousel, Reel), LinkedIn (providers)
+2026-11-18 | Finesse Connect | Guesthouse/B&B Wi-Fi and backup for a full December house | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-18 | Truck Loads | Customers: students/parents — res move-out after exams | FB/IG x3 (Reel, carousel), LinkedIn (student accommodation)
+2026-11-18 | Connected Assets | Contractors/plant hire: tools and plant checked in before the builders' break | LinkedIn, FB/IG x3
+2026-11-18 | Connected Media | Schedule menus by time of day (breakfast/lunch/festive) from one dashboard | FB/IG x3 (Reel), LinkedIn
