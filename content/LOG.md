@@ -23,3 +23,8 @@ date | project | theme | channels
 2026-11-18 | Truck Loads | Customers: students/parents — res move-out after exams | FB/IG x3 (Reel, carousel), LinkedIn (student accommodation)
 2026-11-18 | Connected Assets | Contractors/plant hire: tools and plant checked in before the builders' break | LinkedIn, FB/IG x3
 2026-11-18 | Connected Media | Schedule menus by time of day (breakfast/lunch/festive) from one dashboard | FB/IG x3 (Reel), LinkedIn
+2026-11-20 | Easy Fix | Providers: get paid before the holidays — quotes, deposits, payment terms (late-payment crisis) | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-20 | Finesse Connect | Backup power (UPS) for CCTV, alarms and internet during local outages | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-20 | Truck Loads | Drivers/owners: hijacking awareness for the festive season (SAPS Q1 figures) | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-20 | Connected Assets | Schools/education: end-of-year device returns (EC tablet programme) | LinkedIn, FB/IG x3
+2026-11-20 | Connected Media | Black Friday countdown and scheduled deals on in-store screens | FB/IG x3 (Reel), LinkedIn
