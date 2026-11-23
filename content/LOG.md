@@ -28,3 +28,8 @@ date | project | theme | channels
 2026-11-20 | Truck Loads | Drivers/owners: hijacking awareness for the festive season (SAPS Q1 figures) | FB/IG x3 (carousel, Reel), LinkedIn
 2026-11-20 | Connected Assets | Schools/education: end-of-year device returns (EC tablet programme) | LinkedIn, FB/IG x3
 2026-11-20 | Connected Media | Black Friday countdown and scheduled deals on in-store screens | FB/IG x3 (Reel), LinkedIn
+2026-11-23 | Easy Fix | Homeowners: festive electrical safety — compliant extension cords, adaptors, extra appliances | FB/IG x3 (carousel, Reel), LinkedIn (providers)
+2026-11-23 | Finesse Connect | Lightning/surge protection for CCTV, network and screens in storm season | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-23 | Truck Loads | Customers: second-hand furniture "collection only" — book a bakkie to fetch it | FB/IG x3 (Reel, carousel), LinkedIn (dealers)
+2026-11-23 | Connected Assets | Event and party hire: out, back, damaged, missing through December | LinkedIn, FB/IG x3
+2026-11-23 | Connected Media | Staff-facing screens: shutdown dates, festive safety, return-to-work messages | FB/IG x3 (carousel, Reel), LinkedIn
