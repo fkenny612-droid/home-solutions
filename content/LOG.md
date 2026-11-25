@@ -33,3 +33,8 @@ date | project | theme | channels
 2026-11-23 | Truck Loads | Customers: second-hand furniture "collection only" — book a bakkie to fetch it | FB/IG x3 (Reel, carousel), LinkedIn (dealers)
 2026-11-23 | Connected Assets | Event and party hire: out, back, damaged, missing through December | LinkedIn, FB/IG x3
 2026-11-23 | Connected Media | Staff-facing screens: shutdown dates, festive safety, return-to-work messages | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-25 | Easy Fix | Providers: working safely in a hot summer (roof spaces, scheduling, hydration) | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-25 | Finesse Connect | Access control at year-end: cancel leavers' cards, codes and biometrics | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-25 | Truck Loads | Drivers/owners: plan around N3 holiday traffic peaks; swipe cards no longer accepted at N3 tolls | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-25 | Connected Assets | Underinsurance and the average clause: know what you own before renewal | LinkedIn, FB/IG x3
+2026-11-25 | Connected Media | Holiday trading hours (16, 25, 26 Dec, 1 Jan) scheduled on every screen | FB/IG x3 (carousel, Reel), LinkedIn
