@@ -38,3 +38,8 @@ date | project | theme | channels
 2026-11-25 | Truck Loads | Drivers/owners: plan around N3 holiday traffic peaks; swipe cards no longer accepted at N3 tolls | FB/IG x3 (carousel, Reel), LinkedIn
 2026-11-25 | Connected Assets | Underinsurance and the average clause: know what you own before renewal | LinkedIn, FB/IG x3
 2026-11-25 | Connected Media | Holiday trading hours (16, 25, 26 Dec, 1 Jan) scheduled on every screen | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-27 | Easy Fix | Homeowners: Black Friday appliances — install aircons, dishwashers, washing machines properly | FB/IG x3 (carousel, Reel), LinkedIn (providers)
+2026-11-27 | Finesse Connect | Funeral parlours: reliable live-streaming, memorial screens and security | FB/IG x3 (carousel), LinkedIn
+2026-11-27 | Truck Loads | Business customers: move offices/stores over the December shutdown | FB/IG x3 (carousel, Reel), LinkedIn
+2026-11-27 | Connected Assets | Use the shutdown to service equipment; track service dates | LinkedIn, FB/IG x3
+2026-11-27 | Connected Media | Gyms/studios: screens for the January rush and member retention | FB/IG x3 (carousel, Reel), LinkedIn
